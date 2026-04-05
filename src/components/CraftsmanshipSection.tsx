@@ -9,18 +9,18 @@ const features = [
 
 const CraftsmanshipSection = () => {
   return (
-    <section id="craftsmanship" className="py-24 md:py-32 bg-foreground">
+    <section id="craftsmanship" className="py-24 md:py-32 bg-card">
       <div className="container mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-8 order-2 lg:order-1">
             <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
               Craftsmanship
             </p>
-            <h2 className="text-3xl md:text-4xl font-serif text-background leading-tight">
+            <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight">
               Precision-Crafted With{" "}
               <span className="italic text-gold">Purpose</span>
             </h2>
-            <p className="text-background/70 leading-relaxed font-light text-lg">
+            <p className="text-muted-foreground leading-relaxed font-light text-lg">
               Partnered with ShineOn's premium manufacturing, every pendant is
               meticulously engraved using state-of-the-art laser technology.
               The result is a durable, hypoallergenic piece built to last a lifetime.
@@ -29,7 +29,7 @@ const CraftsmanshipSection = () => {
               {features.map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <item.icon className="w-5 h-5 text-gold" strokeWidth={1.5} />
-                  <span className="text-sm text-background/80 tracking-wide">
+                  <span className="text-sm text-foreground/80 tracking-wide">
                     {item.label}
                   </span>
                 </div>

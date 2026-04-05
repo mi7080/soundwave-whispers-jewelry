@@ -39,14 +39,14 @@ const TestimonialsSection = () => {
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="bg-cream p-8 rounded-sm space-y-4 border border-border/50"
+              className="bg-card p-8 rounded-sm space-y-4 border border-border/50"
             >
               <div className="flex gap-1">
                 {Array.from({ length: t.rating }).map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-gold text-gold" />
                 ))}
               </div>
-              <p className="text-foreground/80 leading-relaxed font-light italic">
+              <p className="text-foreground/70 leading-relaxed font-light italic">
                 "{t.text}"
               </p>
               <p className="text-sm text-muted-foreground tracking-wide pt-2">

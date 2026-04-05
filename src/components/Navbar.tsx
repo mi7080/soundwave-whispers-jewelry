@@ -2,7 +2,7 @@ import logo from "@/assets/logo.png";
 
 const Navbar = () => {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <a href="#">
           <img src={logo} alt="ANIMUS" className="h-8" />
@@ -15,7 +15,7 @@ const Navbar = () => {
         </div>
         <a
           href="#customize"
-          className="bg-foreground text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold transition-colors"
+          className="bg-gold text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold-light transition-colors"
         >
           Shop Now
         </a>
