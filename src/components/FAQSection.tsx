@@ -50,7 +50,7 @@ const FAQSection = () => {
               <AccordionItem
                 key={i}
                 value={`item-${i}`}
-                className="border border-border/50 rounded-sm px-6 bg-cream/50"
+                className="border border-border/50 rounded-sm px-6 bg-background/50"
               >
                 <AccordionTrigger className="text-left font-serif text-base hover:no-underline hover:text-gold transition-colors py-5">
                   {faq.q}
