@@ -23,7 +23,7 @@ const steps = [
 
 const ExperienceSection = () => {
   return (
-    <section id="experience" className="py-24 md:py-32 bg-card">
+    <section id="experience" className="py-28 md:py-36 bg-card">
       <div className="container mx-auto px-6">
         <div className="text-center mb-20 space-y-4">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">

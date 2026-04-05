@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --background: 220 10% 8%;
-    --foreground: 40 10% 90%;
+    --background: 220 12% 5%;
+    --foreground: 40 8% 92%;
 
     --card: 220 10% 12%;
     --card-foreground: 40 10% 90%;
@@ -15,8 +15,8 @@
     --popover: 220 10% 10%;
     --popover-foreground: 40 10% 90%;
 
-    --primary: 40 40% 55%;
-    --primary-foreground: 220 10% 8%;
+    --primary: 38 45% 58%;
+    --primary-foreground: 220 12% 5%;
 
     --secondary: 220 8% 16%;
     --secondary-foreground: 40 10% 80%;
@@ -36,10 +36,10 @@
 
     --radius: 0.25rem;
 
-    /* Custom tokens */
-    --gold: 40 45% 55%;
-    --gold-light: 40 35% 70%;
-    --gold-dark: 40 50% 40%;
+    /* Custom tokens — Champagne Gold */
+    --gold: 38 45% 58%;
+    --gold-light: 38 38% 72%;
+    --gold-dark: 38 50% 42%;
     --deep-grey: 220 10% 8%;
     --light-grey: 220 6% 55%;
     --cream: 220 8% 12%;
