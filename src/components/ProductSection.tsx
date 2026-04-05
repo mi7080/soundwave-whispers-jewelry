@@ -39,6 +39,10 @@ const ProductSection = () => {
   const handleAddToCart = async () => {
     if (!product || !selectedVariant) return;
     const shopifyProduct: ShopifyProduct = { node: product };
+    const customAttributes: Array<{ key: string; value: string }> = [];
+    if (petName.trim()) customAttributes.push({ key: "Pet Name", value: petName.trim() });
+    if (rightSideText.trim()) customAttributes.push({ key: "Right Side Engraving", value: rightSideText.trim() });
+    if (audioUrl) customAttributes.push({ key: "Audio URL", value: audioUrl });
     await addItem({
       product: shopifyProduct,
       variantId: selectedVariant.id,
@@ -46,6 +50,7 @@ const ProductSection = () => {
       price: selectedVariant.price,
       quantity: 1,
       selectedOptions: selectedVariant.selectedOptions || [],
+      ...(customAttributes.length > 0 && { customAttributes }),
     });
     toast.success("Added to cart", {
       description: `${product.title} — ${selectedVariant.title}`,
