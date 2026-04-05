@@ -81,6 +81,18 @@ const CartDrawer = () => {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {item.selectedOptions.map(o => o.value).join(' · ')}
                   </p>
+                  {item.customAttributes && item.customAttributes.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {item.customAttributes.map(attr => (
+                        <p key={attr.key} className="text-[10px] text-muted-foreground/70">
+                          <span className="text-gold/60">{attr.key}:</span>{' '}
+                          {attr.key === 'Audio URL' ? (
+                            <a href={attr.value} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold transition-colors">Listen ↗</a>
+                          ) : attr.value}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-sm text-gold font-sans mt-1">
                     ${(parseFloat(item.price.amount) * item.quantity).toFixed(2)}
                   </p>
