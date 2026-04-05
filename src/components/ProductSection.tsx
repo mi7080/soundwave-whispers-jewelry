@@ -10,6 +10,7 @@ const PRODUCT_HANDLE = "animus-the-4-sided-eternal-echo-pendant-shop-232097-9151
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [petName, setPetName] = useState("");
+  const [rightSideText, setRightSideText] = useState("");
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
