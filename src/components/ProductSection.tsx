@@ -152,7 +152,25 @@ const ProductSection = () => {
             />
           </div>
 
-          {/* Add to Cart */}
+          {/* Right Side Engraving (Optional) */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                Right Side — Date / Message
+              </label>
+              <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                Optional
+              </span>
+            </div>
+            <input
+              type="text"
+              placeholder="e.g. 04.12.2019 or Forever Loved"
+              className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
+            />
+            <p className="text-[10px] text-muted-foreground/50 font-light">
+              Add a special date, initials, or short message to the right side of your pendant.
+            </p>
+          </div>
           <button
             onClick={handleAddToCart}
             disabled={cartLoading || !selectedVariant?.availableForSale}
