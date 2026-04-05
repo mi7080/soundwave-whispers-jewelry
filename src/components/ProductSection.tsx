@@ -10,6 +10,7 @@ const PRODUCT_HANDLE = "animus-the-4-sided-eternal-echo-pendant-shop-232097-9151
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [petName, setPetName] = useState("");
+  const [rightSideText, setRightSideText] = useState("");
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,10 @@ const ProductSection = () => {
   const handleAddToCart = async () => {
     if (!product || !selectedVariant) return;
     const shopifyProduct: ShopifyProduct = { node: product };
+    const customAttributes: Array<{ key: string; value: string }> = [];
+    if (petName.trim()) customAttributes.push({ key: "Pet Name", value: petName.trim() });
+    if (rightSideText.trim()) customAttributes.push({ key: "Right Side Engraving", value: rightSideText.trim() });
+    if (audioUrl) customAttributes.push({ key: "Audio URL", value: audioUrl });
     await addItem({
       product: shopifyProduct,
       variantId: selectedVariant.id,
@@ -45,6 +50,7 @@ const ProductSection = () => {
       price: selectedVariant.price,
       quantity: 1,
       selectedOptions: selectedVariant.selectedOptions || [],
+      ...(customAttributes.length > 0 && { customAttributes }),
     });
     toast.success("Added to cart", {
       description: `${product.title} — ${selectedVariant.title}`,
@@ -170,6 +176,8 @@ const ProductSection = () => {
             <input
               type="text"
               placeholder="e.g. 04.12.2019 or Forever Loved"
+              value={rightSideText}
+              onChange={(e) => setRightSideText(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
             />
             <p className="text-[10px] text-muted-foreground/50 font-light">
