@@ -1,8 +1,12 @@
-import { Truck, Shield, Lock, Upload } from "lucide-react";
+import { Truck, Shield, Lock } from "lucide-react";
+import AudioRecorder from "@/components/AudioRecorder";
+import { useState } from "react";
 
 const ProductSection = () => {
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
   return (
-    <section id="customize" className="py-24 md:py-32 bg-card">
+    <section id="customize" className="py-28 md:py-36 bg-card">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16 space-y-4">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
@@ -12,47 +16,27 @@ const ProductSection = () => {
             Create Your Soundwave Necklace
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            Choose your material, upload a recording, and we'll do the rest.
+            Record or upload a sound, and we'll transform it into wearable art.
           </p>
         </div>
-        <div className="max-w-2xl mx-auto">
-          {/* Dynamic Preview Placeholder */}
-          <div className="border border-border/50 rounded-sm p-8 md:p-12 bg-background/50 mb-8">
-            <div className="text-center space-y-4">
-              <div className="w-full h-48 md:h-64 bg-muted/30 rounded-sm flex items-center justify-center border border-dashed border-border/50">
-                <div className="space-y-3 text-center">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-gold/10 flex items-center justify-center">
-                    <span className="text-2xl">🎵</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground font-light">
-                    Your pet's name & soundwave will appear here
-                  </p>
-                  <p className="text-xs text-muted-foreground/50">
-                    3D Live Preview
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Audio Recorder & Waveform */}
+          <AudioRecorder onAudioUrl={(url) => setAudioUrl(url)} />
 
-          {/* Zepto Widget Placeholder */}
-          <div className="border border-dashed border-border rounded-sm p-12 text-center space-y-4 bg-background/50 mb-8">
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Zepto Product Personalizer Widget
-            </p>
-            <p className="text-xs text-muted-foreground/70">
-              Place your Zepto embed code here
-            </p>
+          {/* Pet Name Input */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+            <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+              Pet's Name
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Buddy"
+              className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
+            />
           </div>
-
-          {/* Upload Button */}
-          <button className="w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 mb-4">
-            <Upload className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-            Upload Your Soul Sound
-          </button>
 
           {/* Add to Cart */}
-          <button className="w-full border border-foreground/30 text-foreground px-10 py-4 text-xs tracking-[0.3em] uppercase hover:border-gold hover:text-gold transition-colors mb-6">
+          <button className="w-full border border-foreground/30 text-foreground px-10 py-5 text-xs tracking-[0.3em] uppercase hover:border-gold hover:text-gold transition-colors">
             Add to Cart
           </button>
 

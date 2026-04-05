@@ -36,10 +36,10 @@
 
     --radius: 0.25rem;
 
-    /* Custom tokens */
-    --gold: 40 45% 55%;
-    --gold-light: 40 35% 70%;
-    --gold-dark: 40 50% 40%;
+    /* Custom tokens — Champagne Gold */
+    --gold: 38 45% 58%;
+    --gold-light: 38 38% 72%;
+    --gold-dark: 38 50% 42%;
     --deep-grey: 220 10% 8%;
     --light-grey: 220 6% 55%;
     --cream: 220 8% 12%;

@@ -9,7 +9,7 @@ const features = [
 
 const CraftsmanshipSection = () => {
   return (
-    <section id="craftsmanship" className="py-24 md:py-32 bg-card">
+    <section id="craftsmanship" className="py-28 md:py-36 bg-card">
       <div className="container mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-8 order-2 lg:order-1">
