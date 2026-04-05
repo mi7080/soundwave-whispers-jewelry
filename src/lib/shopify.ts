@@ -206,8 +206,10 @@ export interface CartItem {
 }
 
 export async function createShopifyCart(item: CartItem): Promise<{ cartId: string; checkoutUrl: string; lineId: string } | null> {
+  const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
+  if (item.customAttributes?.length) lineInput.attributes = item.customAttributes;
   const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
-    input: { lines: [{ quantity: item.quantity, merchandiseId: item.variantId }] },
+    input: { lines: [lineInput] },
   });
 
   if (data?.data?.cartCreate?.userErrors?.length > 0) {
