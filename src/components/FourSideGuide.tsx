@@ -3,25 +3,25 @@ import { AudioWaveform, QrCode, Type, Sparkles } from "lucide-react";
 const sides = [
   {
     icon: AudioWaveform,
-    side: "Side 1",
+    side: "Front",
     title: "Your Unique Waveform",
     description: "Laser-engraved soundwave pattern from your recording",
   },
   {
     icon: QrCode,
-    side: "Side 2",
+    side: "Back",
     title: "Scannable QR Code",
     description: "Scan to play back the original audio instantly",
   },
   {
     icon: Type,
-    side: "Side 3",
+    side: "Left",
     title: "Pet's Name / Custom Text",
     description: "Personalized engraving of your pet's name",
   },
   {
     icon: Sparkles,
-    side: "Side 4",
+    side: "Right",
     title: "Polished Minimalist",
     description: "Clean, blank finish for a sleek look",
   },
