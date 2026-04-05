@@ -65,6 +65,11 @@ const FourSideGuide = () => {
               <p className="text-xs text-muted-foreground/70 font-light leading-relaxed">
                 {item.description}
               </p>
+              {item.optional && (
+                <span className="inline-block text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                  Optional
+                </span>
+              )}
             </div>
           ))}
         </div>
