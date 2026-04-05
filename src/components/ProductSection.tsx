@@ -176,6 +176,8 @@ const ProductSection = () => {
             <input
               type="text"
               placeholder="e.g. 04.12.2019 or Forever Loved"
+              value={rightSideText}
+              onChange={(e) => setRightSideText(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
             />
             <p className="text-[10px] text-muted-foreground/50 font-light">

@@ -227,9 +227,11 @@ export async function createShopifyCart(item: CartItem): Promise<{ cartId: strin
 }
 
 export async function addLineToShopifyCart(cartId: string, item: CartItem): Promise<{ success: boolean; lineId?: string; cartNotFound?: boolean }> {
+  const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
+  if (item.customAttributes?.length) lineInput.attributes = item.customAttributes;
   const data = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
     cartId,
-    lines: [{ quantity: item.quantity, merchandiseId: item.variantId }],
+    lines: [lineInput],
   });
 
   const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
