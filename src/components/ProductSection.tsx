@@ -140,9 +140,14 @@ const ProductSection = () => {
 
           {/* Pet Name Input */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
-            <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-              Pet's Name
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                Pet's Name
+              </label>
+              <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                Optional
+              </span>
+            </div>
             <input
               type="text"
               placeholder="e.g. Buddy"
