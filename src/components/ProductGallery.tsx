@@ -50,7 +50,7 @@ const ProductGallery = () => {
                 className={`aspect-square overflow-hidden rounded-sm border-2 transition-all ${
                   selected === i
                     ? "border-gold opacity-100"
-                    : "border-transparent opacity-60 hover:opacity-90"
+                    : "border-border opacity-50 hover:opacity-80"
                 }`}
               >
                 <img

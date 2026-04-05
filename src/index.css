@@ -6,56 +6,58 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 10% 20%;
+    --background: 220 10% 8%;
+    --foreground: 40 10% 90%;
 
-    --card: 40 20% 97%;
-    --card-foreground: 220 10% 20%;
+    --card: 220 10% 12%;
+    --card-foreground: 40 10% 90%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 10% 20%;
+    --popover: 220 10% 10%;
+    --popover-foreground: 40 10% 90%;
 
-    --primary: 40 50% 48%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 40 40% 55%;
+    --primary-foreground: 220 10% 8%;
 
-    --secondary: 220 6% 94%;
-    --secondary-foreground: 220 10% 25%;
+    --secondary: 220 8% 16%;
+    --secondary-foreground: 40 10% 80%;
 
-    --muted: 40 15% 96%;
-    --muted-foreground: 220 6% 50%;
+    --muted: 220 8% 14%;
+    --muted-foreground: 220 6% 55%;
 
-    --accent: 40 50% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 40 40% 55%;
+    --accent-foreground: 220 10% 8%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 88%;
-    --ring: 40 50% 48%;
+    --border: 220 8% 20%;
+    --input: 220 8% 20%;
+    --ring: 40 40% 55%;
 
     --radius: 0.25rem;
 
     /* Custom tokens */
-    --gold: 40 50% 48%;
-    --gold-light: 40 40% 70%;
-    --gold-dark: 40 55% 35%;
-    --deep-grey: 220 10% 20%;
-    --light-grey: 220 6% 50%;
-    --cream: 40 30% 97%;
-    --warm-white: 40 20% 99%;
+    --gold: 40 45% 55%;
+    --gold-light: 40 35% 70%;
+    --gold-dark: 40 50% 40%;
+    --deep-grey: 220 10% 8%;
+    --light-grey: 220 6% 55%;
+    --cream: 220 8% 12%;
+    --warm-white: 40 10% 90%;
+    --surface: 220 10% 10%;
+    --surface-elevated: 220 8% 14%;
 
     --font-serif: 'Playfair Display', Georgia, serif;
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 10% 10%;
+    --sidebar-foreground: 40 10% 80%;
+    --sidebar-primary: 40 40% 55%;
+    --sidebar-primary-foreground: 220 10% 8%;
+    --sidebar-accent: 220 8% 16%;
+    --sidebar-accent-foreground: 40 10% 80%;
+    --sidebar-border: 220 8% 20%;
+    --sidebar-ring: 40 40% 55%;
   }
 }
 
@@ -114,7 +116,7 @@
 }
 
 .gold-shimmer {
-  background: linear-gradient(90deg, hsl(40 50% 48%), hsl(40 40% 65%), hsl(40 50% 48%));
+  background: linear-gradient(90deg, hsl(40 45% 55%), hsl(40 35% 70%), hsl(40 45% 55%));
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
   -webkit-background-clip: text;

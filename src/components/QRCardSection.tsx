@@ -2,7 +2,7 @@ import qrCardImage from "@/assets/qr-card.png";
 
 const QRCardSection = () => {
   return (
-    <section className="py-24 md:py-32 bg-cream">
+    <section className="py-24 md:py-32 bg-background">
       <div className="container mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
@@ -21,7 +21,7 @@ const QRCardSection = () => {
             </p>
             <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight">
               More Than Jewelry —{" "}
-              <span className="italic">A Living Memory.</span>
+              <span className="italic text-gold">A Living Memory.</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
               Every ANIMUS necklace ships with a premium Message Card featuring a unique QR code.

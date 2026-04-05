@@ -1,6 +1,6 @@
 const ProductSection = () => {
   return (
-    <section id="customize" className="py-24 md:py-32 bg-cream">
+    <section id="customize" className="py-24 md:py-32 bg-card">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16 space-y-4">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
@@ -24,7 +24,7 @@ const ProductSection = () => {
             </p>
           </div>
           <div className="mt-8 text-center">
-            <button className="bg-foreground text-background px-12 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold transition-colors w-full sm:w-auto">
+            <button className="bg-gold text-background px-12 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-colors w-full sm:w-auto">
               Add to Cart
             </button>
             <p className="text-xs text-muted-foreground mt-4 tracking-wide">
