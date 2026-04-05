@@ -1,4 +1,4 @@
-import { AudioWaveform, QrCode, Type, Sparkles } from "lucide-react";
+import { AudioWaveform, QrCode, Type, Calendar } from "lucide-react";
 
 const sides = [
   {
@@ -18,12 +18,14 @@ const sides = [
     side: "Left",
     title: "Pet's Name / Custom Text",
     description: "Personalized engraving of your pet's name",
+    optional: true,
   },
   {
-    icon: Sparkles,
+    icon: Calendar,
     side: "Right",
-    title: "Polished Minimalist",
-    description: "Clean, blank finish for a sleek look",
+    title: "Special Date / Message",
+    description: "Add a meaningful date, initials, or short message",
+    optional: true,
   },
 ];
 
@@ -63,6 +65,11 @@ const FourSideGuide = () => {
               <p className="text-xs text-muted-foreground/70 font-light leading-relaxed">
                 {item.description}
               </p>
+              {item.optional && (
+                <span className="inline-block text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                  Optional
+                </span>
+              )}
             </div>
           ))}
         </div>
