@@ -202,6 +202,7 @@ export interface CartItem {
   price: { amount: string; currencyCode: string };
   quantity: number;
   selectedOptions: Array<{ name: string; value: string }>;
+  customAttributes?: Array<{ key: string; value: string }>;
 }
 
 export async function createShopifyCart(item: CartItem): Promise<{ cartId: string; checkoutUrl: string; lineId: string } | null> {
