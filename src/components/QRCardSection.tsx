@@ -1,4 +1,4 @@
-import qrCardImage from "@/assets/qr-card.jpg";
+import qrCardImage from "@/assets/product-gold-card.jpg";
 
 const QRCardSection = () => {
   return (
