@@ -123,21 +123,55 @@ const DogTagPreview = ({
       };
 
       const centerY = waveArea.y + waveArea.h / 2;
-      const step = waveArea.w / (waveformData.length - 1 || 1);
 
       ctx.strokeStyle = "rgba(220, 220, 220, 0.85)";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.8;
       ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
-      // Draw waveform bars
+      // Draw continuous oscillating waveform (smooth curve, not bars)
+      ctx.beginPath();
       for (let i = 0; i < waveformData.length; i++) {
-        const x = waveArea.x + i * step;
-        const amp = waveformData[i] * waveArea.h * 0.9;
-        ctx.beginPath();
-        ctx.moveTo(x, centerY - amp / 2);
-        ctx.lineTo(x, centerY + amp / 2);
-        ctx.stroke();
+        const x = waveArea.x + (i / (waveformData.length - 1)) * waveArea.w;
+        const amp = waveformData[i] * waveArea.h * 0.45;
+        const y = centerY - amp;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          // Smooth curve using quadratic bezier to previous midpoint
+          const prevX = waveArea.x + ((i - 1) / (waveformData.length - 1)) * waveArea.w;
+          const prevAmp = waveformData[i - 1] * waveArea.h * 0.45;
+          const prevY = centerY - prevAmp;
+          const cpX = (prevX + x) / 2;
+          ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
+        }
       }
+      // Final segment
+      const lastX = waveArea.x + waveArea.w;
+      const lastAmp = waveformData[waveformData.length - 1] * waveArea.h * 0.45;
+      ctx.quadraticCurveTo(lastX, centerY - lastAmp, lastX, centerY - lastAmp);
+      ctx.stroke();
+
+      // Mirror waveform below center line
+      ctx.beginPath();
+      for (let i = 0; i < waveformData.length; i++) {
+        const x = waveArea.x + (i / (waveformData.length - 1)) * waveArea.w;
+        const amp = waveformData[i] * waveArea.h * 0.45;
+        const y = centerY + amp;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          const prevX = waveArea.x + ((i - 1) / (waveformData.length - 1)) * waveArea.w;
+          const prevAmp = waveformData[i - 1] * waveArea.h * 0.45;
+          const prevY = centerY + prevAmp;
+          const cpX = (prevX + x) / 2;
+          ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
+        }
+      }
+      const lastAmp2 = waveformData[waveformData.length - 1] * waveArea.h * 0.45;
+      ctx.quadraticCurveTo(lastX, centerY + lastAmp2, lastX, centerY + lastAmp2);
+      ctx.stroke();
+
       ctx.restore();
     }
 
