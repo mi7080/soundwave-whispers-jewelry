@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Play, Pause, X } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const DEMO_DATA = {
   petName: "Max",
@@ -95,7 +96,13 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
   const activeBar = Math.floor(playbackProgress * waveformData.length);
 
   return (
-    <div className={`min-h-screen bg-background flex items-center justify-center px-6 relative ${previewMode ? "" : ""}`}>
+    <div className={`min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 relative ${previewMode ? "" : ""}`}>
+      {!previewMode && (
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>{`${data.petName || "Memorial"} — Eternal Echo | ANIMUS`}</title>
+        </Helmet>
+      )}
       {/* Close button for preview mode */}
       {previewMode && onClose && (
         <button
@@ -189,8 +196,8 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
               })}
             </div>
 
-            {/* Play Button with ripple */}
-            <div className="relative w-20 h-20 mx-auto">
+            {/* Play Button — large touch target for mobile */}
+            <div className="relative w-24 h-24 sm:w-20 sm:h-20 mx-auto">
               {isPlaying && (
                 <>
                   <div
@@ -198,19 +205,20 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
                     style={{ animation: "pulse 2s ease-in-out infinite" }}
                   />
                   <div
-                    className="absolute -inset-2 rounded-full border border-gold/10"
+                    className="absolute -inset-3 rounded-full border border-gold/10"
                     style={{ animation: "pulse 2s ease-in-out infinite 0.5s" }}
                   />
                 </>
               )}
               <button
                 onClick={togglePlay}
-                className="relative z-10 w-20 h-20 rounded-full border-2 border-gold/40 flex items-center justify-center text-gold hover:bg-gold/10 hover:border-gold/60 transition-all duration-300 hover:shadow-[0_0_30px_rgba(183,142,72,0.25)]"
+                aria-label={isPlaying ? "Pause audio" : "Play audio"}
+                className="relative z-10 w-24 h-24 sm:w-20 sm:h-20 rounded-full border-2 border-gold/40 flex items-center justify-center text-gold hover:bg-gold/10 hover:border-gold/60 active:bg-gold/20 transition-all duration-300 hover:shadow-[0_0_30px_rgba(183,142,72,0.25)]"
               >
-                {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+                {isPlaying ? <Pause className="w-9 h-9 sm:w-7 sm:h-7" /> : <Play className="w-9 h-9 sm:w-7 sm:h-7 ml-1" />}
               </button>
             </div>
-            <p className="text-[11px] text-muted-foreground/50 tracking-widest font-sans uppercase">
+            <p className="text-xs sm:text-[11px] text-muted-foreground/50 tracking-widest font-sans uppercase">
               {isPlaying ? "Now playing…" : "Tap to hear their sound"}
             </p>
             {data.audioUrl && (
