@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
-const PRODUCT_HANDLE = "animus-the-4-sided-eternal-echo-pendant-shop-232097-9151";
+const PRODUCT_HANDLE = "animus-custom-soundwave-acrylic-heart";
 
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
