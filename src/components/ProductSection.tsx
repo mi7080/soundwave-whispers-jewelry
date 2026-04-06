@@ -117,6 +117,9 @@ const ProductSection = () => {
       if (rightSideText.trim()) {
         customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
       }
+      if (addNameToBack) {
+        customAttributes.push({ key: "_Name_On_Back", value: petName.trim() });
+      }
 
       console.log("[ANIMUS] handleAnimusCheckout — attributes:", JSON.stringify(customAttributes, null, 2));
 
