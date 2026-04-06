@@ -102,7 +102,7 @@ const ProductSection = () => {
         window.alert('CART CREATION FAILED: ' + JSON.stringify(errors));
         toast.error("Failed to create cart.");
         // Fallback: redirect to store
-        window.location.href = 'https://animusjewlery.com/cart';
+        window.open('https://animusjewlery.com/cart', '_blank');
         return;
       }
 
@@ -126,7 +126,7 @@ const ProductSection = () => {
         window.alert('ADD LINE FAILED: ' + JSON.stringify(addErrors));
         toast.error("Failed to add item to cart.");
         // Fallback: redirect to store cart
-        window.location.href = 'https://animusjewlery.com/cart';
+        window.open('https://animusjewlery.com/cart', '_blank');
         return;
       }
 
@@ -135,14 +135,14 @@ const ProductSection = () => {
       // Step 3: Redirect to checkout
       const checkoutUrl = new URL(cart.checkoutUrl);
       checkoutUrl.searchParams.set('channel', 'online_store');
-      window.location.href = checkoutUrl.toString();
+      window.open(checkoutUrl.toString(), '_blank');
 
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       window.alert('Shopify Error: ' + (err?.message || String(err)));
       toast.error("Checkout failed. Redirecting to store...");
       // Fallback redirect
-      window.location.href = 'https://animusjewlery.com/cart';
+      window.open('https://animusjewlery.com/cart', '_blank');
     } finally {
       setCartLoading(false);
     }
