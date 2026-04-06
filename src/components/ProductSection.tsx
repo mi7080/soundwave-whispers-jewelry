@@ -66,6 +66,10 @@ const ProductSection = () => {
     if (rightSideText.trim()) {
       customAttributes.push({ key: "Right_Side_Engraving", value: rightSideText.trim() });
     }
+    console.log("[ANIMUS] Add to Cart — customAttributes:", JSON.stringify(customAttributes, null, 2));
+    console.log("[ANIMUS] Audio_Link:", audioUrl);
+    console.log("[ANIMUS] Pet_Name:", petName.trim());
+    console.log("[ANIMUS] Variant ID:", selectedVariant.id);
     await addItem({
       product: shopifyProduct,
       variantId: selectedVariant.id,
