@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import qrCardImage from "@/assets/qr-card.png";
 
 const QRCardSection = () => {
@@ -34,6 +35,12 @@ const QRCardSection = () => {
                 A gift that truly speaks
               </p>
             </div>
+            <Link
+              to="/soul-page/demo"
+              className="inline-block border border-gold/40 text-gold px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/60 transition-all duration-300 mt-2"
+            >
+              See the Experience →
+            </Link>
           </div>
         </div>
       </div>
