@@ -1,5 +1,6 @@
-import { Truck, Shield, Lock, Loader2, Eye, Download } from "lucide-react";
+import { Truck, Shield, Lock, Loader2, Eye, Download, Info } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
+import AudioPresets from "@/components/AudioPresets";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
 import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
@@ -54,10 +55,7 @@ const ProductSection = () => {
   }, [dedicatedText, photoUrl, audioUrl]);
 
   useEffect(() => {
-    if (!audioUrl) {
-      setQrDataUrl(null);
-      return;
-    }
+    if (!audioUrl) { setQrDataUrl(null); return; }
     const url = generateSoulPageUrl();
     QRCode.toDataURL(url, { margin: 1, width: 200, color: { dark: "#B78E48", light: "#00000000" } })
       .then(setQrDataUrl)
@@ -90,7 +88,6 @@ const ProductSection = () => {
 
   const variants = product?.variants?.edges || [];
   const selectedVariant = variants[selectedVariantIdx]?.node;
-
   const allStepsComplete = !!audioUrl && !!photoUrl;
 
   const handleAnimusCheckout = async () => {
@@ -113,13 +110,10 @@ const ProductSection = () => {
         customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
       }
 
-      console.log("[ANIMUS] handleAnimusCheckout — attributes:", JSON.stringify(customAttributes, null, 2));
-
       const createData = await storefrontApiRequest(CART_CREATE_MUTATION, { input: {} });
       const cart = createData?.data?.cartCreate?.cart;
       if (!cart?.id || !cart?.checkoutUrl) {
         toast.error("Failed to create cart.");
-        window.open('https://animusjewlery.com/cart', '_blank');
         return;
       }
 
@@ -132,7 +126,6 @@ const ProductSection = () => {
       if (addErrors.length > 0) {
         console.error("[ANIMUS] Add line errors:", addErrors);
         toast.error("Failed to add item to cart.");
-        window.open('https://animusjewlery.com/cart', '_blank');
         return;
       }
 
@@ -143,7 +136,6 @@ const ProductSection = () => {
           petName: backText.trim() || dedicatedText.trim() || "Memorial",
           soulPageUrl,
         });
-
         await supabase.from("animus_orders").insert({
           pet_name: backText.trim() || dedicatedText.trim() || "Memorial",
           audio_url: audioUrl,
@@ -160,25 +152,19 @@ const ProductSection = () => {
       }
 
       setOrderComplete(true);
-
       const checkoutUrl = new URL(cart.checkoutUrl);
       checkoutUrl.searchParams.set('channel', 'online_store');
       window.open(checkoutUrl.toString(), '_blank');
-
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
-      toast.error("Checkout failed. Redirecting to store...");
-      window.open('https://animusjewlery.com/cart', '_blank');
+      toast.error("Checkout failed. Please try again.");
     } finally {
       setCartLoading(false);
     }
   };
 
   const handleDownloadSvg = async () => {
-    if (!audioUrl) {
-      toast.error("Need audio to generate SVG.");
-      return;
-    }
+    if (!audioUrl) { toast.error("Need audio to generate SVG."); return; }
     setSvgGenerating(true);
     try {
       const soulPageUrl = generateSoulPageUrl();
@@ -223,18 +209,18 @@ const ProductSection = () => {
       <div className="container mx-auto px-6">
         <div className="text-center mb-16 space-y-4">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-            Design Yours
+            Create Your Keepsake
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Design Your ANIMUS Memorial
+            Design Your ANIMUS Signature Tag
           </h2>
-          <p className="text-muted-foreground max-w-md mx-auto font-light">
-            A meaningful sound, forever preserved in a luxury engraved dog tag with scannable QR code.
+          <p className="text-muted-foreground max-w-lg mx-auto font-light">
+            A first laugh, a heartbeat, a pet's bark — any meaningful sound, engraved forever on a luxury tag with a scannable QR Soul Page.
           </p>
         </div>
 
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Dog Tag Preview */}
+          {/* Live Dog Tag Preview */}
           <div className="border border-border/30 rounded-sm overflow-hidden p-8 bg-background/50">
             <DogTagPreview
               waveformData={waveformData}
@@ -273,7 +259,7 @@ const ProductSection = () => {
             </div>
           )}
 
-          {/* Price Display */}
+          {/* Price */}
           {selectedVariant && (
             <div className="text-center">
               <span className="text-2xl font-serif text-foreground">
@@ -283,7 +269,7 @@ const ProductSection = () => {
             </div>
           )}
 
-          {/* Step 1: Audio */}
+          {/* Step 1: Audio Upload */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
             <div className="flex items-center gap-3">
               <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${audioUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
@@ -297,9 +283,10 @@ const ProductSection = () => {
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
-              A pet's bark, a loved one's voice, or any meaningful sound
+              A baby's first laugh, a heartbeat, a whispered "I love you," or a pet's bark
             </p>
             <AudioRecorder onAudioUrl={handleAudioUrl} />
+            <AudioPresets />
           </div>
 
           {/* Step 2: Photo / Media */}
@@ -321,7 +308,7 @@ const ProductSection = () => {
             <PetPhotoUpload onPhotoUrl={(url) => setPhotoUrl(url || null)} />
           </div>
 
-          {/* Step 3: Name / Dedicated Text (Optional) */}
+          {/* Step 3: Name / Dedicated Text */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
             <div className="flex items-center gap-3">
               <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${dedicatedText.trim() ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
@@ -336,7 +323,7 @@ const ProductSection = () => {
             </div>
             <input
               type="text"
-              placeholder="e.g. Buddy, Mom, Forever Loved"
+              placeholder="e.g. Buddy, Mom, Forever Loved, Baby Luna"
               value={dedicatedText}
               onChange={(e) => setDedicatedText(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
@@ -359,15 +346,9 @@ const ProductSection = () => {
               </div>
               <button
                 onClick={() => setAddTextToBack(!addTextToBack)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  addTextToBack ? "bg-gold" : "bg-border/50"
-                }`}
+                className={`relative w-12 h-6 rounded-full transition-colors ${addTextToBack ? "bg-gold" : "bg-border/50"}`}
               >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${
-                    addTextToBack ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${addTextToBack ? "translate-x-6" : "translate-x-0"}`} />
               </button>
             </div>
             {addTextToBack && (
@@ -386,6 +367,14 @@ const ProductSection = () => {
             )}
           </div>
 
+          {/* Guidance Note */}
+          <div className="flex items-start gap-3 border border-gold/15 rounded-sm p-4 bg-gold/5">
+            <Info className="w-4 h-4 text-gold/60 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground/70 font-light leading-relaxed">
+              <span className="text-gold/80 font-medium">For best results:</span> Record in a quiet area for crisp waveforms. Use high-resolution photos with natural lighting for the Soul Page.
+            </p>
+          </div>
+
           {/* Buy Now */}
           <button
             onClick={handleAnimusCheckout}
@@ -393,10 +382,7 @@ const ProductSection = () => {
             className="w-full bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {cartLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Securing your sound…
-              </>
+              <><Loader2 className="w-4 h-4 animate-spin" /> Securing your sound…</>
             ) : !selectedVariant?.availableForSale ? (
               "Sold Out"
             ) : (

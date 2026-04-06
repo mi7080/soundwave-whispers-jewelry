@@ -7,35 +7,35 @@ const HeroSection = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="space-y-8 animate-fade-up">
             <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-              Soundwave Memorial Collection
+              ANIMUS Signature Tags
             </p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif leading-tight text-foreground">
-              Their Voice, Close to Your Heart{" "}
-              <span className="italic gold-shimmer">Forever.</span>
+              Every Sound Tells a Story.{" "}
+              <span className="italic gold-shimmer">Wear Yours.</span>
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg font-sans font-light">
-              Transform any meaningful sound — a pet's bark, a loved one's voice, a child's laughter —
-              into a luxury engraved dog tag with a scannable QR code.
+              Capture a first laugh, a heartbeat, a whispered "I love you," or a beloved pet's bark — 
+              and transform it into a luxury engraved tag with a scannable QR Soul Page.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <a
                 href="#customize"
                 className="inline-flex items-center justify-center bg-gold text-background px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-colors"
               >
-                Design Your Memorial
+                Design Your Tag
               </a>
               <a
                 href="#experience"
                 className="inline-flex items-center justify-center border border-foreground/30 text-foreground px-10 py-4 text-xs tracking-[0.3em] uppercase hover:border-gold hover:text-gold transition-colors"
               >
-                Learn More
+                How It Works
               </a>
             </div>
           </div>
           <div className="animate-fade-up-delay-1">
             <img
               src={heroConcept}
-              alt="ANIMUS Engraved Dog Tag with soundwave and QR code"
+              alt="ANIMUS Signature Tag with soundwave and QR code engraving"
               width={1024}
               height={1024}
               className="w-full rounded-sm shadow-2xl"
