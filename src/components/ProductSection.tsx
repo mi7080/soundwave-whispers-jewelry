@@ -179,37 +179,47 @@ const ProductSection = () => {
       // 3. Upload production assets to Cloudinary and WAIT for it
       let designImageUrl = "";
       if (orderData?.id) {
-        try {
-          const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          const uploadResp = await fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: orderData.id,
-              petName: petNameVal,
-              svgContent,
-              soulPageUrl,
-              backText: addTextToBack ? backText.trim() : "",
-            }),
-          });
-          const uploadResult = await uploadResp.json();
-          designImageUrl = uploadResult?.designImageUrl || "";
-          console.log("[ANIMUS] Cloudinary upload complete:", uploadResult);
-        } catch (e) {
-          console.error("[ANIMUS] Cloudinary upload failed (proceeding with checkout):", e);
+        const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const uploadResp = await fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: orderData.id,
+            petName: petNameVal,
+            svgContent,
+            soulPageUrl,
+            backText: addTextToBack ? backText.trim() : "",
+          }),
+        });
+        const uploadResult = await uploadResp.json();
+        designImageUrl = uploadResult?.frontUrl || "";
+        console.log("[ANIMUS] Cloudinary upload complete:", uploadResult);
+
+        if (!designImageUrl) {
+          console.error("[ANIMUS] CRITICAL: No _Design_Image URL returned from Cloudinary!", uploadResult);
+          toast.error("Design upload failed. Please try again.");
+          setCartLoading(false);
+          return;
         }
+      } else {
+        toast.error("Order creation failed. Please try again.");
+        setCartLoading(false);
+        return;
       }
 
-      // 4. Build custom attributes for cart line
+      // 4. Validate all URLs before proceeding
+      console.log("[ANIMUS] Pre-cart validation:", {
+        _Design_Image: designImageUrl,
+        _Soul_Page_Link: soulPageUrl,
+        _Custom_Text_Back: addTextToBack ? backText.trim() : "(none)",
+      });
+
+      // 5. Build custom attributes for cart line — all 3 properties always included
       const customAttributes: Array<{ key: string; value: string }> = [
         { key: "_Soul_Page_Link", value: soulPageUrl },
+        { key: "_Design_Image", value: designImageUrl },
+        { key: "_Custom_Text_Back", value: addTextToBack && backText.trim() ? backText.trim() : "" },
       ];
-      if (designImageUrl) {
-        customAttributes.push({ key: "_Design_Image", value: designImageUrl });
-      }
-      if (addTextToBack && backText.trim()) {
-        customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
-      }
 
       // 5. Always create a FRESH Shopify cart (clears any previous ghost items)
       const cartItem: CartItem = {
