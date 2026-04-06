@@ -103,7 +103,7 @@ const ProductSection = () => {
       audioUrl: audioUrl || "",
     };
     const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-    return `${window.location.origin}/soul-page/${encoded}`;
+    return `${window.location.origin}/soul/${encoded}`;
   }, [dedicatedText, photoUrl, audioUrl]);
 
   useEffect(() => {
