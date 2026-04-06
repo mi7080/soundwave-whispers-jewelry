@@ -13,7 +13,6 @@ const Navbar = () => {
           <img src={logo} alt="ANIMUS" className="h-14 md:h-16" />
         </a>
 
-        {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-8 text-sm tracking-widest uppercase text-muted-foreground">
           <a href="/#experience" className="hover:text-gold transition-colors">How It Works</a>
           <a href="/#craftsmanship" className="hover:text-gold transition-colors">Craftsmanship</a>
@@ -27,9 +26,8 @@ const Navbar = () => {
             href="/#customize"
             className="hidden md:inline-block bg-gold text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold-light transition-colors"
           >
-            Shop Now
+            Design Yours
           </a>
-          {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden p-1 text-foreground"
@@ -40,7 +38,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-md px-6 py-6 space-y-4">
           <a href="/#experience" onClick={() => setMenuOpen(false)} className="block text-sm tracking-widest uppercase text-muted-foreground hover:text-gold transition-colors">How It Works</a>
@@ -52,7 +49,7 @@ const Navbar = () => {
             onClick={() => setMenuOpen(false)}
             className="block bg-gold text-background px-6 py-3 text-xs tracking-widest uppercase text-center hover:bg-gold-light transition-colors mt-2"
           >
-            Shop Now
+            Design Your Keepsake
           </a>
         </div>
       )}

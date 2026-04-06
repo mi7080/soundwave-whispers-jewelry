@@ -8,7 +8,6 @@ const MobileStickyBar = () => {
       const el = document.getElementById("customize");
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      // Hide when customize section is in view
       setVisible(rect.top > window.innerHeight || rect.bottom < 0);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -24,7 +23,7 @@ const MobileStickyBar = () => {
         href="#customize"
         className="flex-1 bg-gold text-background py-4 text-xs tracking-[0.2em] uppercase text-center font-sans hover:bg-gold-light transition-colors"
       >
-        Shop Now
+        Design Your Keepsake
       </a>
     </div>
   );

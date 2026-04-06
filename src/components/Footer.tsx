@@ -6,18 +6,16 @@ const Footer = () => {
     <footer className="bg-card py-16 border-t border-border/50">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          {/* Brand */}
           <div className="space-y-4">
             <img src={logo} alt="ANIMUS" className="h-10" />
             <p className="text-muted-foreground text-sm font-light leading-relaxed">
-              Transforming the sounds you love into wearable art. Every piece tells a story.
+              Transforming the sounds you love into timeless acrylic keepsakes. Every piece tells a story.
             </p>
             <p className="text-muted-foreground/50 text-[10px] font-light leading-relaxed mt-2">
               Custom items are non-refundable. Replacements provided for defects or unscannable QR codes.
             </p>
           </div>
 
-          {/* Support */}
           <div className="space-y-4">
             <h4 className="text-xs tracking-[0.3em] uppercase text-gold font-sans">Support</h4>
             <ul className="space-y-3">
@@ -27,7 +25,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Experience */}
           <div className="space-y-4">
             <h4 className="text-xs tracking-[0.3em] uppercase text-gold font-sans">Experience</h4>
             <ul className="space-y-3">
@@ -37,7 +34,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact */}
           <div className="space-y-4">
             <h4 className="text-xs tracking-[0.3em] uppercase text-gold font-sans">Contact</h4>
             <ul className="space-y-3">
