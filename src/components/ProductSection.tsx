@@ -429,38 +429,13 @@ const ProductSection = () => {
             )}
           </button>
 
-          {/* Download Production SVG (Admin) */}
-          {allStepsComplete && (
-            <button
-              onClick={handleDownloadSvg}
-              disabled={svgGenerating}
-              className="w-full border border-gold/30 text-gold px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold/5 hover:border-gold/50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-              {svgGenerating ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Generating SVG…</>
-              ) : (
-                <><Download className="w-4 h-4" /> Download Production SVG</>
-              )}
-            </button>
-          )}
 
           {/* Order Confirmation */}
           {orderComplete && (
-            <div className="border border-gold/30 rounded-sm p-6 bg-gold/5 space-y-4">
+            <div className="border border-gold/30 rounded-sm p-6 bg-gold/5">
               <p className="text-sm text-gold font-sans text-center">
                 ✓ Order submitted — checkout opened in new tab
               </p>
-              <button
-                onClick={handleDownloadSvg}
-                disabled={svgGenerating}
-                className="w-full bg-gold text-background px-8 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {svgGenerating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
-                ) : (
-                  <><Download className="w-4 h-4" /> Download Production SVG for ShineOn</>
-                )}
-              </button>
             </div>
           )}
 
