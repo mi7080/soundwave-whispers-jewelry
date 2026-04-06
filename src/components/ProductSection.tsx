@@ -278,7 +278,29 @@ const ProductSection = () => {
               waveformData={waveformData}
               petName={dedicatedText.trim() || "Your Name"}
               qrDataUrl={qrDataUrl}
+              showBack={showBackPreview}
+              backText={backText}
             />
+            {addTextToBack && (
+              <div className="flex justify-center gap-3 mt-4">
+                <button
+                  onClick={() => setShowBackPreview(false)}
+                  className={`text-xs tracking-[0.2em] uppercase font-sans px-4 py-1.5 rounded-sm border transition-all ${
+                    !showBackPreview ? "border-gold text-gold bg-gold/5" : "border-border/50 text-muted-foreground hover:border-gold/40"
+                  }`}
+                >
+                  Front
+                </button>
+                <button
+                  onClick={() => setShowBackPreview(true)}
+                  className={`text-xs tracking-[0.2em] uppercase font-sans px-4 py-1.5 rounded-sm border transition-all ${
+                    showBackPreview ? "border-gold text-gold bg-gold/5" : "border-border/50 text-muted-foreground hover:border-gold/40"
+                  }`}
+                >
+                  Back
+                </button>
+              </div>
+            )}
             <p className="text-[10px] text-muted-foreground/50 text-center mt-4 tracking-wide">
               Live preview — updates as you customize
             </p>
