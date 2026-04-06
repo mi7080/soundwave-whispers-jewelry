@@ -27,6 +27,7 @@ const ProductSection = () => {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
   const [svgGenerating, setSvgGenerating] = useState(false);
+  const [addNameToBack, setAddNameToBack] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
