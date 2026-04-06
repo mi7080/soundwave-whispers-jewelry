@@ -5,6 +5,7 @@ import QRCardSection from "@/components/QRCardSection";
 import CraftsmanshipSection from "@/components/CraftsmanshipSection";
 import FourSideGuide from "@/components/FourSideGuide";
 import ProductGallery from "@/components/ProductGallery";
+import ProductSpecs from "@/components/ProductSpecs";
 import ComparisonSection from "@/components/ComparisonSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ProductSection from "@/components/ProductSection";
@@ -22,6 +23,7 @@ const Index = () => {
       <CraftsmanshipSection />
       <FourSideGuide />
       <ProductGallery />
+      <ProductSpecs />
       <ComparisonSection />
       <TestimonialsSection />
       <ProductSection />
