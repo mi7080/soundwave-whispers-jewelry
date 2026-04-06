@@ -1,6 +1,7 @@
 import { Truck, Shield, Lock, Loader2 } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
+import FourSideGuide from "@/components/FourSideGuide";
 import { useState, useEffect } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
@@ -47,7 +48,7 @@ const ProductSection = () => {
       audioUrl: audioUrl || "",
     };
     const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-    return `${window.location.origin}/soul/${encoded}`;
+    return `${window.location.origin}/soul-page/${encoded}`;
   };
 
   const handleAddToCart = async () => {
@@ -241,10 +242,13 @@ const ProductSection = () => {
           <button
             onClick={handleAddToCart}
             disabled={cartLoading || !selectedVariant?.availableForSale || !allStepsComplete}
-            className="w-full border border-foreground/30 text-foreground px-10 py-5 text-xs tracking-[0.3em] uppercase hover:border-gold hover:text-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {cartLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Securing your sound…
+              </>
             ) : !selectedVariant?.availableForSale ? (
               "Sold Out"
             ) : !allStepsComplete ? (
@@ -261,6 +265,9 @@ const ProductSection = () => {
               {!petPhotoUrl && "③ Upload photo"}
             </p>
           )}
+
+          {/* 4-Side Engraving Guide */}
+          <FourSideGuide inline />
 
           {/* Trust Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-t border-border/30">

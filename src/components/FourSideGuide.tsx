@@ -1,4 +1,4 @@
-import { AudioWaveform, QrCode, Type, Calendar } from "lucide-react";
+import { AudioWaveform, QrCode, Type, Gem } from "lucide-react";
 
 const sides = [
   {
@@ -11,25 +11,52 @@ const sides = [
     icon: QrCode,
     side: "Back",
     title: "Scannable QR Code",
-    description: "Scan to play back the original audio instantly",
+    description: "Scan to open the Soul Page — plays their sound instantly",
   },
   {
     icon: Type,
     side: "Left",
     title: "Pet's Name / Custom Text",
     description: "Personalized engraving of your pet's name",
-    optional: true,
   },
   {
-    icon: Calendar,
+    icon: Gem,
     side: "Right",
-    title: "Special Date / Message",
-    description: "Add a meaningful date, initials, or short message",
-    optional: true,
+    title: "Polished Blank Surface",
+    description: "A clean, elegant finish on the fourth side",
   },
 ];
 
-const FourSideGuide = () => {
+interface FourSideGuideProps {
+  inline?: boolean;
+}
+
+const FourSideGuide = ({ inline }: FourSideGuideProps) => {
+  if (inline) {
+    return (
+      <div className="border border-border/30 rounded-sm p-5 bg-background/30 space-y-4">
+        <p className="text-[10px] tracking-[0.3em] uppercase text-gold/70 font-sans text-center">
+          4 Sides of Your Pendant
+        </p>
+        <div className="grid grid-cols-4 gap-3">
+          {sides.map((item) => (
+            <div key={item.side} className="text-center space-y-2">
+              <div className="mx-auto w-10 h-10 flex items-center justify-center border border-border/40 rounded-full">
+                <item.icon className="w-4 h-4 text-gold" strokeWidth={1.5} />
+              </div>
+              <p className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground/60 font-sans">
+                {item.side}
+              </p>
+              <p className="text-[10px] text-muted-foreground/80 font-light leading-tight">
+                {item.title}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <section className="py-28 md:py-36 bg-background">
       <div className="container mx-auto px-6">
@@ -51,10 +78,7 @@ const FourSideGuide = () => {
               className="text-center space-y-4 group p-6 border border-border/30 rounded-sm hover:border-gold/30 transition-colors bg-card/50"
             >
               <div className="mx-auto w-14 h-14 flex items-center justify-center border border-border/50 rounded-full group-hover:border-gold/50 transition-colors">
-                <item.icon
-                  className="w-6 h-6 text-gold"
-                  strokeWidth={1.5}
-                />
+                <item.icon className="w-6 h-6 text-gold" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground font-sans">
                 {item.side}
@@ -65,11 +89,6 @@ const FourSideGuide = () => {
               <p className="text-xs text-muted-foreground/70 font-light leading-relaxed">
                 {item.description}
               </p>
-              {item.optional && (
-                <span className="inline-block text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
-                  Optional
-                </span>
-              )}
             </div>
           ))}
         </div>

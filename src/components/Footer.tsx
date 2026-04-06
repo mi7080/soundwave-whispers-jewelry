@@ -12,6 +12,9 @@ const Footer = () => {
             <p className="text-muted-foreground text-sm font-light leading-relaxed">
               Transforming the sounds you love into wearable art. Every piece tells a story.
             </p>
+            <p className="text-muted-foreground/50 text-[10px] font-light leading-relaxed mt-2">
+              Custom items are non-refundable. Replacements provided for defects or unscannable QR codes.
+            </p>
           </div>
 
           {/* Support */}
