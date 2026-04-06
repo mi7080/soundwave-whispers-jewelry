@@ -1,4 +1,4 @@
-import craftsmanshipImage from "@/assets/product-silver-box.jpg";
+import craftsmanshipImage from "@/assets/craftsmanship-new.jpg";
 import { Shield, Award, MapPin } from "lucide-react";
 
 const features = [
