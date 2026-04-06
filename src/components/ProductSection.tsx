@@ -52,35 +52,90 @@ const ProductSection = () => {
     return `${window.location.origin}/soul-page/${encoded}`;
   };
 
-  const handleAddToCart = async () => {
-    if (!product || !selectedVariant || !allStepsComplete) return;
-    const shopifyProduct: ShopifyProduct = { node: product };
-    const soulPageUrl = generateSoulPageUrl();
-    const customAttributes: Array<{ key: string; value: string }> = [
-      { key: "_Audio_Link", value: audioUrl! },
-      { key: "_Pet_Name", value: petName.trim() },
-      { key: "_Pet_Photo", value: petPhotoUrl! },
-      { key: "_QR_Target_URL", value: soulPageUrl },
-    ];
-    if (rightSideText.trim()) {
-      customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
+  const handleAnimusCheckout = async () => {
+    // FORCE ALERT — if you don't see this, the button isn't wired
+    window.alert('SYSTEM ACTIVE: Preparing to send ' + audioUrl);
+
+    // Validation
+    if (!audioUrl) {
+      toast.error("Please record or upload a sound first.");
+      return;
     }
-    console.log("[ANIMUS] Add to Cart — customAttributes:", JSON.stringify(customAttributes, null, 2));
-    console.log("[ANIMUS] _Audio_Link:", audioUrl);
-    console.log("[ANIMUS] _Pet_Name:", petName.trim());
-    console.log("[ANIMUS] Variant ID:", selectedVariant.id);
-    await addItem({
-      product: shopifyProduct,
-      variantId: selectedVariant.id,
-      variantTitle: selectedVariant.title,
-      price: selectedVariant.price,
-      quantity: 1,
-      selectedOptions: selectedVariant.selectedOptions || [],
-      customAttributes,
-    });
-    toast.success("Added to cart", {
-      description: `${product.title} — ${selectedVariant.title}`,
-    });
+    if (!petName.trim()) {
+      toast.error("Please enter your pet's name.");
+      return;
+    }
+    if (!petPhotoUrl) {
+      toast.error("Please upload a pet photo.");
+      return;
+    }
+    if (!product || !selectedVariant) {
+      toast.error("Product not loaded.");
+      return;
+    }
+
+    setCartLoading(true);
+
+    try {
+      const soulPageUrl = generateSoulPageUrl();
+      const customAttributes = [
+        { key: "_Audio_Link", value: audioUrl },
+        { key: "_Pet_Name", value: petName.trim() },
+        { key: "_Pet_Photo", value: petPhotoUrl },
+        { key: "_QR_Target_URL", value: soulPageUrl },
+      ];
+      if (rightSideText.trim()) {
+        customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
+      }
+
+      console.log("[ANIMUS] handleAnimusCheckout — attributes:", JSON.stringify(customAttributes, null, 2));
+      console.log("[ANIMUS] Variant ID:", selectedVariant.id);
+
+      // Step 1: Create empty cart
+      const createData = await storefrontApiRequest(CART_CREATE_MUTATION, { input: {} });
+      const cart = createData?.data?.cartCreate?.cart;
+      if (!cart?.id || !cart?.checkoutUrl) {
+        window.alert('CART CREATION FAILED: ' + JSON.stringify(createData?.data?.cartCreate?.userErrors));
+        toast.error("Failed to create cart.");
+        return;
+      }
+
+      console.log("[ANIMUS] Cart created:", cart.id);
+
+      // Step 2: Add line with attributes
+      const lineInput = {
+        quantity: 1,
+        merchandiseId: selectedVariant.id,
+        attributes: customAttributes,
+      };
+      console.log("[ANIMUS] Adding line:", JSON.stringify(lineInput, null, 2));
+
+      const addData = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
+        cartId: cart.id,
+        lines: [lineInput],
+      });
+
+      const addErrors = addData?.data?.cartLinesAdd?.userErrors || [];
+      if (addErrors.length > 0) {
+        window.alert('ADD LINE FAILED: ' + JSON.stringify(addErrors));
+        toast.error("Failed to add item to cart.");
+        return;
+      }
+
+      console.log("[ANIMUS] Line added successfully. Redirecting to checkout...");
+
+      // Step 3: Redirect to checkout
+      const checkoutUrl = new URL(cart.checkoutUrl);
+      checkoutUrl.searchParams.set('channel', 'online_store');
+      window.location.href = checkoutUrl.toString();
+
+    } catch (err) {
+      console.error("[ANIMUS] Checkout error:", err);
+      window.alert('CHECKOUT ERROR: ' + String(err));
+      toast.error("Checkout failed. Please try again.");
+    } finally {
+      setCartLoading(false);
+    }
   };
 
   if (loading) {
