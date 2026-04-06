@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import qrCardImage from "@/assets/qr-card.png";
 
 const QRCardSection = () => {
