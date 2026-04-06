@@ -301,8 +301,8 @@ const ProductSection = () => {
 
           {/* Add to Cart */}
           <button
-            onClick={handleAddToCart}
-            disabled={cartLoading || !selectedVariant?.availableForSale || !allStepsComplete}
+            onClick={handleAnimusCheckout}
+            disabled={cartLoading || !selectedVariant?.availableForSale}
             className="w-full bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {cartLoading ? (
@@ -312,10 +312,8 @@ const ProductSection = () => {
               </>
             ) : !selectedVariant?.availableForSale ? (
               "Sold Out"
-            ) : !allStepsComplete ? (
-              "Complete All Steps to Continue"
             ) : (
-              `Add to Cart — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
+              `Buy Now — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
             )}
           </button>
 
