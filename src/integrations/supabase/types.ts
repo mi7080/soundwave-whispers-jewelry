@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           add_name_to_back: boolean
           audio_url: string
+          cloudinary_folder_url: string | null
           created_at: string
+          design_image_url: string | null
           id: string
           pet_name: string
           pet_photo_url: string | null
@@ -33,7 +35,9 @@ export type Database = {
         Insert: {
           add_name_to_back?: boolean
           audio_url: string
+          cloudinary_folder_url?: string | null
           created_at?: string
+          design_image_url?: string | null
           id?: string
           pet_name: string
           pet_photo_url?: string | null
@@ -48,7 +52,9 @@ export type Database = {
         Update: {
           add_name_to_back?: boolean
           audio_url?: string
+          cloudinary_folder_url?: string | null
           created_at?: string
+          design_image_url?: string | null
           id?: string
           pet_name?: string
           pet_photo_url?: string | null
