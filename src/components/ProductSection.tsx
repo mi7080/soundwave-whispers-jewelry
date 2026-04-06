@@ -6,13 +6,50 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
+import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
 import { generateProductionSvg, downloadSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
 const PRODUCT_HANDLE = "engraved-soundwave-qr-soul-page-necklace-shop-232097-6972";
+const PRODUCT_GID = "gid://shopify/Product/10549873082680";
+
+// Fallback product data if Storefront API can't find the product (sales channel not configured)
+const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
+  id: PRODUCT_GID,
+  title: "Engraved Soundwave & QR 'Soul Page' Necklace",
+  description: "A luxury engraved dog tag necklace featuring your unique soundwave and scannable QR Soul Page.",
+  handle: PRODUCT_HANDLE,
+  priceRange: { minVariantPrice: { amount: "59.95", currencyCode: "USD" } },
+  images: { edges: [] },
+  variants: {
+    edges: [
+      {
+        node: {
+          id: "gid://shopify/ProductVariant/52034129822008",
+          title: "Polished Stainless Steel / Yes",
+          price: { amount: "59.95", currencyCode: "USD" },
+          availableForSale: true,
+          selectedOptions: [{ name: "Title", value: "Polished Stainless Steel" }, { name: "Engraving", value: "Yes" }],
+        },
+      },
+      {
+        node: {
+          id: "gid://shopify/ProductVariant/52034129854776",
+          title: "18k Yellow Gold Finish / Yes",
+          price: { amount: "69.95", currencyCode: "USD" },
+          availableForSale: true,
+          selectedOptions: [{ name: "Title", value: "18k Yellow Gold Finish" }, { name: "Engraving", value: "Yes" }],
+        },
+      },
+    ],
+  },
+  options: [
+    { name: "Title", values: ["Polished Stainless Steel", "18k Yellow Gold Finish"] },
+    { name: "Engraving", values: ["Yes"] },
+  ],
+};
 
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -33,10 +70,24 @@ const ProductSection = () => {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const data = await storefrontApiRequest(PRODUCT_BY_HANDLE_QUERY, { handle: PRODUCT_HANDLE });
-        if (data?.data?.product) setProduct(data.data.product);
+        // Try by handle first
+        let data = await storefrontApiRequest(PRODUCT_BY_HANDLE_QUERY, { handle: PRODUCT_HANDLE });
+        if (data?.data?.product) {
+          setProduct(data.data.product);
+          return;
+        }
+        // Try by GraphQL ID
+        data = await storefrontApiRequest(PRODUCT_BY_ID_QUERY, { id: PRODUCT_GID });
+        if (data?.data?.product) {
+          setProduct(data.data.product);
+          return;
+        }
+        // Use fallback hardcoded data
+        console.warn("[ANIMUS] Product not found via Storefront API, using fallback data");
+        setProduct(FALLBACK_PRODUCT);
       } catch (err) {
         console.error("Failed to fetch product:", err);
+        setProduct(FALLBACK_PRODUCT);
       } finally {
         setLoading(false);
       }
