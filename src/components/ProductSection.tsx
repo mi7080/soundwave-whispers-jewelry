@@ -6,7 +6,7 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, createShopifyCart } from "@/lib/shopify";
+import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, CartItem, createShopifyCart } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
