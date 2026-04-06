@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadSvg, generateProductionSvg, generateBackEngravingSvg } from "@/lib/svgExport";
-import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink } from "lucide-react";
+import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -18,6 +18,8 @@ interface AnimusOrder {
   status: string;
   created_at: string;
   add_name_to_back: boolean | null;
+  cloudinary_folder_url: string | null;
+  design_image_url: string | null;
 }
 
 const AdminDashboard = () => {
@@ -177,6 +179,16 @@ const AdminDashboard = () => {
                     {order.pet_photo_url && (
                       <a href={order.pet_photo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] text-gold/70 hover:text-gold transition-colors border border-gold/20 rounded-sm px-3 py-1.5 hover:border-gold/40">
                         <Image className="w-3 h-3" /> Pet Photo <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                    {order.cloudinary_folder_url && (
+                      <a href={order.cloudinary_folder_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400/80 hover:text-emerald-400 transition-colors border border-emerald-500/30 rounded-sm px-3 py-1.5 hover:border-emerald-500/50 bg-emerald-500/5">
+                        <FolderOpen className="w-3 h-3" /> Open Customer Folder in Cloudinary <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                    {order.design_image_url && (
+                      <a href={order.design_image_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] text-gold/70 hover:text-gold transition-colors border border-gold/20 rounded-sm px-3 py-1.5 hover:border-gold/40">
+                        <Image className="w-3 h-3" /> CJ Design Image <ExternalLink className="w-2.5 h-2.5" />
                       </a>
                     )}
                   </div>

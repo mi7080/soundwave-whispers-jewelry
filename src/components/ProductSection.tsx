@@ -178,15 +178,16 @@ const ProductSection = () => {
         throw new Error("Failed to create Shopify cart");
       }
 
-      // Save order to database
+      // Save order to database + upload to Cloudinary
       try {
         const svgContent = await generateProductionSvg({
           waveformData,
           petName: backText.trim() || dedicatedText.trim() || "Memorial",
           soulPageUrl,
         });
-        await supabase.from("animus_orders").insert({
-          pet_name: backText.trim() || dedicatedText.trim() || "Memorial",
+        const petNameVal = backText.trim() || dedicatedText.trim() || "Memorial";
+        const { data: orderData } = await supabase.from("animus_orders").insert({
+          pet_name: petNameVal,
           audio_url: audioUrl,
           pet_photo_url: photoUrl,
           soul_page_url: soulPageUrl,
@@ -195,7 +196,23 @@ const ProductSection = () => {
           waveform_data: waveformData,
           add_name_to_back: addTextToBack,
           status: "pending",
-        } as any);
+        } as any).select("id").single();
+
+        // Upload production assets to Cloudinary (fire-and-forget)
+        if (orderData?.id) {
+          const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: orderData.id,
+              petName: petNameVal,
+              svgContent,
+              soulPageUrl,
+              backText: addTextToBack ? backText.trim() : "",
+            }),
+          }).catch(e => console.error("[ANIMUS] Cloudinary upload failed:", e));
+        }
       } catch (saveErr) {
         console.error("[ANIMUS] Order save failed (checkout still proceeding):", saveErr);
       }
