@@ -7,6 +7,7 @@ import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
 import { generateProductionSvg, downloadSvg } from "@/lib/svgExport";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
