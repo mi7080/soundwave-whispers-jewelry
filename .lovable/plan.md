@@ -1,45 +1,24 @@
 
 
-## Pass Personalization Data as Shopify Cart Line Item Attributes
+## Add Product Specifications Section
 
-Shopify's Storefront API supports `attributes` on cart line items — key/value pairs that appear in the Shopify Admin order details. We'll thread the pet name, right-side engraving, and audio URL through the cart system.
+Create a new `ProductSpecs` component that displays the dog tag's technical details in an elegant, text-only layout (no product image), and insert it after `ProductGallery` in the page.
 
-### Changes
+### New file: `src/components/ProductSpecs.tsx`
 
-**1. `src/components/ProductSection.tsx`**
-- Add state for right-side engraving (`rightSideText`) — currently the input has no `value`/`onChange`
-- Build a `customAttributes` array from non-empty values: `Pet Name`, `Right Side Engraving`, `Audio URL`
-- Pass `customAttributes` into `addItem()`
+A styled section with `bg-background` background containing:
+- Section header: "Product Details" with gold accent label
+- A centered grid (2×3 on desktop, 1 column on mobile) of spec cards, each with a Lucide icon in gold and the detail text:
+  - **Pendant Size**: 1.1" × 2" (28.5mm × 51mm)
+  - **Chain**: 24" Military-Style Ball Chain (61cm)
+  - **Clasp**: Lobster Clasp Attachment
+  - **Material**: Polished Stainless Steel / 18K Yellow Gold
+  - **Engraving**: Laser-Etched Soundwave & QR Code
+  - **Packaging**: Complimentary Luxury Gift Box
 
-**2. `src/lib/shopify.ts`**
-- Add `customAttributes?: Array<{ key: string; value: string }>` to the `CartItem` interface
-- Update `createShopifyCart` to include `attributes` in the cart line input: `{ quantity, merchandiseId, attributes }`
-- Update `addLineToShopifyCart` similarly
-- The Storefront API `CartLineInput` already supports `attributes: [AttributeInput!]` natively — no mutation changes needed, just pass the data in the variables
+Style matches existing sections (gold accents, serif heading, muted body text).
 
-**3. `src/stores/cartStore.ts`**
-- No structural changes needed — `customAttributes` flows through the existing `CartItem` type automatically
+### Modified file: `src/pages/Index.tsx`
 
-### How It Works in Shopify Admin
-
-Once attributes are passed, each order line item will show:
-- **Pet Name**: Buddy
-- **Right Side Engraving**: 04.12.2019
-- **Audio URL**: https://res.cloudinary.com/dsmbuwxqf/...
-
-These appear under "Line item properties" in the Shopify order detail, visible to fulfillment partners.
-
-### Technical Detail
-
-The `CartLineInput` in Shopify's Storefront API accepts:
-```graphql
-input CartLineInput {
-  merchandiseId: ID!
-  quantity: Int!
-  attributes: [AttributeInput!]  # ← we add this
-}
-```
-Where `AttributeInput` is `{ key: String!, value: String! }`.
-
-No GraphQL mutation text changes are required — just passing the `attributes` array in the variables.
+Import `ProductSpecs` and place it directly after `<ProductGallery />` (line 24).
 
