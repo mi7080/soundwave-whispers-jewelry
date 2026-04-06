@@ -131,6 +131,56 @@ export const PRODUCT_BY_HANDLE_QUERY = `
   }
 `;
 
+export const PRODUCT_BY_ID_QUERY = `
+  query GetProductById($id: ID!) {
+    product(id: $id) {
+      id
+      title
+      description
+      handle
+      priceRange {
+        minVariantPrice {
+          amount
+          currencyCode
+        }
+      }
+      images(first: 10) {
+        edges {
+          node {
+            url
+            altText
+          }
+        }
+      }
+      variants(first: 20) {
+        edges {
+          node {
+            id
+            title
+            price {
+              amount
+              currencyCode
+            }
+            availableForSale
+            selectedOptions {
+              name
+              value
+            }
+            image {
+              url
+              altText
+            }
+          }
+        }
+      }
+      options {
+        name
+        values
+      }
+    }
+  }
+`;
+
 export const CART_QUERY = `
   query cart($id: ID!) {
     cart(id: $id) { id totalQuantity }
