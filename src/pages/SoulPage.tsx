@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Play, Pause, X } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEMO_DATA = {
   petName: "Max",
@@ -9,7 +10,6 @@ const DEMO_DATA = {
   audioUrl: "https://res.cloudinary.com/dsmbuwxqf/video/upload/v1700000000/sample-dog-bark.mp3",
 };
 
-// Pre-rendered golden waveform for demo
 const DEMO_WAVEFORM = Array.from({ length: 80 }, (_, i) => {
   const x = i / 80;
   return 0.3 + 0.7 * Math.abs(Math.sin(x * Math.PI * 4) * Math.cos(x * Math.PI * 2.5) + Math.sin(x * Math.PI * 7) * 0.3);
@@ -64,13 +64,11 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
     if (data.audioUrl && !isDemo) generateWaveform(data.audioUrl);
   }, [data.audioUrl, generateWaveform, isDemo]);
 
-  // Playback progress + ripple
   useEffect(() => {
     const tick = () => {
       if (audioRef.current && !audioRef.current.paused) {
         const pct = audioRef.current.currentTime / (audioRef.current.duration || 1);
         setPlaybackProgress(pct);
-        // Ripple effect synced to audio
         setRippleScale(1 + Math.sin(audioRef.current.currentTime * 6) * 0.15);
         animFrameRef.current = requestAnimationFrame(tick);
       }
@@ -96,14 +94,13 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
   const activeBar = Math.floor(playbackProgress * waveformData.length);
 
   return (
-    <div className={`min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 relative ${previewMode ? "" : ""}`}>
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 relative">
       {!previewMode && (
         <Helmet>
           <meta name="robots" content="noindex, nofollow" />
           <title>{`${data.petName || "Memorial"} — Eternal Echo | ANIMUS`}</title>
         </Helmet>
       )}
-      {/* Close button for preview mode */}
       {previewMode && onClose && (
         <button
           onClick={onClose}
@@ -113,7 +110,6 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
         </button>
       )}
 
-      {/* Demo badge */}
       {isDemo && (
         <div className="absolute top-6 left-6 z-10">
           <span className="text-[9px] tracking-[0.3em] uppercase text-gold/60 border border-gold/20 rounded-sm px-3 py-1 font-sans bg-gold/5">
@@ -131,10 +127,8 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
       )}
 
       <div className="max-w-md w-full text-center space-y-10 py-16">
-        {/* Pet Photo with ripple */}
         {data.photoUrl && (
           <div className="relative w-44 h-44 mx-auto animate-fade-in">
-            {/* Ripple rings */}
             <div
               className="absolute inset-0 rounded-full border border-gold/10 transition-transform duration-300"
               style={{ transform: `scale(${rippleScale * 1.15})`, opacity: isPlaying ? 0.6 : 0 }}
@@ -153,7 +147,6 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
           </div>
         )}
 
-        {/* Pet Name */}
         <div className="space-y-3 animate-fade-in">
           <p className="text-[10px] tracking-[0.5em] uppercase text-gold/60 font-sans">
             In Loving Memory
@@ -166,10 +159,8 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
           </p>
         </div>
 
-        {/* Waveform Player */}
         {(data.audioUrl || isDemo) && (
           <div className="space-y-6 animate-fade-in">
-            {/* Waveform */}
             <div className="flex items-end justify-center gap-[2px] h-28 px-4">
               {waveformData.map((v, i) => {
                 const isActive = i <= activeBar && isPlaying;
@@ -184,9 +175,7 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
                       backgroundColor: isActive
                         ? "hsl(var(--gold))"
                         : "hsl(var(--muted-foreground) / 0.15)",
-                      transform: isNearHead
-                        ? `scaleY(${1 + (v * 0.4)})`
-                        : "scaleY(1)",
+                      transform: isNearHead ? `scaleY(${1 + (v * 0.4)})` : "scaleY(1)",
                       opacity: isActive ? 1 : 0.4 + v * 0.5,
                       transition: "background-color 0.15s, opacity 0.15s, transform 0.2s",
                       boxShadow: isNearHead ? "0 0 8px hsl(var(--gold) / 0.4)" : "none",
@@ -196,7 +185,6 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
               })}
             </div>
 
-            {/* Play Button — large touch target for mobile */}
             <div className="relative w-24 h-24 sm:w-20 sm:h-20 mx-auto">
               {isPlaying && (
                 <>
@@ -231,7 +219,6 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
           </div>
         )}
 
-        {/* CTA */}
         <div className="pt-10 space-y-6">
           <div className="border-t border-border/20" />
           {previewMode && onClose ? (
@@ -261,25 +248,58 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
 const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<{ petName: string; photoUrl: string; audioUrl: string } | null>(null);
+  const [loading, setLoading] = useState(true);
   const isDemo = id === "demo";
 
   useEffect(() => {
     if (previewMode && previewData) {
       setData(previewData);
+      setLoading(false);
       return;
     }
     if (isDemo) {
       setData(DEMO_DATA);
+      setLoading(false);
       return;
     }
-    if (!id) return;
-    try {
-      const decoded = JSON.parse(atob(decodeURIComponent(id)));
-      setData(decoded);
-    } catch {
-      setData(null);
+    if (!id) { setLoading(false); return; }
+
+    // Try fetching from database by UUID first (new short-URL format)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    if (isUUID) {
+      supabase.from("animus_orders").select("pet_name, audio_url, pet_photo_url").eq("id", id).single()
+        .then(({ data: order, error }) => {
+          if (order && !error) {
+            setData({
+              petName: order.pet_name,
+              photoUrl: order.pet_photo_url || "",
+              audioUrl: order.audio_url,
+            });
+          } else {
+            setData(null);
+          }
+          setLoading(false);
+        });
+    } else {
+      // Legacy: try decoding base64 payload from URL
+      try {
+        const decoded = JSON.parse(atob(decodeURIComponent(id)));
+        setData(decoded);
+      } catch {
+        setData(null);
+      }
+      setLoading(false);
     }
   }, [id, isDemo, previewMode, previewData]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!data && !previewMode) {
     return (
