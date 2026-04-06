@@ -63,7 +63,7 @@ const ProductSection = () => {
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
-  const [svgGenerating, setSvgGenerating] = useState(false);
+  
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
   const [showBackPreview, setShowBackPreview] = useState(false);
