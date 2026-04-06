@@ -2,7 +2,7 @@ import { Truck, Shield, Lock, Loader2, Eye, Download } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
 import FourSideGuide from "@/components/FourSideGuide";
-import DogTagPreview from "@/components/DogTagPreview"; // dog-tag-v2
+import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
@@ -15,9 +15,8 @@ const PRODUCT_HANDLE = "animus-signature-soundwave-dog-tag";
 
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [petName, setPetName] = useState("");
-  const [rightSideText, setRightSideText] = useState("");
-  const [petPhotoUrl, setPetPhotoUrl] = useState<string | null>(null);
+  const [dedicatedText, setDedicatedText] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -27,7 +26,8 @@ const ProductSection = () => {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
   const [svgGenerating, setSvgGenerating] = useState(false);
-  const [addNameToBack, setAddNameToBack] = useState(false);
+  const [addTextToBack, setAddTextToBack] = useState(false);
+  const [backText, setBackText] = useState("");
 
   useEffect(() => {
     async function fetchProduct() {
@@ -45,17 +45,16 @@ const ProductSection = () => {
 
   const generateSoulPageUrl = useCallback(() => {
     const payload = {
-      petName: petName.trim(),
-      photoUrl: petPhotoUrl || "",
+      petName: dedicatedText.trim() || "Memorial",
+      photoUrl: photoUrl || "",
       audioUrl: audioUrl || "",
     };
     const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
     return `${window.location.origin}/soul-page/${encoded}`;
-  }, [petName, petPhotoUrl, audioUrl]);
+  }, [dedicatedText, photoUrl, audioUrl]);
 
-  // Generate QR data URL for preview whenever soulPageUrl changes
   useEffect(() => {
-    if (!audioUrl || !petName.trim()) {
+    if (!audioUrl) {
       setQrDataUrl(null);
       return;
     }
@@ -63,12 +62,10 @@ const ProductSection = () => {
     QRCode.toDataURL(url, { margin: 1, width: 200, color: { dark: "#B78E48", light: "#00000000" } })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
-  }, [audioUrl, petName, generateSoulPageUrl]);
+  }, [audioUrl, dedicatedText, photoUrl, generateSoulPageUrl]);
 
-  // Extract waveform from audio for preview
   const handleAudioUrl = useCallback((url: string) => {
     setAudioUrl(url);
-    // Fetch and decode audio to get waveform samples
     fetch(url)
       .then(r => r.arrayBuffer())
       .then(buf => {
@@ -94,12 +91,11 @@ const ProductSection = () => {
   const variants = product?.variants?.edges || [];
   const selectedVariant = variants[selectedVariantIdx]?.node;
 
-  const allStepsComplete = !!audioUrl && !!petName.trim() && !!petPhotoUrl;
+  const allStepsComplete = !!audioUrl && !!photoUrl;
 
   const handleAnimusCheckout = async () => {
     if (!audioUrl) { toast.error("Please record or upload a sound first."); return; }
-    if (!petName.trim()) { toast.error("Please enter your pet's name."); return; }
-    if (!petPhotoUrl) { toast.error("Please upload a pet photo."); return; }
+    if (!photoUrl) { toast.error("Please upload a photo or media file."); return; }
     if (!product || !selectedVariant) { toast.error("Product not loaded."); return; }
 
     setCartLoading(true);
@@ -110,19 +106,15 @@ const ProductSection = () => {
       const soulPageUrl = generateSoulPageUrl();
       const customAttributes = [
         { key: "_Audio_Link", value: audioUrl },
-        { key: "_Pet_Photo", value: petPhotoUrl },
+        { key: "_Media_Photo", value: photoUrl },
         { key: "_Soul_Page_URL", value: soulPageUrl },
       ];
-      if (addNameToBack && petName.trim()) {
-        customAttributes.push({ key: "_Pet_Name", value: petName.trim() });
-      }
-      if (rightSideText.trim()) {
-        customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
+      if (addTextToBack && backText.trim()) {
+        customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
       }
 
       console.log("[ANIMUS] handleAnimusCheckout — attributes:", JSON.stringify(customAttributes, null, 2));
 
-      // Step 1: Create empty cart
       const createData = await storefrontApiRequest(CART_CREATE_MUTATION, { input: {} });
       const cart = createData?.data?.cartCreate?.cart;
       if (!cart?.id || !cart?.checkoutUrl) {
@@ -130,9 +122,7 @@ const ProductSection = () => {
         window.open('https://animusjewlery.com/cart', '_blank');
         return;
       }
-      console.log("[ANIMUS] Cart created:", cart.id);
 
-      // Step 2: Add line with attributes
       const addData = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
         cartId: cart.id,
         lines: [{ quantity: 1, merchandiseId: variantId, attributes: customAttributes }],
@@ -146,29 +136,25 @@ const ProductSection = () => {
         return;
       }
 
-      console.log("[ANIMUS] Line added successfully. Saving order & redirecting...");
-
-      // Generate production SVG and save order to database
-      const soulPageUrlForSvg = soulPageUrl;
+      // Save order to database
       try {
         const svgContent = await generateProductionSvg({
           waveformData,
-          petName: petName.trim(),
-          soulPageUrl: soulPageUrlForSvg,
+          petName: backText.trim() || dedicatedText.trim() || "Memorial",
+          soulPageUrl,
         });
 
         await supabase.from("animus_orders").insert({
-          pet_name: petName.trim(),
+          pet_name: backText.trim() || dedicatedText.trim() || "Memorial",
           audio_url: audioUrl,
-          pet_photo_url: petPhotoUrl,
-          soul_page_url: soulPageUrlForSvg,
-          right_side_engraving: rightSideText.trim() || null,
+          pet_photo_url: photoUrl,
+          soul_page_url: soulPageUrl,
+          right_side_engraving: null,
           svg_content: svgContent,
           waveform_data: waveformData,
-          add_name_to_back: addNameToBack,
+          add_name_to_back: addTextToBack,
           status: "pending",
         } as any);
-        console.log("[ANIMUS] Order saved to database.");
       } catch (saveErr) {
         console.error("[ANIMUS] Order save failed (checkout still proceeding):", saveErr);
       }
@@ -189,8 +175,8 @@ const ProductSection = () => {
   };
 
   const handleDownloadSvg = async () => {
-    if (!audioUrl || !petName.trim()) {
-      toast.error("Need audio and pet name to generate SVG.");
+    if (!audioUrl) {
+      toast.error("Need audio to generate SVG.");
       return;
     }
     setSvgGenerating(true);
@@ -198,10 +184,11 @@ const ProductSection = () => {
       const soulPageUrl = generateSoulPageUrl();
       const svg = await generateProductionSvg({
         waveformData,
-        petName: petName.trim(),
+        petName: backText.trim() || dedicatedText.trim() || "Memorial",
         soulPageUrl,
       });
-      downloadSvg(svg, `ANIMUS_${petName.trim().replace(/\s+/g, "_")}_production.svg`);
+      const name = (backText.trim() || dedicatedText.trim() || "Memorial").replace(/\s+/g, "_");
+      downloadSvg(svg, `ANIMUS_${name}_production.svg`);
       toast.success("Production SVG downloaded!");
     } catch (err) {
       console.error("SVG generation failed:", err);
@@ -239,10 +226,10 @@ const ProductSection = () => {
             Design Yours
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Design Your ANIMUS Dog Tag
+            Design Your ANIMUS Memorial
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            Your pet's voice, forever preserved in a luxury engraved dog tag with scannable QR code.
+            A meaningful sound, forever preserved in a luxury engraved dog tag with scannable QR code.
           </p>
         </div>
 
@@ -251,7 +238,7 @@ const ProductSection = () => {
           <div className="border border-border/30 rounded-sm overflow-hidden p-8 bg-background/50">
             <DogTagPreview
               waveformData={waveformData}
-              petName={petName.trim() || "Your Pet"}
+              petName={dedicatedText.trim() || "Your Name"}
               qrDataUrl={qrDataUrl}
             />
             <p className="text-[10px] text-muted-foreground/50 text-center mt-4 tracking-wide">
@@ -303,58 +290,45 @@ const ProductSection = () => {
                 {audioUrl ? "✓" : "1"}
               </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Record or Upload Sound
+                Upload Audio
               </label>
               <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
                 Required
               </span>
             </div>
+            <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
+              A pet's bark, a loved one's voice, or any meaningful sound
+            </p>
             <AudioRecorder onAudioUrl={handleAudioUrl} />
           </div>
 
-          {/* Step 2: Pet Name */}
+          {/* Step 2: Photo / Media */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${petName.trim() ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
-                {petName.trim() ? "✓" : "2"}
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${photoUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+                {photoUrl ? "✓" : "2"}
               </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Pet's Name
+                Upload Photo / Media
               </label>
               <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
                 Required
               </span>
             </div>
-            <input
-              type="text"
-              placeholder="e.g. Buddy"
-              value={petName}
-              onChange={(e) => setPetName(e.target.value)}
-              className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
-            />
+            <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
+              This photo will appear on your personal Soul Page
+            </p>
+            <PetPhotoUpload onPhotoUrl={(url) => setPhotoUrl(url || null)} />
           </div>
 
-          {/* Step 3: Pet Photo */}
+          {/* Step 3: Name / Dedicated Text (Optional) */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${petPhotoUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
-                {petPhotoUrl ? "✓" : "3"}
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${dedicatedText.trim() ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+                {dedicatedText.trim() ? "✓" : "3"}
               </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Upload Pet's Photo for Message Card
-              </label>
-              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
-                Required
-              </span>
-            </div>
-            <PetPhotoUpload onPhotoUrl={(url) => setPetPhotoUrl(url || null)} />
-          </div>
-
-          {/* Right Side Engraving (Optional) */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Right Side — Date / Message
+                Name / Dedicated Text
               </label>
               <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
                 Optional
@@ -362,44 +336,53 @@ const ProductSection = () => {
             </div>
             <input
               type="text"
-              placeholder="e.g. 04.12.2019 or Forever Loved"
-              value={rightSideText}
-              onChange={(e) => setRightSideText(e.target.value)}
+              placeholder="e.g. Buddy, Mom, Forever Loved"
+              value={dedicatedText}
+              onChange={(e) => setDedicatedText(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
             />
             <p className="text-[10px] text-muted-foreground/50 font-light">
-              Add a special date, initials, or short message.
+              Displayed on the Soul Page and optionally engraved on the back
             </p>
           </div>
 
-          {/* Name on Back Toggle */}
+          {/* Back Engraving Toggle */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                  Add Name to Back
+                  Engrave Text on Back
                 </label>
                 <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
                   Optional
                 </span>
               </div>
               <button
-                onClick={() => setAddNameToBack(!addNameToBack)}
+                onClick={() => setAddTextToBack(!addTextToBack)}
                 className={`relative w-12 h-6 rounded-full transition-colors ${
-                  addNameToBack ? "bg-gold" : "bg-border/50"
+                  addTextToBack ? "bg-gold" : "bg-border/50"
                 }`}
               >
                 <span
                   className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${
-                    addNameToBack ? "translate-x-6" : "translate-x-0"
+                    addTextToBack ? "translate-x-6" : "translate-x-0"
                   }`}
                 />
               </button>
             </div>
-            {addNameToBack && (
-              <p className="text-[10px] text-gold/70 font-light">
-                "{petName.trim() || "Your Pet's Name"}" will be engraved on the back in elegant serif lettering.
-              </p>
+            {addTextToBack && (
+              <div className="space-y-3 pt-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Buddy 2015-2024, Forever in my heart"
+                  value={backText}
+                  onChange={(e) => setBackText(e.target.value)}
+                  className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
+                />
+                <p className="text-[10px] text-gold/70 font-light">
+                  This text will be engraved on the back in elegant serif lettering.
+                </p>
+              </div>
             )}
           </div>
 
@@ -436,7 +419,7 @@ const ProductSection = () => {
             </button>
           )}
 
-          {/* Order Confirmation with SVG download */}
+          {/* Order Confirmation */}
           {orderComplete && (
             <div className="border border-gold/30 rounded-sm p-6 bg-gold/5 space-y-4">
               <p className="text-sm text-gold font-sans text-center">
@@ -471,8 +454,7 @@ const ProductSection = () => {
           {!allStepsComplete && (
             <p className="text-[10px] text-muted-foreground/50 text-center">
               {!audioUrl && "① Upload sound · "}
-              {!petName.trim() && "② Enter pet name · "}
-              {!petPhotoUrl && "③ Upload photo"}
+              {!photoUrl && "② Upload photo"}
             </p>
           )}
 
@@ -483,8 +465,8 @@ const ProductSection = () => {
               <SoulPage
                 previewMode
                 previewData={{
-                  petName: petName.trim() || "Your Pet",
-                  photoUrl: petPhotoUrl || "",
+                  petName: dedicatedText.trim() || "Memorial",
+                  photoUrl: photoUrl || "",
                   audioUrl: audioUrl || "",
                 }}
                 onClose={() => setShowPreview(false)}
