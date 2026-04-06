@@ -226,7 +226,7 @@ export async function createShopifyCart(item: CartItem): Promise<{ cartId: strin
 
 export async function addLineToShopifyCart(cartId: string, item: CartItem): Promise<{ success: boolean; lineId?: string; cartNotFound?: boolean }> {
   const attributes = item.customAttributes ?? [];
-  window.alert('ANIMUS DATA: ' + JSON.stringify(attributes));
+  console.log("[ANIMUS] addLineToShopifyCart — attributes:", JSON.stringify(attributes));
   const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (attributes.length) lineInput.attributes = attributes;
   console.log("[ANIMUS] addLineToShopifyCart — line input:", JSON.stringify(lineInput, null, 2));
