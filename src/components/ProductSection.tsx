@@ -239,17 +239,17 @@ const ProductSection = () => {
             Design Yours
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Design Your ANIMUS Keepsake
+            Design Your ANIMUS Dog Tag
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            Your pet's voice, forever preserved in a premium acrylic heart with scannable QR code.
+            Your pet's voice, forever preserved in a luxury engraved dog tag with scannable QR code.
           </p>
         </div>
 
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Acrylic Heart Preview */}
+          {/* Dog Tag Preview */}
           <div className="border border-border/30 rounded-sm overflow-hidden p-8 bg-background/50">
-            <AcrylicHeartPreview
+            <DogTagPreview
               waveformData={waveformData}
               petName={petName.trim() || "Your Pet"}
               qrDataUrl={qrDataUrl}
