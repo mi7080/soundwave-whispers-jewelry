@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Play, Sparkles } from "lucide-react";
 import SoulPage from "@/pages/SoulPage";
+import messageCardImage from "@/assets/animus-message-card.png";
 
 const DEMO_PET_NAME = "Luna";
 const DEMO_PHOTO = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&h=600&fit=crop&crop=face";
