@@ -66,6 +66,7 @@ const ProductSection = () => {
   const [svgGenerating, setSvgGenerating] = useState(false);
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
+  const [showBackPreview, setShowBackPreview] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
