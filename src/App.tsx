@@ -20,6 +20,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/soul/:id" element={<SoulPage />} />
         <Route path="/soul-page/:id" element={<SoulPage />} />
         <Route path="/:slug" element={<PolicyPage />} />
