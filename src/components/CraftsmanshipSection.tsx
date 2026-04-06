@@ -2,7 +2,7 @@ import craftsmanshipImage from "@/assets/product-silver-box.jpg";
 import { Shield, Award, MapPin } from "lucide-react";
 
 const features = [
-  { icon: Award, label: "Premium Acrylic" },
+  { icon: Award, label: "Premium Metal" },
   { icon: Shield, label: "Laser-Engraved" },
   { icon: MapPin, label: "Made in USA" },
 ];
@@ -21,9 +21,9 @@ const CraftsmanshipSection = () => {
               <span className="italic text-gold">Purpose</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
-              Partnered with ShineOn's premium manufacturing, every acrylic heart
+              Partnered with ShineOn's premium manufacturing, every dog tag
               is meticulously engraved using state-of-the-art laser technology.
-              The result is a crystal-clear keepsake built to last a lifetime.
+              The result is a polished metal pendant built to last a lifetime.
             </p>
             <div className="flex flex-wrap gap-8 pt-4">
               {features.map((item) => (
@@ -39,7 +39,7 @@ const CraftsmanshipSection = () => {
           <div className="order-1 lg:order-2">
             <img
               src={craftsmanshipImage}
-              alt="ANIMUS acrylic heart keepsake laser engraving process"
+              alt="ANIMUS dog tag laser engraving process"
               loading="lazy"
               width={800}
               height={600}

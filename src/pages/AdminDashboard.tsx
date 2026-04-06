@@ -90,7 +90,7 @@ const AdminDashboard = () => {
             </Link>
             <h1 className="text-2xl font-serif text-foreground">ANIMUS Production Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              ShineOn Acrylic Heart (ID 279) — Download print-ready SVGs
+              ShineOn Dog Tag Necklace — Download print-ready engraving SVGs
             </p>
           </div>
           <button

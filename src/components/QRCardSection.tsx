@@ -9,7 +9,7 @@ const QRCardSection = () => {
           <div>
             <img
               src={messageCardImage}
-              alt="Premium QR Code Message Card included with every ANIMUS keepsake"
+              alt="Premium QR Code Message Card included with every ANIMUS dog tag"
               loading="lazy"
               width={800}
               height={800}
@@ -21,11 +21,11 @@ const QRCardSection = () => {
               Exclusive Feature
             </p>
             <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight">
-              More Than a Keepsake —{" "}
+              More Than a Dog Tag —{" "}
               <span className="italic text-gold">A Living Memory.</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
-              Every ANIMUS acrylic heart ships with a premium Message Card featuring a unique QR code.
+              Every ANIMUS dog tag ships with a premium Message Card featuring a unique QR code.
               Simply scan the card and instantly play the original audio recording —
               hear their voice anytime, anywhere.
             </p>

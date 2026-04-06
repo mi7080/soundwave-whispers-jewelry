@@ -11,20 +11,20 @@ const faqs = [
     a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files — .mp3, .wav, .m4a, and more.",
   },
   {
-    q: "What is the Acrylic Heart made of?",
-    a: "The ANIMUS Acrylic Heart is a premium, crystal-clear acrylic block manufactured by ShineOn. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
+    q: "What is the Dog Tag made of?",
+    a: "The ANIMUS Dog Tag is a premium polished metal pendant manufactured by ShineOn. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
   },
   {
     q: "How long does shipping take?",
-    a: "Each keepsake is custom-made to order. Production takes 5-7 business days, and shipping is free within the US. Domestic orders arrive in 7-12 business days; international orders in 10-18 business days.",
+    a: "Each dog tag is custom-made to order. Production takes 5-7 business days, and shipping is free within the US. Domestic orders arrive in 7-12 business days; international orders in 10-18 business days.",
   },
   {
     q: "How does the QR Code work?",
-    a: "Every keepsake includes a premium printed card with a unique QR code. When scanned with any smartphone camera, it instantly plays back the original audio recording you submitted. It's a beautiful way to share the memory.",
+    a: "Every dog tag includes a premium printed card with a unique QR code. When scanned with any smartphone camera, it instantly plays back the original audio recording you submitted. It's a beautiful way to share the memory.",
   },
   {
     q: "Can I use a recording of a person's voice instead of a pet?",
-    a: "Absolutely. While our brand is pet-focused, many customers create keepsakes from a child's laughter, a loved one's voice message, or any meaningful sound.",
+    a: "Absolutely. While our brand is pet-focused, many customers create dog tags from a child's laughter, a loved one's voice message, or any meaningful sound.",
   },
   {
     q: "What if I'm not satisfied with my order?",
