@@ -96,7 +96,13 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
   const activeBar = Math.floor(playbackProgress * waveformData.length);
 
   return (
-    <div className={`min-h-screen bg-background flex items-center justify-center px-6 relative ${previewMode ? "" : ""}`}>
+    <div className={`min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 relative ${previewMode ? "" : ""}`}>
+      {!previewMode && (
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>{`${data.petName || "Memorial"} — Eternal Echo | ANIMUS`}</title>
+        </Helmet>
+      )}
       {/* Close button for preview mode */}
       {previewMode && onClose && (
         <button
