@@ -61,24 +61,19 @@ async function uploadTextToCloudinary(
   apiKey: string,
   apiSecret: string
 ): Promise<string> {
-  const bytes = new TextEncoder().encode(text);
-  const b64 = base64Encode(bytes);
-  const dataUri = `data:text/plain;base64,${b64}`;
   const timestamp = Math.floor(Date.now() / 1000).toString();
 
   const params: Record<string, string> = {
     folder,
     public_id: publicId,
-    resource_type: "raw",
     timestamp,
   };
   const signature = await generateSignature(params, apiSecret);
 
   const form = new FormData();
-  form.append("file", dataUri);
+  form.append("file", new Blob([text], { type: "text/plain" }), `${publicId}.txt`);
   form.append("folder", folder);
   form.append("public_id", publicId);
-  form.append("resource_type", "raw");
   form.append("timestamp", timestamp);
   form.append("api_key", apiKey);
   form.append("signature", signature);
