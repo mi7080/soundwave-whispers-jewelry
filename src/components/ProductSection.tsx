@@ -213,26 +213,6 @@ const ProductSection = () => {
     }
   };
 
-  const handleDownloadSvg = async () => {
-    if (!audioUrl) { toast.error("Need audio to generate SVG."); return; }
-    setSvgGenerating(true);
-    try {
-      const soulPageUrl = generateSoulPageUrl();
-      const svg = await generateProductionSvg({
-        waveformData,
-        petName: backText.trim() || dedicatedText.trim() || "Memorial",
-        soulPageUrl,
-      });
-      const name = (backText.trim() || dedicatedText.trim() || "Memorial").replace(/\s+/g, "_");
-      downloadSvg(svg, `ANIMUS_${name}_production.svg`);
-      toast.success("Production SVG downloaded!");
-    } catch (err) {
-      console.error("SVG generation failed:", err);
-      toast.error("Failed to generate SVG.");
-    } finally {
-      setSvgGenerating(false);
-    }
-  };
 
   if (loading) {
     return (
