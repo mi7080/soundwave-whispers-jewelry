@@ -373,6 +373,37 @@ const ProductSection = () => {
             </p>
           </div>
 
+          {/* Name on Back Toggle */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                  Add Name to Back
+                </label>
+                <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                  Optional
+                </span>
+              </div>
+              <button
+                onClick={() => setAddNameToBack(!addNameToBack)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  addNameToBack ? "bg-gold" : "bg-border/50"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${
+                    addNameToBack ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            {addNameToBack && (
+              <p className="text-[10px] text-gold/70 font-light">
+                "{petName.trim() || "Your Pet's Name"}" will be engraved on the back in elegant serif lettering.
+              </p>
+            )}
+          </div>
+
           {/* Buy Now */}
           <button
             onClick={handleAnimusCheckout}
