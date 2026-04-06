@@ -158,6 +158,7 @@ const ProductSection = () => {
 
       // 2. Save order to DB first
       const { data: orderData, error: dbError } = await supabase.from("animus_orders").insert({
+        id: preOrderId,
         pet_name: petNameVal,
         audio_url: audioUrl,
         pet_photo_url: photoUrl,
