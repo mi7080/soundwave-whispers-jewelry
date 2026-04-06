@@ -20,10 +20,10 @@ const sides = [
     description: "Personalized engraving of your pet's name",
   },
   {
-    icon: Gem,
+    icon: Type,
     side: "Right",
-    title: "Polished Blank Surface",
-    description: "A clean, elegant finish on the fourth side",
+    title: "Date / Custom Engraving",
+    description: "Add a meaningful date or personal message",
   },
 ];
 
