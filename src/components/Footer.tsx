@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="space-y-4">
             <img src={logo} alt="ANIMUS" className="h-10" />
             <p className="text-muted-foreground text-sm font-light leading-relaxed">
-              Transforming meaningful sounds into timeless engraved dog tags — for pets and loved ones.
+              Luxury soundwave keepsakes that capture life's most meaningful moments — for pets, loved ones, and memories that matter.
             </p>
             <p className="text-muted-foreground/50 text-[10px] font-light leading-relaxed mt-2">
               Custom items are non-refundable. Replacements provided for defects or unscannable QR codes.
@@ -45,7 +45,7 @@ const Footer = () => {
 
         <div className="border-t border-border/30 pt-8 text-center">
           <p className="text-muted-foreground/50 text-xs">
-            © {new Date().getFullYear()} ANIMUS. All rights reserved.
+            © {new Date().getFullYear()} ANIMUS Signature Tags. All rights reserved.
           </p>
         </div>
       </div>
