@@ -5,19 +5,19 @@ const steps = [
     icon: Mic,
     step: "01",
     title: "Record",
-    description: "Upload your pet's special moment directly from your phone.",
+    description: "Upload any meaningful sound — a pet's bark, a loved one's voice, or a special moment.",
   },
   {
     icon: AudioWaveform,
     step: "02",
     title: "Create",
-    description: "We transform the audio into a unique soundwave engraved on polished metal.",
+    description: "We transform the audio into a unique soundwave laser-engraved on polished metal.",
   },
   {
     icon: Heart,
     step: "03",
     title: "Cherish",
-    description: "Receive a premium engraved dog tag, ready to wear or gift.",
+    description: "Receive a premium engraved dog tag — a timeless memorial to wear or gift.",
   },
 ];
 
@@ -33,7 +33,7 @@ const ExperienceSection = () => {
             Three Simple Steps
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            From a precious sound to a timeless dog tag.
+            From a precious sound to a timeless memorial.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-16 max-w-4xl mx-auto">

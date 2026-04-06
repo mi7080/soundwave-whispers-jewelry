@@ -5,7 +5,7 @@ const features = [
   { label: "Plays Audio via QR Code", animus: true, traditional: false },
   { label: "Permanent Laser Etching", animus: true, traditional: false },
   { label: "Fades Over Time", animus: false, traditional: true },
-  { label: "Emotional & High-Tech", animus: true, traditional: false },
+  { label: "For Pets & Loved Ones", animus: true, traditional: false },
   { label: "Cloud-Hosted Audio Forever", animus: true, traditional: false },
   { label: "Premium Metal Construction", animus: true, traditional: false },
 ];

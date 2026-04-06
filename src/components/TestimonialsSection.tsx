@@ -8,7 +8,7 @@ const testimonials = [
   },
   {
     name: "James & Emily K.",
-    text: "We got matching dog tags with our cat's purr. The message card was the perfect extra touch — our kids love scanning the QR code!",
+    text: "We created a memorial dog tag with our grandmother's voice saying 'I love you.' The whole family cried. It's the most meaningful piece we own.",
     rating: 5,
   },
   {

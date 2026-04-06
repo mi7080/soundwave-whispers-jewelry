@@ -23,7 +23,7 @@ const MobileStickyBar = () => {
         href="#customize"
         className="flex-1 bg-gold text-background py-4 text-xs tracking-[0.2em] uppercase text-center font-sans hover:bg-gold-light transition-colors"
       >
-        Design Your Dog Tag
+        Design Your Memorial
       </a>
     </div>
   );

@@ -10,8 +10,8 @@ const sides = [
   {
     icon: Type,
     side: "Back",
-    title: "Pet's Name (Optional)",
-    description: "Elegant serif engraving of your pet's name",
+    title: "Name / Text (Optional)",
+    description: "Elegant serif engraving of a name, date, or dedication",
   },
 ];
 

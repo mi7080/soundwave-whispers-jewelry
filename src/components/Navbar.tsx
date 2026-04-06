@@ -49,7 +49,7 @@ const Navbar = () => {
             onClick={() => setMenuOpen(false)}
             className="block bg-gold text-background px-6 py-3 text-xs tracking-widest uppercase text-center hover:bg-gold-light transition-colors mt-2"
           >
-            Design Your Dog Tag
+            Design Your Memorial
           </a>
         </div>
       )}

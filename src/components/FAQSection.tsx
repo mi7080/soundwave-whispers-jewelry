@@ -20,11 +20,11 @@ const faqs = [
   },
   {
     q: "How does the QR Code work?",
-    a: "Every dog tag includes a premium printed card with a unique QR code. When scanned with any smartphone camera, it instantly plays back the original audio recording you submitted. It's a beautiful way to share the memory.",
+    a: "Every dog tag includes a QR code engraved directly on the metal. When scanned with any smartphone camera, it opens your personal Soul Page where the original audio plays instantly.",
   },
   {
-    q: "Can I use a recording of a person's voice instead of a pet?",
-    a: "Absolutely. While our brand is pet-focused, many customers create dog tags from a child's laughter, a loved one's voice message, or any meaningful sound.",
+    q: "Can I memorialize a person as well as a pet?",
+    a: "Absolutely. ANIMUS is a universal memorial brand. Customers create dog tags from a pet's bark, a loved one's voice message, a child's laughter, or any meaningful sound.",
   },
   {
     q: "What if I'm not satisfied with my order?",

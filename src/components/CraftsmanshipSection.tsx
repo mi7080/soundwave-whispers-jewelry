@@ -23,7 +23,8 @@ const CraftsmanshipSection = () => {
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
               Partnered with ShineOn's premium manufacturing, every dog tag
               is meticulously engraved using state-of-the-art laser technology.
-              The result is a polished metal pendant built to last a lifetime.
+              The result is a polished metal pendant built to last a lifetime —
+              for pets and loved ones alike.
             </p>
             <div className="flex flex-wrap gap-8 pt-4">
               {features.map((item) => (
