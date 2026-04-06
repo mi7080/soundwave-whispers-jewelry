@@ -166,8 +166,9 @@ const ProductSection = () => {
           right_side_engraving: rightSideText.trim() || null,
           svg_content: svgContent,
           waveform_data: waveformData,
+          add_name_to_back: addNameToBack,
           status: "pending",
-        });
+        } as any);
         console.log("[ANIMUS] Order saved to database.");
       } catch (saveErr) {
         console.error("[ANIMUS] Order save failed (checkout still proceeding):", saveErr);
