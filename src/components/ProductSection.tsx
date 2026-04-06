@@ -1,4 +1,4 @@
-import { Truck, Shield, Lock, Loader2, Eye } from "lucide-react";
+import { Truck, Shield, Lock, Loader2, Eye, Info } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPresets from "@/components/AudioPresets";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
