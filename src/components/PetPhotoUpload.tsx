@@ -72,26 +72,36 @@ const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
           />
         </label>
       ) : (
-        <div className="relative">
-          <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-gold/30">
+        <div className="relative max-w-xs mx-auto">
+          <div
+            className="relative w-full rounded-2xl overflow-hidden border border-gold/30 shadow-[0_0_30px_rgba(183,142,72,0.1)]"
+            style={{ minHeight: "160px" }}
+          >
+            {/* Blurred background fill */}
+            <div
+              className="absolute inset-0 scale-110 blur-2xl opacity-40"
+              style={{
+                backgroundImage: `url(${previewUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
             <img
               src={previewUrl}
               alt="Pet photo preview"
-              className="w-full h-full object-cover"
+              className="relative z-10 w-full max-h-64 object-contain mx-auto"
             />
           </div>
           {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 rounded-full bg-background/60 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-gold" />
-              </div>
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/60 z-20">
+              <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>
           )}
           <button
             onClick={clearPhoto}
-            className="absolute top-0 right-1/2 translate-x-[4.5rem] -translate-y-1 w-6 h-6 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-card/90 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
           {uploadedUrl && (
             <div className="flex items-center justify-center gap-2 mt-3">
