@@ -12,8 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
-const PRODUCT_HANDLE = "engraved-soundwave-qr-soul-page-necklace-shop-232097-6972";
-const PRODUCT_GID = "gid://shopify/Product/10549873082680";
+const PRODUCT_HANDLE = "animus-personalized-soundwave-jewelry-with-scannable-memory-page";
+const PRODUCT_GID = "gid://shopify/Product/10550449602872";
 
 // Fallback product data if Storefront API can't find the product (sales channel not configured)
 const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
