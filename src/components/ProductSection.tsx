@@ -67,6 +67,7 @@ const ProductSection = () => {
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
   const [showBackPreview, setShowBackPreview] = useState(false);
+  const [preOrderId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     async function fetchProduct() {
