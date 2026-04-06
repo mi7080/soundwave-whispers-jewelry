@@ -4,8 +4,7 @@ import PetPhotoUpload from "@/components/PetPhotoUpload";
 import FourSideGuide from "@/components/FourSideGuide";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct } from "@/lib/shopify";
-import { useCartStore } from "@/stores/cartStore";
+import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
 import { toast } from "sonner";
 
 const PRODUCT_HANDLE = "animus-the-4-sided-eternal-echo-pendant-shop-232097-9151";
