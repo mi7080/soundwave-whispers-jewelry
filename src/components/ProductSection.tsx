@@ -18,7 +18,7 @@ const ProductSection = () => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const { addItem, isLoading: cartLoading } = useCartStore();
+  const [cartLoading, setCartLoading] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
