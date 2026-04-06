@@ -30,6 +30,14 @@ const LiveDemoModule = () => {
           We've prepared a premium sample with {DEMO_PET_NAME}'s recording.
         </p>
 
+        <div className="pt-2">
+          <img
+            src={messageCardImage}
+            alt="ANIMUS Message Card with QR code"
+            className="w-full max-w-[280px] rounded-sm shadow-lg border border-gold/10"
+          />
+        </div>
+
         <button
           onClick={() => setShowDemo(true)}
           className="inline-flex items-center gap-3 border border-gold/40 text-gold px-8 py-3.5 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/60 transition-all duration-300 group"

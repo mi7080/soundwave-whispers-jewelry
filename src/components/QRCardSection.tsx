@@ -8,7 +8,7 @@ const QRCardSection = () => {
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <img
-              src={qrCardImage}
+              src={messageCardImage}
               alt="Premium QR Code Message Card included with every ANIMUS necklace"
               loading="lazy"
               width={800}
