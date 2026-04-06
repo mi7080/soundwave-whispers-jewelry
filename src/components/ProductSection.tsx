@@ -18,6 +18,7 @@ const ProductSection = () => {
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const { addItem, isLoading: cartLoading } = useCartStore();
 
   useEffect(() => {
