@@ -29,7 +29,7 @@ const DogTagPreview = ({ waveformData, petName, qrDataUrl }: DogTagPreviewProps)
 
   return (
     <div className="relative flex items-center justify-center">
-      <div className="relative w-full max-w-[300px]">
+      <div className="relative w-full max-w-[300px] bg-black rounded-sm p-4">
         <img
           src={dogtagMockup}
           alt="ANIMUS Signature Dog Tag"
