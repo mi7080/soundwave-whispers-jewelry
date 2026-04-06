@@ -1,6 +1,7 @@
 import { Truck, Shield, Lock, Loader2 } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
+import FourSideGuide from "@/components/FourSideGuide";
 import { useState, useEffect } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
