@@ -3,14 +3,13 @@ import { useState } from "react";
 const images = [
   { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_5495.png?v=1775474999", alt: "ANIMUS Engraved Dog Tag – Polished Stainless Steel" },
   { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_15471.png?v=1775475000", alt: "ANIMUS Engraved Dog Tag – 18K Yellow Gold Finish" },
-  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_753_transformation_15472.png?v=1775475002", alt: "ANIMUS Engraved Dog Tag – Detail View" },
 ];
 
 const ProductGallery = () => {
   const [selected, setSelected] = useState(0);
 
   return (
-    <section className="py-24 md:py-32 bg-background">
+    <section className="py-24 md:py-32 bg-card">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16 space-y-4">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
@@ -28,7 +27,7 @@ const ProductGallery = () => {
               className="w-full max-h-[600px] object-contain rounded-sm"
             />
           </div>
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             {images.map((img, i) => (
               <button
                 key={i}
