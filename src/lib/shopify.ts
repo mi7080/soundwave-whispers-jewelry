@@ -208,6 +208,7 @@ export interface CartItem {
 export async function createShopifyCart(item: CartItem): Promise<{ cartId: string; checkoutUrl: string; lineId: string } | null> {
   const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
   if (item.customAttributes?.length) lineInput.attributes = item.customAttributes;
+  console.log("[ANIMUS] createShopifyCart — line input:", JSON.stringify(lineInput, null, 2));
   const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
     input: { lines: [lineInput] },
   });
