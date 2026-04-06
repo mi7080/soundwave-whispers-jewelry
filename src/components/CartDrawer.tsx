@@ -83,11 +83,15 @@ const CartDrawer = () => {
                   </p>
                   {item.customAttributes && item.customAttributes.length > 0 && (
                     <div className="mt-1 space-y-0.5">
-                      {item.customAttributes.map(attr => (
+                      {item.customAttributes
+                        .filter(attr => attr.key !== 'QR_Target_URL')
+                        .map(attr => (
                         <p key={attr.key} className="text-[10px] text-muted-foreground/70">
-                          <span className="text-gold/60">{attr.key}:</span>{' '}
-                          {attr.key === 'Audio URL' ? (
+                          <span className="text-gold/60">{attr.key.replace(/_/g, ' ')}:</span>{' '}
+                          {attr.key === 'Audio_Link' ? (
                             <a href={attr.value} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold transition-colors">Listen ↗</a>
+                          ) : attr.key === 'Pet_Photo' ? (
+                            <a href={attr.value} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold transition-colors">View ↗</a>
                           ) : attr.value}
                         </p>
                       ))}
