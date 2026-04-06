@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Play, Sparkles } from "lucide-react";
 import SoulPage from "@/pages/SoulPage";
+import messageCardImage from "@/assets/animus-message-card.png";
 
 const DEMO_PET_NAME = "Luna";
 const DEMO_PHOTO = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&h=600&fit=crop&crop=face";
@@ -28,6 +29,14 @@ const LiveDemoModule = () => {
           Experience the full Soul Page in under 5 seconds — no uploads needed.
           We've prepared a premium sample with {DEMO_PET_NAME}'s recording.
         </p>
+
+        <div className="pt-2">
+          <img
+            src={messageCardImage}
+            alt="ANIMUS Message Card with QR code"
+            className="w-full max-w-[280px] rounded-sm shadow-lg border border-gold/10"
+          />
+        </div>
 
         <button
           onClick={() => setShowDemo(true)}
