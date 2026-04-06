@@ -8,7 +8,8 @@ interface SvgExportOptions {
 }
 
 /**
- * Generate a production-ready SVG (2000×2000) for ShineOn Acrylic Heart (ID 279):
+ * Generate a production-ready SVG for ShineOn Acrylic Heart (ID 279):
+ * Canvas: 1000×1788px (ShineOn spec)
  * - FRONT: Centered waveform (upper) + centered QR code (below)
  * - All pure black (#000000) on transparent background
  * - Waveform = vertical bars, chronological L→R
@@ -16,14 +17,15 @@ interface SvgExportOptions {
  */
 export async function generateProductionSvg(options: SvgExportOptions): Promise<string> {
   const { waveformData, petName, soulPageUrl, includeBackEngraving = false } = options;
-  const size = 2000;
-  const cx = size / 2;
+  const width = 1000;
+  const height = 1788;
+  const cx = width / 2;
 
   // --- Waveform as vertical bars (chronological L→R) ---
-  const waveY = 750;
-  const waveWidth = 1400;
-  const maxBarHeight = 400;
-  const startX = (size - waveWidth) / 2;
+  const waveY = 550;
+  const waveWidth = 800;
+  const maxBarHeight = 300;
+  const startX = (width - waveWidth) / 2;
   const samples = waveformData.length || 1;
   const barWidth = Math.max(2, waveWidth / samples - 1);
   const gap = (waveWidth - barWidth * samples) / (samples - 1 || 1);
@@ -41,9 +43,10 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   const qrSegments = await QRCode.create(soulPageUrl, { errorCorrectionLevel: "M" });
   const qrModules = qrSegments.modules;
   const qrSize = qrModules.size;
-  const qrBlockSize = 360 / qrSize;
-  const qrOffsetX = cx - 180;
-  const qrOffsetY = 1100;
+  const qrPixelSize = 300;
+  const qrBlockSize = qrPixelSize / qrSize;
+  const qrOffsetX = cx - qrPixelSize / 2;
+  const qrOffsetY = 800;
 
   let qrRects = "";
   for (let row = 0; row < qrSize; row++) {
@@ -58,8 +61,8 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
 
   // --- Build Front SVG ---
   const frontSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-  <!-- FRONT SIDE: Waveform + QR for ShineOn Acrylic Heart ID 279 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  <!-- FRONT SIDE: Waveform + QR for ShineOn Acrylic Heart ID 279 (1000x1788) -->
 
   <!-- Waveform (vertical bars, chronological L→R) -->
   <g id="waveform">
@@ -72,29 +75,30 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   </g>
 
   <!-- Scan label -->
-  <text x="${cx}" y="1540" text-anchor="middle" font-family="'Inter', sans-serif" font-size="32" fill="#000000" letter-spacing="6">SCAN TO HEAR</text>
+  <text x="${cx}" y="1160" text-anchor="middle" font-family="'Inter', sans-serif" font-size="20" fill="#000000" letter-spacing="4">SCAN TO HEAR</text>
 </svg>`;
 
   if (!includeBackEngraving || !petName.trim()) {
     return frontSvg;
   }
 
-  // Return front SVG — back engraving is a separate file
   return frontSvg;
 }
 
 /**
  * Generate back-engraving SVG with pet name centered in luxury serif
+ * Also 1000x1788 to match front dimensions
  */
 export function generateBackEngravingSvg(petName: string): string {
-  const size = 2000;
-  const cx = size / 2;
-  const cy = size / 2;
+  const width = 1000;
+  const height = 1788;
+  const cx = width / 2;
+  const cy = height / 2;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
   <!-- BACK SIDE: Pet Name Engraving for ShineOn Acrylic Heart ID 279 -->
-  <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', Georgia, serif" font-size="140" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
+  <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', Georgia, serif" font-size="80" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
 </svg>`;
 }
 
