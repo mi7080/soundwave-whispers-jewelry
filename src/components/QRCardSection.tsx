@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import qrCardImage from "@/assets/qr-card.png";
+import messageCardImage from "@/assets/animus-message-card.png";
 
 const QRCardSection = () => {
   return (
