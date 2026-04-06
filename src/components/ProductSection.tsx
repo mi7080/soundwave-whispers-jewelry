@@ -149,36 +149,35 @@ const ProductSection = () => {
 
     setCartLoading(true);
     try {
-      let variantId = selectedVariant.id;
-      if (!variantId.startsWith('gid://')) variantId = `gid://shopify/ProductVariant/${variantId}`;
-
+      // Extract numeric variant ID
+      const numericVariantId = selectedVariant.id.replace(/\D/g, '');
       const soulPageUrl = generateSoulPageUrl();
-      const customAttributes = [
-        { key: "_Audio_Link", value: audioUrl },
-        { key: "_Media_Photo", value: photoUrl },
-        { key: "_Soul_Page_URL", value: soulPageUrl },
-      ];
+
+      // Build line item properties
+      const properties: Record<string, string> = {
+        _Audio_Link: audioUrl,
+        _Media_Photo: photoUrl,
+        _Soul_Page_URL: soulPageUrl,
+      };
       if (addTextToBack && backText.trim()) {
-        customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
+        properties._Custom_Text_Back = backText.trim();
       }
 
-      const createData = await storefrontApiRequest(CART_CREATE_MUTATION, { input: {} });
-      const cart = createData?.data?.cartCreate?.cart;
-      if (!cart?.id || !cart?.checkoutUrl) {
-        toast.error("Failed to create cart.");
-        return;
-      }
-
-      const addData = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
-        cartId: cart.id,
-        lines: [{ quantity: 1, merchandiseId: variantId, attributes: customAttributes }],
+      // Use Shopify Ajax Cart API on the custom domain
+      const response = await fetch("https://animusjewlery.com/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{
+            id: parseInt(numericVariantId),
+            quantity: 1,
+            properties,
+          }],
+        }),
       });
 
-      const addErrors = addData?.data?.cartLinesAdd?.userErrors || [];
-      if (addErrors.length > 0) {
-        console.error("[ANIMUS] Add line errors:", addErrors);
-        toast.error("Failed to add item to cart.");
-        return;
+      if (!response.ok) {
+        throw new Error(`Cart add failed: ${response.status}`);
       }
 
       // Save order to database
@@ -204,9 +203,8 @@ const ProductSection = () => {
       }
 
       setOrderComplete(true);
-      const checkoutUrl = new URL(cart.checkoutUrl);
-      checkoutUrl.searchParams.set('channel', 'online_store');
-      window.open(checkoutUrl.toString(), '_blank');
+      // Redirect to Shopify checkout
+      window.open("https://animusjewlery.com/checkout", "_blank");
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       toast.error("Checkout failed. Please try again.");
