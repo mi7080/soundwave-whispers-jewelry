@@ -165,8 +165,6 @@ const ProductSection = () => {
             </div>
           )}
 
-          {/* Live Demo */}
-          <LiveDemoModule />
 
           {/* Step 1: Audio */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
