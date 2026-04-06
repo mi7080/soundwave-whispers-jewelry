@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="space-y-4">
             <img src={logo} alt="ANIMUS" className="h-10" />
             <p className="text-muted-foreground text-sm font-light leading-relaxed">
-              Transforming the sounds you love into timeless engraved dog tags. Every piece tells a story.
+              Transforming meaningful sounds into timeless engraved dog tags — for pets and loved ones.
             </p>
             <p className="text-muted-foreground/50 text-[10px] font-light leading-relaxed mt-2">
               Custom items are non-refundable. Replacements provided for defects or unscannable QR codes.

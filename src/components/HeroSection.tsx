@@ -7,22 +7,22 @@ const HeroSection = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="space-y-8 animate-fade-up">
             <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-              Soundwave Dog Tag Collection
+              Soundwave Memorial Collection
             </p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif leading-tight text-foreground">
               Their Voice, Close to Your Heart{" "}
               <span className="italic gold-shimmer">Forever.</span>
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg font-sans font-light">
-              Transform your pet's unique bark, howl, or sound into a luxury
-              engraved dog tag with a scannable QR code.
+              Transform any meaningful sound — a pet's bark, a loved one's voice, a child's laughter —
+              into a luxury engraved dog tag with a scannable QR code.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <a
                 href="#customize"
                 className="inline-flex items-center justify-center bg-gold text-background px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-colors"
               >
-                Design Your Dog Tag
+                Design Your Memorial
               </a>
               <a
                 href="#experience"
