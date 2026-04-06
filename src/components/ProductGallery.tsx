@@ -1,23 +1,9 @@
 import { useState } from "react";
 
-import silverWorn from "@/assets/product-silver-worn.jpg";
-import silverBox from "@/assets/product-silver-box.jpg";
-import goldBox from "@/assets/product-gold-box.jpg";
-import silverCard from "@/assets/product-silver-card.jpg";
-import goldCard from "@/assets/product-gold-card.jpg";
-import silverMahogany from "@/assets/product-silver-mahogany.jpg";
-import goldMahogany from "@/assets/product-gold-mahogany.jpg";
-import heroNecklace from "@/assets/hero-necklace.jpg";
-
 const images = [
-  { src: heroNecklace, alt: "ANIMUS 14K Gold bar necklace worn" },
-  { src: silverWorn, alt: "ANIMUS Surgical Steel bar necklace worn" },
-  { src: goldBox, alt: "14K Gold pendant on luxury box" },
-  { src: silverBox, alt: "Surgical Steel pendant on luxury box" },
-  { src: goldCard, alt: "Gold pendant with ANIMUS message card" },
-  { src: silverCard, alt: "Silver pendant with ANIMUS message card" },
-  { src: goldMahogany, alt: "Gold pendant in mahogany gift box" },
-  { src: silverMahogany, alt: "Silver pendant in mahogany gift box" },
+  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_5495.png?v=1775474999", alt: "ANIMUS Engraved Dog Tag – Polished Stainless Steel" },
+  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_15471.png?v=1775475000", alt: "ANIMUS Engraved Dog Tag – 18K Yellow Gold Finish" },
+  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_753_transformation_15472.png?v=1775475002", alt: "ANIMUS Engraved Dog Tag – Detail View" },
 ];
 
 const ProductGallery = () => {
@@ -42,7 +28,7 @@ const ProductGallery = () => {
               className="w-full max-h-[600px] object-contain rounded-sm"
             />
           </div>
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
             {images.map((img, i) => (
               <button
                 key={i}
