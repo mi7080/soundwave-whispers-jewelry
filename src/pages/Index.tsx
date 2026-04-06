@@ -23,6 +23,7 @@ const Index = () => {
       <CraftsmanshipSection />
       <FourSideGuide />
       <ProductGallery />
+      <ProductSpecs />
       <ComparisonSection />
       <TestimonialsSection />
       <ProductSection />
