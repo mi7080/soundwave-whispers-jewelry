@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
-const PRODUCT_HANDLE = "animus-signature-soundwave-dog-tag";
+const PRODUCT_HANDLE = "engraved-soundwave-qr-soul-page-necklace-shop-232097-6972";
 
 const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
