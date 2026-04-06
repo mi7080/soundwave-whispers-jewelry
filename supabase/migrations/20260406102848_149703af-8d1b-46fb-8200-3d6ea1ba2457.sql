@@ -1,0 +1,1 @@
+ALTER TABLE public.animus_orders ADD COLUMN add_name_to_back BOOLEAN NOT NULL DEFAULT false;

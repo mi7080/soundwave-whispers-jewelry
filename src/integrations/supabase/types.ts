@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       animus_orders: {
         Row: {
+          add_name_to_back: boolean
           audio_url: string
           created_at: string
           id: string
@@ -30,6 +31,7 @@ export type Database = {
           waveform_data: Json | null
         }
         Insert: {
+          add_name_to_back?: boolean
           audio_url: string
           created_at?: string
           id?: string
@@ -44,6 +46,7 @@ export type Database = {
           waveform_data?: Json | null
         }
         Update: {
+          add_name_to_back?: boolean
           audio_url?: string
           created_at?: string
           id?: string
