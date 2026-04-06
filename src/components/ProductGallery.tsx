@@ -27,7 +27,7 @@ const ProductGallery = () => {
               className="w-full max-h-[600px] object-contain rounded-sm"
             />
           </div>
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             {images.map((img, i) => (
               <button
                 key={i}
