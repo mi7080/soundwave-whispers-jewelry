@@ -11,13 +11,13 @@ const steps = [
     icon: AudioWaveform,
     step: "02",
     title: "Create",
-    description: "We transform the audio frequency into a unique visual art piece.",
+    description: "We transform the audio into a unique soundwave engraved on acrylic.",
   },
   {
     icon: Heart,
     step: "03",
     title: "Cherish",
-    description: "Receive a hand-finished engraved pendant, ready to wear.",
+    description: "Receive a premium acrylic heart keepsake, ready to display or gift.",
   },
 ];
 
@@ -33,7 +33,7 @@ const ExperienceSection = () => {
             Three Simple Steps
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            From a precious sound to a wearable work of art.
+            From a precious sound to a timeless keepsake.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-16 max-w-4xl mx-auto">

@@ -1,29 +1,17 @@
-import { AudioWaveform, QrCode, Type, Gem } from "lucide-react";
+import { AudioWaveform, QrCode, Type } from "lucide-react";
 
 const sides = [
   {
     icon: AudioWaveform,
     side: "Front",
-    title: "Your Unique Waveform",
-    description: "Laser-engraved soundwave pattern from your recording",
+    title: "Soundwave + QR Code",
+    description: "Laser-engraved waveform with scannable QR code below",
   },
   {
-    icon: QrCode,
+    icon: Type,
     side: "Back",
-    title: "Scannable QR Code",
-    description: "Scan to open the Soul Page — plays their sound instantly",
-  },
-  {
-    icon: Type,
-    side: "Left",
-    title: "Pet's Name / Custom Text",
-    description: "Personalized engraving of your pet's name",
-  },
-  {
-    icon: Type,
-    side: "Right",
-    title: "Date / Custom Engraving",
-    description: "Add a meaningful date or personal message",
+    title: "Pet's Name (Optional)",
+    description: "Elegant serif engraving of your pet's name",
   },
 ];
 
@@ -36,9 +24,9 @@ const FourSideGuide = ({ inline }: FourSideGuideProps) => {
     return (
       <div className="border border-border/30 rounded-sm p-5 bg-background/30 space-y-4">
         <p className="text-[10px] tracking-[0.3em] uppercase text-gold/70 font-sans text-center">
-          4 Sides of Your Pendant
+          Your Acrylic Heart Layout
         </p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {sides.map((item) => (
             <div key={item.side} className="text-center space-y-2">
               <div className="mx-auto w-10 h-10 flex items-center justify-center border border-border/40 rounded-full">
@@ -65,13 +53,13 @@ const FourSideGuide = ({ inline }: FourSideGuideProps) => {
             Every Detail Matters
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Four Sides of <span className="italic text-gold">Meaning</span>
+            Your Heart, <span className="italic text-gold">Two Sides</span>
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            Each face of the ANIMUS pendant is crafted with intention.
+            Each face of the ANIMUS acrylic heart is crafted with intention.
           </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 gap-6 md:gap-10 max-w-2xl mx-auto">
           {sides.map((item) => (
             <div
               key={item.side}

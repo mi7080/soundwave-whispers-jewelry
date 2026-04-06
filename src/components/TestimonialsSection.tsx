@@ -3,17 +3,17 @@ import { Star } from "lucide-react";
 const testimonials = [
   {
     name: "Sarah M.",
-    text: "I lost my golden retriever last year. Wearing his bark close to my heart every day has brought me so much comfort. This is the most meaningful piece of jewelry I own.",
+    text: "I lost my golden retriever last year. Having his bark preserved in this beautiful acrylic heart brings me so much comfort. The QR code plays his sound instantly — it's magical.",
     rating: 5,
   },
   {
     name: "James & Emily K.",
-    text: "We got matching necklaces with our cat's purr. The QR card was the perfect extra touch — our kids love scanning it!",
+    text: "We got matching keepsakes with our cat's purr. The message card was the perfect extra touch — our kids love scanning the QR code!",
     rating: 5,
   },
   {
     name: "Dr. Priya R.",
-    text: "The quality is outstanding. The 14K gold finish is beautiful, and the soundwave engraving is incredibly detailed. Truly luxury.",
+    text: "The quality is outstanding. The acrylic is crystal clear and the soundwave engraving is incredibly detailed. Truly a luxury keepsake.",
     rating: 5,
   },
   {
