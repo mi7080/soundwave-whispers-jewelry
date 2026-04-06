@@ -6,7 +6,7 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct } from "@/lib/shopify";
+import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, createShopifyCart } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -149,35 +149,33 @@ const ProductSection = () => {
 
     setCartLoading(true);
     try {
-      // Extract numeric variant ID
-      const numericVariantId = selectedVariant.id.replace(/\D/g, '');
       const soulPageUrl = generateSoulPageUrl();
 
-      // Build line item properties
-      const properties: Record<string, string> = {
-        _Audio_Link: audioUrl,
-        _Media_Photo: photoUrl,
-        _Soul_Page_URL: soulPageUrl,
-      };
+      // Build custom attributes for the cart line
+      const customAttributes: Array<{ key: string; value: string }> = [
+        { key: "_Audio_Link", value: audioUrl },
+        { key: "_Media_Photo", value: photoUrl },
+        { key: "_Soul_Page_URL", value: soulPageUrl },
+      ];
       if (addTextToBack && backText.trim()) {
-        properties._Custom_Text_Back = backText.trim();
+        customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
       }
 
-      // Use Shopify Ajax Cart API on the custom domain
-      const response = await fetch("https://animusjewlery.com/cart/add.js", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: [{
-            id: parseInt(numericVariantId),
-            quantity: 1,
-            properties,
-          }],
-        }),
-      });
+      // Create Shopify cart via Storefront API
+      const cartItem = {
+        lineId: null,
+        product: { node: product } as ShopifyProduct,
+        variantId: selectedVariant.id,
+        variantTitle: selectedVariant.title,
+        price: selectedVariant.price,
+        quantity: 1,
+        selectedOptions: selectedVariant.selectedOptions,
+        customAttributes,
+      };
 
-      if (!response.ok) {
-        throw new Error(`Cart add failed: ${response.status}`);
+      const result = await createShopifyCart(cartItem);
+      if (!result) {
+        throw new Error("Failed to create Shopify cart");
       }
 
       // Save order to database
@@ -203,8 +201,8 @@ const ProductSection = () => {
       }
 
       setOrderComplete(true);
-      // Redirect to Shopify checkout
-      window.open("https://animusjewlery.com/checkout", "_blank");
+      // Redirect to Shopify checkout via Storefront API checkout URL
+      window.open(result.checkoutUrl, "_blank");
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       toast.error("Checkout failed. Please try again.");
