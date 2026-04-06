@@ -103,7 +103,11 @@ const ProductSection = () => {
       audioUrl: audioUrl || "",
     };
     const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-    return `${window.location.origin}/soul/${encoded}`;
+    // Always use the production domain for QR codes, never a preview URL
+    const origin = window.location.hostname.includes("preview") || window.location.hostname.includes("localhost")
+      ? "https://animuswave.com"
+      : window.location.origin;
+    return `${origin}/soul/${encoded}`;
   }, [dedicatedText, photoUrl, audioUrl]);
 
   useEffect(() => {
