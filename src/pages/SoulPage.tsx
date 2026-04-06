@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Play, Pause, X } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const DEMO_DATA = {
   petName: "Max",
