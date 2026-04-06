@@ -16,7 +16,6 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-8 text-sm tracking-widest uppercase text-muted-foreground">
           <a href="/#experience" className="hover:text-gold transition-colors">How It Works</a>
           <a href="/#craftsmanship" className="hover:text-gold transition-colors">Craftsmanship</a>
-          <a href="/#reviews" className="hover:text-gold transition-colors">Reviews</a>
           <a href="/faq" className="hover:text-gold transition-colors">FAQ</a>
         </div>
 
@@ -26,7 +25,7 @@ const Navbar = () => {
             href="/#customize"
             className="hidden md:inline-block bg-gold text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold-light transition-colors"
           >
-            Design Yours
+            Design Your Tag
           </a>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -42,14 +41,13 @@ const Navbar = () => {
         <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-md px-6 py-6 space-y-4">
           <a href="/#experience" onClick={() => setMenuOpen(false)} className="block text-sm tracking-widest uppercase text-muted-foreground hover:text-gold transition-colors">How It Works</a>
           <a href="/#craftsmanship" onClick={() => setMenuOpen(false)} className="block text-sm tracking-widest uppercase text-muted-foreground hover:text-gold transition-colors">Craftsmanship</a>
-          <a href="/#reviews" onClick={() => setMenuOpen(false)} className="block text-sm tracking-widest uppercase text-muted-foreground hover:text-gold transition-colors">Reviews</a>
           <a href="/faq" onClick={() => setMenuOpen(false)} className="block text-sm tracking-widest uppercase text-muted-foreground hover:text-gold transition-colors">FAQ</a>
           <a
             href="/#customize"
             onClick={() => setMenuOpen(false)}
             className="block bg-gold text-background px-6 py-3 text-xs tracking-widest uppercase text-center hover:bg-gold-light transition-colors mt-2"
           >
-            Design Your Memorial
+            Design Your Tag
           </a>
         </div>
       )}
