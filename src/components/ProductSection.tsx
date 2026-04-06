@@ -2,7 +2,7 @@ import { Truck, Shield, Lock, Loader2, Eye, Download } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
 import FourSideGuide from "@/components/FourSideGuide";
-import DogTagPreview from "@/components/DogTagPreview";
+import DogTagPreview from "@/components/DogTagPreview"; // dog-tag-v2
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
