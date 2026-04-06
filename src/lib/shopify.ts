@@ -206,11 +206,8 @@ export interface CartItem {
 }
 
 export async function createShopifyCart(item: CartItem): Promise<{ cartId: string; checkoutUrl: string; lineId: string } | null> {
-  const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
-  if (item.customAttributes?.length) lineInput.attributes = item.customAttributes;
-  console.log("[ANIMUS] createShopifyCart — line input:", JSON.stringify(lineInput, null, 2));
   const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
-    input: { lines: [lineInput] },
+    input: {},
   });
 
   if (data?.data?.cartCreate?.userErrors?.length > 0) {
@@ -221,15 +218,17 @@ export async function createShopifyCart(item: CartItem): Promise<{ cartId: strin
   const cart = data?.data?.cartCreate?.cart;
   if (!cart?.checkoutUrl) return null;
 
-  const lineId = cart.lines.edges[0]?.node?.id;
-  if (!lineId) return null;
+  const addResult = await addLineToShopifyCart(cart.id, item);
+  if (!addResult.success || !addResult.lineId) return null;
 
-  return { cartId: cart.id, checkoutUrl: formatCheckoutUrl(cart.checkoutUrl), lineId };
+  return { cartId: cart.id, checkoutUrl: formatCheckoutUrl(cart.checkoutUrl), lineId: addResult.lineId };
 }
 
 export async function addLineToShopifyCart(cartId: string, item: CartItem): Promise<{ success: boolean; lineId?: string; cartNotFound?: boolean }> {
+  const attributes = item.customAttributes ?? [];
+  window.alert('ANIMUS DATA: ' + JSON.stringify(attributes));
   const lineInput: Record<string, unknown> = { quantity: item.quantity, merchandiseId: item.variantId };
-  if (item.customAttributes?.length) lineInput.attributes = item.customAttributes;
+  if (attributes.length) lineInput.attributes = attributes;
   console.log("[ANIMUS] addLineToShopifyCart — line input:", JSON.stringify(lineInput, null, 2));
   const data = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
     cartId,
