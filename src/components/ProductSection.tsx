@@ -67,6 +67,7 @@ const ProductSection = () => {
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
   const [showBackPreview, setShowBackPreview] = useState(false);
+  const [preOrderId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     async function fetchProduct() {
@@ -97,18 +98,10 @@ const ProductSection = () => {
   }, []);
 
   const generateSoulPageUrl = useCallback(() => {
-    const payload = {
-      petName: dedicatedText.trim() || "Memorial",
-      photoUrl: photoUrl || "",
-      audioUrl: audioUrl || "",
-    };
-    const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-    // Always use the production domain for QR codes, never a preview URL
-    const origin = window.location.hostname.includes("preview") || window.location.hostname.includes("localhost")
-      ? "https://animuswave.com"
-      : window.location.origin;
-    return `${origin}/soul/${encoded}`;
-  }, [dedicatedText, photoUrl, audioUrl]);
+    // Use production domain + short order ID for clean, scannable QR codes
+    const PRODUCTION_DOMAIN = "https://animuswave.com";
+    return `${PRODUCTION_DOMAIN}/soul/${preOrderId}`;
+  }, [preOrderId]);
 
   useEffect(() => {
     if (!audioUrl) { setQrDataUrl(null); return; }
@@ -165,6 +158,7 @@ const ProductSection = () => {
 
       // 2. Save order to DB first
       const { data: orderData, error: dbError } = await supabase.from("animus_orders").insert({
+        id: preOrderId,
         pet_name: petNameVal,
         audio_url: audioUrl,
         pet_photo_url: photoUrl,
