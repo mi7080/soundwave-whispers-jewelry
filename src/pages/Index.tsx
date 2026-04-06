@@ -22,10 +22,10 @@ const Index = () => {
       <QRCardSection />
       <CraftsmanshipSection />
       <FourSideGuide />
-      <ProductGallery />
-      <ProductSpecs />
       <ComparisonSection />
       <TestimonialsSection />
+      <ProductGallery />
+      <ProductSpecs />
       <ProductSection />
       <FAQSection />
       <Footer />
