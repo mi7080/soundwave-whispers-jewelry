@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      animus_orders: {
+        Row: {
+          audio_url: string
+          created_at: string
+          id: string
+          pet_name: string
+          pet_photo_url: string | null
+          right_side_engraving: string | null
+          shopify_order_id: string | null
+          soul_page_url: string
+          status: string
+          svg_content: string
+          updated_at: string
+          waveform_data: Json | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          id?: string
+          pet_name: string
+          pet_photo_url?: string | null
+          right_side_engraving?: string | null
+          shopify_order_id?: string | null
+          soul_page_url: string
+          status?: string
+          svg_content: string
+          updated_at?: string
+          waveform_data?: Json | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          id?: string
+          pet_name?: string
+          pet_photo_url?: string | null
+          right_side_engraving?: string | null
+          shopify_order_id?: string | null
+          soul_page_url?: string
+          status?: string
+          svg_content?: string
+          updated_at?: string
+          waveform_data?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
