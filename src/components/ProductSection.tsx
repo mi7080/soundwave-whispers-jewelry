@@ -239,7 +239,7 @@ const ProductSection = () => {
             Design Yours
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            ShineOn Acrylic Heart Keepsake
+            Design Your ANIMUS Keepsake
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
             Your pet's voice, forever preserved in a premium acrylic heart with scannable QR code.
