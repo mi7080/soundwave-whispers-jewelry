@@ -1,7 +1,8 @@
-import { Truck, Shield, Lock, Loader2 } from "lucide-react";
+import { Truck, Shield, Lock, Loader2, Eye } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
 import FourSideGuide from "@/components/FourSideGuide";
+import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
@@ -17,6 +18,7 @@ const ProductSection = () => {
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const { addItem, isLoading: cartLoading } = useCartStore();
 
   useEffect(() => {
@@ -258,6 +260,21 @@ const ProductSection = () => {
             )}
           </button>
 
+          {/* Preview Soul Page Button */}
+          <button
+            onClick={() => {
+              if (!audioUrl) {
+                toast.info("Record or upload a sound first to preview your Soul Page.");
+                return;
+              }
+              setShowPreview(true);
+            }}
+            className="w-full border border-gold/30 text-gold px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold/5 hover:border-gold/50 transition-all flex items-center justify-center gap-3"
+          >
+            <Eye className="w-4 h-4" />
+            Preview Your Digital Soul Page
+          </button>
+
           {!allStepsComplete && (
             <p className="text-[10px] text-muted-foreground/50 text-center">
               {!audioUrl && "① Upload sound · "}
@@ -268,6 +285,21 @@ const ProductSection = () => {
 
           {/* 4-Side Engraving Guide */}
           <FourSideGuide inline />
+
+          {/* Soul Page Preview Modal */}
+          {showPreview && (
+            <div className="fixed inset-0 z-[100] bg-background animate-fade-in">
+              <SoulPage
+                previewMode
+                previewData={{
+                  petName: petName.trim() || "Your Pet",
+                  photoUrl: petPhotoUrl || "",
+                  audioUrl: audioUrl || "",
+                }}
+                onClose={() => setShowPreview(false)}
+              />
+            </div>
+          )}
 
           {/* Trust Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-t border-border/30">
