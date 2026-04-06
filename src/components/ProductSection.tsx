@@ -1,5 +1,6 @@
 import { Truck, Shield, Lock, Loader2 } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
+import PetPhotoUpload from "@/components/PetPhotoUpload";
 import { useState, useEffect } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
@@ -11,6 +12,7 @@ const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [petName, setPetName] = useState("");
   const [rightSideText, setRightSideText] = useState("");
+  const [petPhotoUrl, setPetPhotoUrl] = useState<string | null>(null);
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -36,13 +38,31 @@ const ProductSection = () => {
   const selectedVariant = variants[selectedVariantIdx]?.node;
   const variantImage = selectedVariant?.image?.url || product?.images?.edges?.[0]?.node?.url;
 
+  const allStepsComplete = !!audioUrl && !!petName.trim() && !!petPhotoUrl;
+
+  const generateSoulPageUrl = () => {
+    const payload = {
+      petName: petName.trim(),
+      photoUrl: petPhotoUrl || "",
+      audioUrl: audioUrl || "",
+    };
+    const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
+    return `${window.location.origin}/soul/${encoded}`;
+  };
+
   const handleAddToCart = async () => {
-    if (!product || !selectedVariant) return;
+    if (!product || !selectedVariant || !allStepsComplete) return;
     const shopifyProduct: ShopifyProduct = { node: product };
-    const customAttributes: Array<{ key: string; value: string }> = [];
-    if (petName.trim()) customAttributes.push({ key: "Pet Name", value: petName.trim() });
-    if (rightSideText.trim()) customAttributes.push({ key: "Right Side Engraving", value: rightSideText.trim() });
-    if (audioUrl) customAttributes.push({ key: "Audio URL", value: audioUrl });
+    const soulPageUrl = generateSoulPageUrl();
+    const customAttributes: Array<{ key: string; value: string }> = [
+      { key: "Audio_Link", value: audioUrl! },
+      { key: "Pet_Name", value: petName.trim() },
+      { key: "Pet_Photo", value: petPhotoUrl! },
+      { key: "QR_Target_URL", value: soulPageUrl },
+    ];
+    if (rightSideText.trim()) {
+      customAttributes.push({ key: "Right_Side_Engraving", value: rightSideText.trim() });
+    }
     await addItem({
       product: shopifyProduct,
       variantId: selectedVariant.id,
@@ -50,7 +70,7 @@ const ProductSection = () => {
       price: selectedVariant.price,
       quantity: 1,
       selectedOptions: selectedVariant.selectedOptions || [],
-      ...(customAttributes.length > 0 && { customAttributes }),
+      customAttributes,
     });
     toast.success("Added to cart", {
       description: `${product.title} — ${selectedVariant.title}`,
@@ -141,17 +161,33 @@ const ProductSection = () => {
             </div>
           )}
 
-          {/* Audio Recorder & Waveform */}
-          <AudioRecorder onAudioUrl={(url) => setAudioUrl(url)} />
+          {/* Step 1: Audio */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${audioUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+                {audioUrl ? "✓" : "1"}
+              </span>
+              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                Record or Upload Sound
+              </label>
+              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
+                Required
+              </span>
+            </div>
+            <AudioRecorder onAudioUrl={(url) => setAudioUrl(url)} />
+          </div>
 
-          {/* Pet Name Input */}
+          {/* Step 2: Pet Name */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${petName.trim() ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+                {petName.trim() ? "✓" : "2"}
+              </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
                 Pet's Name
               </label>
-              <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
-                Optional
+              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
+                Required
               </span>
             </div>
             <input
@@ -161,6 +197,22 @@ const ProductSection = () => {
               onChange={(e) => setPetName(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
             />
+          </div>
+
+          {/* Step 3: Pet Photo */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+            <div className="flex items-center gap-3">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${petPhotoUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+                {petPhotoUrl ? "✓" : "3"}
+              </span>
+              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                Upload Pet's Photo for Message Card
+              </label>
+              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
+                Required
+              </span>
+            </div>
+            <PetPhotoUpload onPhotoUrl={(url) => setPetPhotoUrl(url || null)} />
           </div>
 
           {/* Right Side Engraving (Optional) */}
@@ -184,19 +236,31 @@ const ProductSection = () => {
               Add a special date, initials, or short message to the right side of your pendant.
             </p>
           </div>
+
+          {/* Add to Cart */}
           <button
             onClick={handleAddToCart}
-            disabled={cartLoading || !selectedVariant?.availableForSale}
+            disabled={cartLoading || !selectedVariant?.availableForSale || !allStepsComplete}
             className="w-full border border-foreground/30 text-foreground px-10 py-5 text-xs tracking-[0.3em] uppercase hover:border-gold hover:text-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {cartLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : !selectedVariant?.availableForSale ? (
               "Sold Out"
+            ) : !allStepsComplete ? (
+              "Complete All Steps to Continue"
             ) : (
               `Add to Cart — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
             )}
           </button>
+
+          {!allStepsComplete && (
+            <p className="text-[10px] text-muted-foreground/50 text-center">
+              {!audioUrl && "① Upload sound · "}
+              {!petName.trim() && "② Enter pet name · "}
+              {!petPhotoUrl && "③ Upload photo"}
+            </p>
+          )}
 
           {/* Trust Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-t border-border/30">
