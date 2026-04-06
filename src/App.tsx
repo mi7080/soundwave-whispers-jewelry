@@ -20,6 +20,7 @@ function AppContent() {
         <Route path="/" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/soul/:id" element={<SoulPage />} />
+        <Route path="/soul-page/:id" element={<SoulPage />} />
         <Route path="/:slug" element={<PolicyPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
