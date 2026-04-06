@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCartSync } from "@/hooks/useCartSync";
 import Index from "./pages/Index.tsx";
 import FAQ from "./pages/FAQ.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -19,6 +20,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/soul/:id" element={<SoulPage />} />
         <Route path="/soul-page/:id" element={<SoulPage />} />
         <Route path="/:slug" element={<PolicyPage />} />

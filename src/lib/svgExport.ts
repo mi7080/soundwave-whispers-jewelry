@@ -7,10 +7,10 @@ interface SvgExportOptions {
 }
 
 /**
- * Generate a production-ready SVG (2000×2000) with:
- * - Vector waveform as <polyline>
- * - Vector QR code as <rect> elements
- * - Pet name as centered serif text
+ * Generate a production-ready SVG (2000×2000) for ShineOn Acrylic Heart:
+ * - Centered vector waveform as <polyline> (chronological left-to-right)
+ * - Centered vector QR code as <rect> elements below waveform
+ * - Optional pet name as centered serif text above waveform
  * All pure black (#000000) on transparent background.
  */
 export async function generateProductionSvg(options: SvgExportOptions): Promise<string> {
@@ -18,37 +18,31 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   const size = 2000;
   const cx = size / 2;
 
-  // --- Waveform path ---
-  const waveY = 750;
+  // --- Waveform as vertical bars (chronological L→R, NOT mirrored/reversed) ---
+  const waveY = 850; // center Y of waveform region
   const waveWidth = 1400;
-  const waveHeight = 300;
+  const maxBarHeight = 400;
   const startX = (size - waveWidth) / 2;
   const samples = waveformData.length || 1;
-  const stepX = waveWidth / (samples - 1 || 1);
+  const barWidth = Math.max(2, waveWidth / samples - 1);
+  const gap = (waveWidth - barWidth * samples) / (samples - 1 || 1);
 
-  let wavePoints = "";
+  let waveRects = "";
   for (let i = 0; i < samples; i++) {
-    const x = startX + i * stepX;
-    const amp = (waveformData[i] || 0) * waveHeight;
+    const amp = (waveformData[i] || 0) * maxBarHeight;
+    const x = startX + i * (barWidth + gap);
     const y = waveY - amp / 2;
-    wavePoints += `${x.toFixed(1)},${y.toFixed(1)} `;
-  }
-  // Mirror below center
-  let waveMirrorPoints = "";
-  for (let i = 0; i < samples; i++) {
-    const x = startX + i * stepX;
-    const amp = (waveformData[i] || 0) * waveHeight;
-    const y = waveY + amp / 2;
-    waveMirrorPoints += `${x.toFixed(1)},${y.toFixed(1)} `;
+    const h = Math.max(amp, 2); // minimum 2px bar
+    waveRects += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${h.toFixed(1)}" fill="#000000" rx="1"/>`;
   }
 
   // --- QR Code as vector rects ---
   const qrSegments = await QRCode.create(soulPageUrl, { errorCorrectionLevel: "M" });
   const qrModules = qrSegments.modules;
   const qrSize = qrModules.size;
-  const qrBlockSize = 400 / qrSize; // QR fits in 400×400 area
-  const qrOffsetX = cx - 200;
-  const qrOffsetY = 1050;
+  const qrBlockSize = 360 / qrSize;
+  const qrOffsetX = cx - 180;
+  const qrOffsetY = 1150;
 
   let qrRects = "";
   for (let row = 0; row < qrSize; row++) {
@@ -64,13 +58,13 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   // --- Build SVG ---
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-  <!-- Pet Name -->
-  <text x="${cx}" y="400" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-size="120" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
+  <!-- Pet Name (back engraving reference) -->
+  ${petName.trim() ? `<text x="${cx}" y="500" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-size="100" fill="#000000" font-weight="600">${escapeXml(petName)}</text>` : ""}
 
-  <!-- Waveform (top half) -->
-  <polyline points="${wavePoints.trim()}" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Waveform (bottom half / mirror) -->
-  <polyline points="${waveMirrorPoints.trim()}" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Waveform (vertical bars, chronological L→R) -->
+  <g id="waveform">
+    ${waveRects}
+  </g>
 
   <!-- QR Code -->
   <g id="qr-code">
@@ -78,7 +72,7 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   </g>
 
   <!-- Scan label -->
-  <text x="${cx}" y="1520" text-anchor="middle" font-family="'Inter', sans-serif" font-size="36" fill="#000000" letter-spacing="8">SCAN TO HEAR</text>
+  <text x="${cx}" y="1580" text-anchor="middle" font-family="'Inter', sans-serif" font-size="32" fill="#000000" letter-spacing="6">SCAN TO HEAR</text>
 </svg>`;
 
   return svg;

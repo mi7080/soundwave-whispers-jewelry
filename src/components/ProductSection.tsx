@@ -7,6 +7,7 @@ import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
 import { generateProductionSvg, downloadSvg } from "@/lib/svgExport";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 
@@ -142,7 +143,32 @@ const ProductSection = () => {
         return;
       }
 
-      console.log("[ANIMUS] Line added successfully. Redirecting to checkout...");
+      console.log("[ANIMUS] Line added successfully. Saving order & redirecting...");
+
+      // Generate production SVG and save order to database
+      const soulPageUrlForSvg = soulPageUrl;
+      try {
+        const svgContent = await generateProductionSvg({
+          waveformData,
+          petName: petName.trim(),
+          soulPageUrl: soulPageUrlForSvg,
+        });
+
+        await supabase.from("animus_orders").insert({
+          pet_name: petName.trim(),
+          audio_url: audioUrl,
+          pet_photo_url: petPhotoUrl,
+          soul_page_url: soulPageUrlForSvg,
+          right_side_engraving: rightSideText.trim() || null,
+          svg_content: svgContent,
+          waveform_data: waveformData,
+          status: "pending",
+        });
+        console.log("[ANIMUS] Order saved to database.");
+      } catch (saveErr) {
+        console.error("[ANIMUS] Order save failed (checkout still proceeding):", saveErr);
+      }
+
       setOrderComplete(true);
 
       const checkoutUrl = new URL(cart.checkoutUrl);
