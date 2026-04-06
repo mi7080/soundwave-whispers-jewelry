@@ -27,6 +27,7 @@ const ProductSection = () => {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
   const [svgGenerating, setSvgGenerating] = useState(false);
+  const [addNameToBack, setAddNameToBack] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -116,6 +117,9 @@ const ProductSection = () => {
       if (rightSideText.trim()) {
         customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
       }
+      if (addNameToBack) {
+        customAttributes.push({ key: "_Name_On_Back", value: petName.trim() });
+      }
 
       console.log("[ANIMUS] handleAnimusCheckout — attributes:", JSON.stringify(customAttributes, null, 2));
 
@@ -162,8 +166,9 @@ const ProductSection = () => {
           right_side_engraving: rightSideText.trim() || null,
           svg_content: svgContent,
           waveform_data: waveformData,
+          add_name_to_back: addNameToBack,
           status: "pending",
-        });
+        } as any);
         console.log("[ANIMUS] Order saved to database.");
       } catch (saveErr) {
         console.error("[ANIMUS] Order save failed (checkout still proceeding):", saveErr);
@@ -366,6 +371,37 @@ const ProductSection = () => {
             <p className="text-[10px] text-muted-foreground/50 font-light">
               Add a special date, initials, or short message.
             </p>
+          </div>
+
+          {/* Name on Back Toggle */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                  Add Name to Back
+                </label>
+                <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
+                  Optional
+                </span>
+              </div>
+              <button
+                onClick={() => setAddNameToBack(!addNameToBack)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  addNameToBack ? "bg-gold" : "bg-border/50"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${
+                    addNameToBack ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            {addNameToBack && (
+              <p className="text-[10px] text-gold/70 font-light">
+                "{petName.trim() || "Your Pet's Name"}" will be engraved on the back in elegant serif lettering.
+              </p>
+            )}
           </div>
 
           {/* Buy Now */}
