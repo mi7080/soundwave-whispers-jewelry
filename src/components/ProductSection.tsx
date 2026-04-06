@@ -58,17 +58,17 @@ const ProductSection = () => {
     const shopifyProduct: ShopifyProduct = { node: product };
     const soulPageUrl = generateSoulPageUrl();
     const customAttributes: Array<{ key: string; value: string }> = [
-      { key: "Audio_Link", value: audioUrl! },
-      { key: "Pet_Name", value: petName.trim() },
-      { key: "Pet_Photo", value: petPhotoUrl! },
-      { key: "QR_Target_URL", value: soulPageUrl },
+      { key: "_Audio_Link", value: audioUrl! },
+      { key: "_Pet_Name", value: petName.trim() },
+      { key: "_Pet_Photo", value: petPhotoUrl! },
+      { key: "_QR_Target_URL", value: soulPageUrl },
     ];
     if (rightSideText.trim()) {
-      customAttributes.push({ key: "Right_Side_Engraving", value: rightSideText.trim() });
+      customAttributes.push({ key: "_Right_Side_Engraving", value: rightSideText.trim() });
     }
     console.log("[ANIMUS] Add to Cart — customAttributes:", JSON.stringify(customAttributes, null, 2));
-    console.log("[ANIMUS] Audio_Link:", audioUrl);
-    console.log("[ANIMUS] Pet_Name:", petName.trim());
+    console.log("[ANIMUS] _Audio_Link:", audioUrl);
+    console.log("[ANIMUS] _Pet_Name:", petName.trim());
     console.log("[ANIMUS] Variant ID:", selectedVariant.id);
     await addItem({
       product: shopifyProduct,
