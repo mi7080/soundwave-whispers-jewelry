@@ -1,4 +1,4 @@
-import { Truck, Shield, Lock, Loader2, Eye, Download, Info } from "lucide-react";
+import { Truck, Shield, Lock, Loader2, Eye, Info } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPresets from "@/components/AudioPresets";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
@@ -6,8 +6,8 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, CART_CREATE_MUTATION, CART_LINES_ADD_MUTATION } from "@/lib/shopify";
-import { generateProductionSvg, downloadSvg } from "@/lib/svgExport";
+import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct } from "@/lib/shopify";
+import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
@@ -63,7 +63,7 @@ const ProductSection = () => {
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
-  const [svgGenerating, setSvgGenerating] = useState(false);
+  
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
   const [showBackPreview, setShowBackPreview] = useState(false);
@@ -149,36 +149,35 @@ const ProductSection = () => {
 
     setCartLoading(true);
     try {
-      let variantId = selectedVariant.id;
-      if (!variantId.startsWith('gid://')) variantId = `gid://shopify/ProductVariant/${variantId}`;
-
+      // Extract numeric variant ID
+      const numericVariantId = selectedVariant.id.replace(/\D/g, '');
       const soulPageUrl = generateSoulPageUrl();
-      const customAttributes = [
-        { key: "_Audio_Link", value: audioUrl },
-        { key: "_Media_Photo", value: photoUrl },
-        { key: "_Soul_Page_URL", value: soulPageUrl },
-      ];
+
+      // Build line item properties
+      const properties: Record<string, string> = {
+        _Audio_Link: audioUrl,
+        _Media_Photo: photoUrl,
+        _Soul_Page_URL: soulPageUrl,
+      };
       if (addTextToBack && backText.trim()) {
-        customAttributes.push({ key: "_Custom_Text_Back", value: backText.trim() });
+        properties._Custom_Text_Back = backText.trim();
       }
 
-      const createData = await storefrontApiRequest(CART_CREATE_MUTATION, { input: {} });
-      const cart = createData?.data?.cartCreate?.cart;
-      if (!cart?.id || !cart?.checkoutUrl) {
-        toast.error("Failed to create cart.");
-        return;
-      }
-
-      const addData = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
-        cartId: cart.id,
-        lines: [{ quantity: 1, merchandiseId: variantId, attributes: customAttributes }],
+      // Use Shopify Ajax Cart API on the custom domain
+      const response = await fetch("https://animusjewlery.com/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{
+            id: parseInt(numericVariantId),
+            quantity: 1,
+            properties,
+          }],
+        }),
       });
 
-      const addErrors = addData?.data?.cartLinesAdd?.userErrors || [];
-      if (addErrors.length > 0) {
-        console.error("[ANIMUS] Add line errors:", addErrors);
-        toast.error("Failed to add item to cart.");
-        return;
+      if (!response.ok) {
+        throw new Error(`Cart add failed: ${response.status}`);
       }
 
       // Save order to database
@@ -204,9 +203,8 @@ const ProductSection = () => {
       }
 
       setOrderComplete(true);
-      const checkoutUrl = new URL(cart.checkoutUrl);
-      checkoutUrl.searchParams.set('channel', 'online_store');
-      window.open(checkoutUrl.toString(), '_blank');
+      // Redirect to Shopify checkout
+      window.open("https://animusjewlery.com/checkout", "_blank");
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       toast.error("Checkout failed. Please try again.");
@@ -215,26 +213,6 @@ const ProductSection = () => {
     }
   };
 
-  const handleDownloadSvg = async () => {
-    if (!audioUrl) { toast.error("Need audio to generate SVG."); return; }
-    setSvgGenerating(true);
-    try {
-      const soulPageUrl = generateSoulPageUrl();
-      const svg = await generateProductionSvg({
-        waveformData,
-        petName: backText.trim() || dedicatedText.trim() || "Memorial",
-        soulPageUrl,
-      });
-      const name = (backText.trim() || dedicatedText.trim() || "Memorial").replace(/\s+/g, "_");
-      downloadSvg(svg, `ANIMUS_${name}_production.svg`);
-      toast.success("Production SVG downloaded!");
-    } catch (err) {
-      console.error("SVG generation failed:", err);
-      toast.error("Failed to generate SVG.");
-    } finally {
-      setSvgGenerating(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -431,38 +409,13 @@ const ProductSection = () => {
             )}
           </button>
 
-          {/* Download Production SVG (Admin) */}
-          {allStepsComplete && (
-            <button
-              onClick={handleDownloadSvg}
-              disabled={svgGenerating}
-              className="w-full border border-gold/30 text-gold px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold/5 hover:border-gold/50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-              {svgGenerating ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Generating SVG…</>
-              ) : (
-                <><Download className="w-4 h-4" /> Download Production SVG</>
-              )}
-            </button>
-          )}
 
           {/* Order Confirmation */}
           {orderComplete && (
-            <div className="border border-gold/30 rounded-sm p-6 bg-gold/5 space-y-4">
+            <div className="border border-gold/30 rounded-sm p-6 bg-gold/5">
               <p className="text-sm text-gold font-sans text-center">
                 ✓ Order submitted — checkout opened in new tab
               </p>
-              <button
-                onClick={handleDownloadSvg}
-                disabled={svgGenerating}
-                className="w-full bg-gold text-background px-8 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {svgGenerating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
-                ) : (
-                  <><Download className="w-4 h-4" /> Download Production SVG for ShineOn</>
-                )}
-              </button>
             </div>
           )}
 
