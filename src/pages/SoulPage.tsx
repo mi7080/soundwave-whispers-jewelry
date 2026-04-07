@@ -524,14 +524,14 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
             continue;
           }
 
-          setErrorMsg(order ? "This memory is still syncing. Please retry in a moment." : "This memory page was not found.");
+          setErrorMsg(order ? "This memory is still syncing. Please retry in a moment." : "Searching for your memory. Please give it a moment and try again.");
           setQueryState("not_found");
           setLoading(false);
           setDebugState({
-            status: "Success",
+            status: "Loading",
             uuid: rawId,
             recordStatus: order ? "Found" : "Not Found",
-            errorMessage: order ? "Row found in animus_orders, but pet_photo_url/audio_url were empty." : "",
+            errorMessage: order ? "Row found in animus_orders, but pet_photo_url/audio_url were empty." : "No matching row yet. Searching for your memory.",
           });
           return;
         }
@@ -556,6 +556,8 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
   }, [id, isDemo, previewMode, previewData, reloadKey]);
 
   try {
+    const isSearchingForMemory = queryState === "not_found";
+
     if (loading) {
       return (
         <>
@@ -579,13 +581,23 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
           <div className="min-h-screen bg-background flex items-center justify-center px-6">
             <div className="max-w-md text-center space-y-4">
               <p className="text-[10px] tracking-[0.4em] uppercase text-gold/60 font-sans">Animus</p>
-              <p className="text-muted-foreground font-sans">{errorMsg || "Memory not found."}</p>
+              {isSearchingForMemory ? (
+                <>
+                  <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto" />
+                  <h1 className="text-3xl font-serif text-foreground">Searching for your memory</h1>
+                  <p className="text-muted-foreground font-sans">
+                    {errorMsg || "We haven't found this record yet. If you just completed your design, give it a moment and try again."}
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted-foreground font-sans">{errorMsg || "Memory not found."}</p>
+              )}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <button
                   onClick={() => setReloadKey((current) => current + 1)}
                   className="inline-block border border-border text-foreground px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-muted transition-all duration-300"
                 >
-                  Retry Loading Memory
+                  {isSearchingForMemory ? "Search Again" : "Retry Loading Memory"}
                 </button>
                 <Link
                   to="/"
