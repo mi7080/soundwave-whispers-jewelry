@@ -269,20 +269,20 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
 
     if (isUUID) {
       console.log("[SoulPage] Fetching order by UUID:", id);
-      supabase.from("animus_orders").select("pet_name, audio_url, pet_photo_url").eq("id", id).single()
+      supabase.from("animus_orders").select("pet_name, audio_url, pet_photo_url").eq("id", id).maybeSingle()
         .then(({ data: order, error }) => {
+          console.log("[SoulPage] Query result for ID:", id, "data:", order, "error:", error);
           if (error) {
-            console.error("[SoulPage] DB fetch error:", error.code, error.message, error.details);
+            console.error("[SoulPage] DB fetch error:", error.code, error.message, error.details, error.hint);
           }
-          if (order && !error) {
-            console.log("[SoulPage] Order found:", { petName: order.pet_name, hasPhoto: !!order.pet_photo_url, hasAudio: !!order.audio_url });
+          if (order) {
             setData({
               petName: order.pet_name,
               photoUrl: order.pet_photo_url || "",
               audioUrl: order.audio_url,
             });
           } else {
-            console.error("[SoulPage] Order not found for UUID:", id);
+            console.error("[SoulPage] No data returned for UUID:", id);
             setData(null);
           }
           setLoading(false);
