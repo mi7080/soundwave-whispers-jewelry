@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,6 +14,17 @@ import NotFound from "./pages/NotFound.tsx";
 import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
 
 const queryClient = new QueryClient();
+const PREVIEW_SOUL_TEST_ID = "ee8ee56f-d7d6-4f06-8cca-14ecab243a4e";
+
+function LegacySoulPageRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const normalizedId = (id || "").trim();
+  const redirectId = import.meta.env.DEV && normalizedId === ":id"
+    ? PREVIEW_SOUL_TEST_ID
+    : normalizedId;
+
+  return <Navigate replace to={redirectId ? `/soul/${redirectId}` : "/"} />;
+}
 
 function AppContent() {
   useCartSync();
@@ -24,7 +35,7 @@ function AppContent() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
-        <Route path="/soul-page/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
+        <Route path="/soul-page/:id" element={<LegacySoulPageRedirect />} />
         <Route path="/:slug" element={<PolicyPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

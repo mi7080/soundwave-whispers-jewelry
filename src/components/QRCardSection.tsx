@@ -25,7 +25,7 @@ const QRCardSection = () => {
             <div className="w-12 h-[1px] bg-gold" />
           </div>
           <Link
-            to="/soul-page/demo"
+            to="/soul/demo"
             className="inline-block border border-gold/40 text-gold px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/60 transition-all duration-300 mt-2"
           >
             See the Experience →
