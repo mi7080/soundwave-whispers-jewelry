@@ -8,7 +8,7 @@ import { mapOrderToSoulPageData, type SoulPageData } from "@/lib/soulPage";
 const DEMO_DATA = {
   petName: "Max",
   photoUrl: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=400&fit=crop&crop=face",
-  audioUrl: "https://res.cloudinary.com/dsmbuwxqf/video/upload/v1700000000/sample-dog-bark.mp3",
+  audioUrl: "",
 };
 
 const DEMO_WAVEFORM = Array.from({ length: 80 }, (_, i) => {
@@ -292,7 +292,7 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
         for (let attempt = 0; attempt < QUERY_RETRY_LIMIT; attempt++) {
           const { data: order, error } = await supabase
             .from("animus_orders")
-            .select("id, pet_name, pet_photo_url, audio_url, cloudinary_folder_url")
+            .select("id, pet_name, pet_photo_url, audio_url")
             .eq("id", normalizedId)
             .maybeSingle();
 
