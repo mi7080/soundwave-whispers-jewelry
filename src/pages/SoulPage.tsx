@@ -27,6 +27,7 @@ const QUERY_RETRY_LIMIT = 2;
 const QUERY_RETRY_DELAY_MS = 1200;
 const SOUL_PAGE_TABLE = "animus_orders";
 const PUBLIC_STORAGE_BASE_URL = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public`;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface SoulPageDebugState {
   status: "Loading" | "Success" | "Error";
@@ -421,7 +422,22 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
             status: "Error",
             uuid: rawId,
             recordStatus: "Not Found",
-            errorMessage: "No memory ID found.",
+            errorMessage: "No memory ID found in the URL.",
+          });
+        }
+        return;
+      }
+
+      if (!UUID_REGEX.test(normalizedId)) {
+        if (!cancelled) {
+          setErrorMsg("Invalid Memory Link — the ID in the URL is not a valid format.");
+          setQueryState("error");
+          setLoading(false);
+          setDebugState({
+            status: "Error",
+            uuid: rawId,
+            recordStatus: "Not Found",
+            errorMessage: `"${normalizedId}" is not a valid UUID. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`,
           });
         }
         return;
