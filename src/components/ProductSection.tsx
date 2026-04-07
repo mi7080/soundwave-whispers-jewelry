@@ -11,6 +11,7 @@ import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
+import { buildSoulPageUrl } from "@/lib/soulPage";
 
 const PRODUCT_HANDLE = "animus-personalized-soundwave-jewelry-with-scannable-memory-page";
 const PRODUCT_GID = "gid://shopify/Product/10550449602872";
@@ -97,10 +98,34 @@ const ProductSection = () => {
     fetchProduct();
   }, []);
 
+  const verifyPersistedOrder = useCallback(async (orderId: string, expectedSoulPageUrl: string) => {
+    const { data: persistedOrder, error } = await supabase
+      .from("animus_orders")
+      .select("id, pet_name, pet_photo_url, audio_url, soul_page_url, cloudinary_folder_url, design_image_url")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!persistedOrder) {
+      throw new Error("Your memory could not be verified in the database.");
+    }
+
+    if (persistedOrder.soul_page_url !== expectedSoulPageUrl) {
+      throw new Error("The Soul Page link did not save correctly.");
+    }
+
+    if (!persistedOrder.pet_photo_url?.trim() || !persistedOrder.audio_url?.trim()) {
+      throw new Error("Your Soul Page media is still syncing. Please try again.");
+    }
+
+    return persistedOrder;
+  }, []);
+
   const generateSoulPageUrl = useCallback(() => {
-    // Use production domain + short order ID for clean, scannable QR codes
-    const PRODUCTION_DOMAIN = "https://animuswave.com";
-    return `${PRODUCTION_DOMAIN}/soul/${preOrderId}`;
+    return buildSoulPageUrl(preOrderId);
   }, [preOrderId]);
 
   useEffect(() => {
@@ -168,11 +193,17 @@ const ProductSection = () => {
         waveform_data: waveformData,
         add_name_to_back: addTextToBack,
         status: "pending",
-      } as any, { onConflict: "id" }).select("id").single();
+      } as any, { onConflict: "id" }).select("id, soul_page_url").maybeSingle();
 
       if (dbError) {
         console.error("[ANIMUS] DB save failed:", dbError);
         toast.error("Failed to save order. Please try again.");
+        setCartLoading(false);
+        return;
+      }
+
+      if (!orderData?.id) {
+        toast.error("Failed to verify your memory record. Please try again.");
         setCartLoading(false);
         return;
       }
@@ -207,6 +238,11 @@ const ProductSection = () => {
           });
           uploadResult = await uploadResp.json();
           console.log(`[ANIMUS] Cloudinary upload attempt ${attempt + 1}:`, uploadResult);
+
+          if (!uploadResp.ok) {
+            console.error("[ANIMUS] Upload function error:", uploadResult);
+            continue;
+          }
           
           // Verification gate: check that critical assets are present
           if (uploadResult?.verified && uploadResult?.frontUrl) {
@@ -224,6 +260,9 @@ const ProductSection = () => {
         }
         
         console.log("[ANIMUS] ✓ All assets verified in Cloudinary");
+
+        const persistedOrder = await verifyPersistedOrder(orderData.id, soulPageUrl);
+        console.log("[ANIMUS] Verified persisted Soul Page record:", persistedOrder);
       } else {
         toast.error("Order creation failed. Please try again.");
         setCartLoading(false);
@@ -266,7 +305,7 @@ const ProductSection = () => {
       window.open(result.checkoutUrl, "_blank");
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
-      toast.error("Checkout failed. Please try again.");
+      toast.error(err?.message || "Checkout failed. Please try again.");
     } finally {
       setCartLoading(false);
     }
