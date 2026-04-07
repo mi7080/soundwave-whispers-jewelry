@@ -157,7 +157,7 @@ const ProductSection = () => {
       });
 
       // 2. Save order to DB first
-      const { data: orderData, error: dbError } = await supabase.from("animus_orders").insert({
+      const { data: orderData, error: dbError } = await supabase.from("animus_orders").upsert({
         id: preOrderId,
         pet_name: petNameVal,
         audio_url: audioUrl,
@@ -168,10 +168,13 @@ const ProductSection = () => {
         waveform_data: waveformData,
         add_name_to_back: addTextToBack,
         status: "pending",
-      } as any).select("id").single();
+      } as any, { onConflict: "id" }).select("id").single();
 
       if (dbError) {
         console.error("[ANIMUS] DB save failed:", dbError);
+        toast.error("Failed to save order. Please try again.");
+        setCartLoading(false);
+        return;
       }
 
       // 3. Upload production assets to Cloudinary and WAIT for it

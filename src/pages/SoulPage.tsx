@@ -268,15 +268,21 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isUUID) {
+      console.log("[SoulPage] Fetching order by UUID:", id);
       supabase.from("animus_orders").select("pet_name, audio_url, pet_photo_url").eq("id", id).single()
         .then(({ data: order, error }) => {
+          if (error) {
+            console.error("[SoulPage] DB fetch error:", error.code, error.message, error.details);
+          }
           if (order && !error) {
+            console.log("[SoulPage] Order found:", { petName: order.pet_name, hasPhoto: !!order.pet_photo_url, hasAudio: !!order.audio_url });
             setData({
               petName: order.pet_name,
               photoUrl: order.pet_photo_url || "",
               audioUrl: order.audio_url,
             });
           } else {
+            console.error("[SoulPage] Order not found for UUID:", id);
             setData(null);
           }
           setLoading(false);
