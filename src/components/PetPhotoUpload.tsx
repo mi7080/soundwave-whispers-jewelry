@@ -1,8 +1,6 @@
 import { useState, useRef } from "react";
 import { Camera, X, Check, Loader2 } from "lucide-react";
-
-const CLOUDINARY_CLOUD_NAME = "dsmbuwxqf";
-const CLOUDINARY_UPLOAD_PRESET = "animus_unsigned";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PetPhotoUploadProps {
   onPhotoUrl?: (url: string) => void;
@@ -23,18 +21,26 @@ const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      const tempId = crypto.randomUUID();
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${tempId}/photo.${ext}`;
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData }
-      );
-      const data = await res.json();
-      if (data.secure_url) {
-        setUploadedUrl(data.secure_url);
-        onPhotoUrl?.(data.secure_url);
+      const { error: uploadError } = await supabase.storage
+        .from("soul_assets")
+        .upload(filePath, file, {
+          contentType: file.type || "image/jpeg",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("soul_assets")
+        .getPublicUrl(filePath);
+
+      if (urlData?.publicUrl) {
+        setUploadedUrl(urlData.publicUrl);
+        onPhotoUrl?.(urlData.publicUrl);
       } else {
         throw new Error("Upload failed");
       }
@@ -77,7 +83,6 @@ const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
             className="relative w-full rounded-2xl overflow-hidden border border-gold/30 shadow-[0_0_30px_rgba(183,142,72,0.1)]"
             style={{ minHeight: "160px" }}
           >
-            {/* Blurred background fill */}
             <div
               className="absolute inset-0 scale-110 blur-2xl opacity-40"
               style={{
