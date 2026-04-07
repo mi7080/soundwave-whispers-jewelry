@@ -27,11 +27,6 @@ interface SoulPageData {
   audioUrl: string;
 }
 
-interface SoulPageDebugState {
-  searchedId: string;
-  status: string;
-  source: "preview" | "demo" | "uuid" | "legacy" | "missing-id" | "hardcoded-check";
-}
 
 const mapOrderToSoulData = (order: {
   pet_name: string;
@@ -271,168 +266,68 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<SoulPageData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugState, setDebugState] = useState<SoulPageDebugState | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isDemo = id === "demo";
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchSoulData = async () => {
-      console.log("Fetching ID from URL:", id);
       setLoading(true);
       setData(null);
+      setErrorMsg(null);
 
+      // Preview mode (inline modal)
       if (previewMode && previewData) {
-        if (cancelled) return;
-        setData(previewData);
-        setDebugState({
-          searchedId: id ?? "preview",
-          source: "preview",
-          status: "Preview data loaded.",
-        });
-        setLoading(false);
+        if (!cancelled) { setData(previewData); setLoading(false); }
         return;
       }
 
+      // Demo mode
       if (isDemo) {
-        if (cancelled) return;
-        setData(DEMO_DATA);
-        setDebugState({
-          searchedId: id ?? "demo",
-          source: "demo",
-          status: "Demo data loaded.",
-        });
-        setLoading(false);
+        if (!cancelled) { setData(DEMO_DATA); setLoading(false); }
         return;
       }
 
-      const normalizedId = typeof id === "string" ? id.trim() : "";
-
+      const normalizedId = (id || "").trim();
       if (!normalizedId) {
-        if (cancelled) return;
-        setDebugState({
-          searchedId: String(id ?? ""),
-          source: "missing-id",
-          status: "No ID found in URL parameters.",
-        });
-        setLoading(false);
+        if (!cancelled) { setErrorMsg("No memory ID found."); setLoading(false); }
         return;
       }
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedId);
+      // UUID lookup from database (DB stores full Cloudinary asset URLs)
+      try {
+        const { data: order, error } = await supabase
+          .from("animus_orders")
+          .select("id, pet_name, pet_photo_url, audio_url")
+          .eq("id", normalizedId)
+          .maybeSingle();
 
-      if (isUUID) {
-        try {
-          setDebugState({
-            searchedId: normalizedId,
-            source: "uuid",
-            status: "Running UUID lookup...",
-          });
+        if (cancelled) return;
 
-          const { data: order, error } = await supabase
-            .from("animus_orders")
-            .select("id, pet_name, pet_photo_url, audio_url")
-            .eq("id", normalizedId)
-            .maybeSingle();
-
-          if (cancelled) return;
-
-          console.log("[SoulPage] Query result for ID:", normalizedId, "data:", order, "error:", error);
-
-          if (error) {
-            console.error("[SoulPage] DB fetch FULL ERROR OBJECT:", error);
-            setDebugState({
-              searchedId: normalizedId,
-              source: "uuid",
-              status: `Fetch failed: ${error.code || "unknown"} ${error.message}`,
-            });
-            setData(null);
-            setLoading(false);
-            return;
-          }
-
-          if (order) {
-            const mappedOrder = mapOrderToSoulData(order);
-            console.log("[SoulPage] Mapped order data:", mappedOrder);
-            setData(mappedOrder);
-            setDebugState({
-              searchedId: normalizedId,
-              source: "uuid",
-              status: "UUID lookup succeeded.",
-            });
-          } else {
-            console.error("[SoulPage] No data returned for UUID:", normalizedId);
-            setDebugState({
-              searchedId: normalizedId,
-              source: "uuid",
-              status: "Query completed but returned no matching row.",
-            });
-            setData(null);
-          }
-        } catch (err) {
-          if (cancelled) return;
-          console.error("[SoulPage] Unexpected UUID fetch error:", err);
-          setDebugState({
-            searchedId: normalizedId,
-            source: "uuid",
-            status: err instanceof Error ? err.message : "Unexpected fetch error.",
-          });
-          setData(null);
+        if (error) {
+          console.error("[SoulPage] DB error:", error);
+          setErrorMsg("Could not load this memory. Please try again.");
+          setLoading(false);
+          return;
         }
 
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setDebugState({
-          searchedId: normalizedId,
-          source: "legacy",
-          status: "Decoding legacy Base64 payload...",
-        });
-
-        const raw = decodeURIComponent(normalizedId);
-        const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
-        const jsonStr = atob(b64);
-        const decoded = JSON.parse(jsonStr);
-        const decodedData = {
-          petName: decoded.petName || decoded.name || "Beloved Pet",
-          photoUrl: decoded.photoUrl || decoded.photo || "",
-          audioUrl: decoded.audioUrl || decoded.audio || "",
-        };
-
-        if (cancelled) return;
-
-        console.log("[SoulPage] Legacy base64 decoded:", {
-          searchedId: normalizedId,
-          decoded,
-          mapped: decodedData,
-        });
-        setData(decodedData);
-        setDebugState({
-          searchedId: normalizedId,
-          source: "legacy",
-          status: "Legacy payload decoded successfully.",
-        });
+        if (order) {
+          setData(mapOrderToSoulData(order));
+        } else {
+          setErrorMsg("This memory page was not found.");
+        }
       } catch (err) {
         if (cancelled) return;
-        console.error("[SoulPage] Failed to decode base64 data:", err);
-        setData(null);
-        setDebugState({
-          searchedId: normalizedId,
-          source: "legacy",
-          status: err instanceof Error ? err.message : "Failed to decode legacy payload.",
-        });
+        console.error("[SoulPage] Fetch error:", err);
+        setErrorMsg("Something went wrong loading this memory.");
       }
 
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
     void fetchSoulData();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [id, isDemo, previewMode, previewData]);
 
   if (loading) {
@@ -446,10 +341,15 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
   if (!data && !previewMode) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <div className="max-w-md text-center space-y-3">
-          <p className="text-muted-foreground font-sans">Debug Mode</p>
-          <p className="text-foreground font-sans break-all">ID: {debugState?.searchedId || id || "unknown"}</p>
-          <p className="text-muted-foreground font-sans">Status: {debugState?.status || "No fetch status available."}</p>
+        <div className="max-w-md text-center space-y-4">
+          <p className="text-[10px] tracking-[0.4em] uppercase text-gold/60 font-sans">Animus</p>
+          <p className="text-muted-foreground font-sans">{errorMsg || "Memory not found."}</p>
+          <Link
+            to="/"
+            className="inline-block border border-gold/30 text-gold px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/50 transition-all duration-300 mt-4"
+          >
+            Create Your Own Memory
+          </Link>
         </div>
       </div>
     );
