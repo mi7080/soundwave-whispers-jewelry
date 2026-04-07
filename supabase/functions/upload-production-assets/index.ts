@@ -226,7 +226,20 @@ serve(async (req) => {
     if (results.customerAudioUrl) {
       updatePayload.audio_url = results.customerAudioUrl;
     }
-    await supabase.from("animus_orders").update(updatePayload).eq("id", orderId);
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from("animus_orders")
+      .update(updatePayload)
+      .eq("id", orderId)
+      .select("id, pet_photo_url, audio_url, soul_page_url, cloudinary_folder_url, design_image_url")
+      .maybeSingle();
+
+    if (updateError) {
+      throw new Error(`Database update failed: ${updateError.message}`);
+    }
+
+    if (!updatedOrder) {
+      throw new Error("Order verification failed after asset upload");
+    }
 
     return new Response(JSON.stringify({
       success: true,
@@ -237,6 +250,7 @@ serve(async (req) => {
       customerAudioUrl: results.customerAudioUrl || "",
       metadataUrl: results.metadataUrl || "",
       backTextUrl: results.backTextUrl || "",
+      persistedOrder: updatedOrder,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

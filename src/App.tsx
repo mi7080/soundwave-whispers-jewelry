@@ -11,6 +11,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -22,8 +23,8 @@ function AppContent() {
         <Route path="/" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/soul/:id" element={<SoulPage />} />
-        <Route path="/soul-page/:id" element={<SoulPage />} />
+        <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
+        <Route path="/soul-page/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
         <Route path="/:slug" element={<PolicyPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

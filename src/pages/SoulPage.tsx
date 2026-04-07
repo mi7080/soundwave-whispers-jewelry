@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Play, Pause, X } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
+import { mapOrderToSoulPageData, type SoulPageData } from "@/lib/soulPage";
 
 const DEMO_DATA = {
   petName: "Max",
@@ -21,22 +22,8 @@ interface SoulPageProps {
   onClose?: () => void;
 }
 
-interface SoulPageData {
-  petName: string;
-  photoUrl: string;
-  audioUrl: string;
-}
-
-
-const mapOrderToSoulData = (order: {
-  pet_name: string;
-  pet_photo_url: string | null;
-  audio_url: string;
-}): SoulPageData => ({
-  petName: order.pet_name,
-  photoUrl: order.pet_photo_url || "",
-  audioUrl: order.audio_url,
-});
+const QUERY_RETRY_LIMIT = 2;
+const QUERY_RETRY_DELAY_MS = 1200;
 
 const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
   data: { petName: string; photoUrl: string; audioUrl: string };
@@ -60,17 +47,19 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
       const audioBuffer = await ctx.decodeAudioData(buf);
       const rawData = audioBuffer.getChannelData(0);
       const samples = 80;
-      const blockSize = Math.floor(rawData.length / samples);
+      const blockSize = Math.max(1, Math.floor(rawData.length / samples));
       const filtered: number[] = [];
       for (let i = 0; i < samples; i++) {
+        const start = i * blockSize;
+        const end = Math.min(start + blockSize, rawData.length);
         let sum = 0;
-        for (let j = 0; j < blockSize; j++) {
-          sum += Math.abs(rawData[i * blockSize + j]);
+        for (let j = start; j < end; j++) {
+          sum += Math.abs(rawData[j]);
         }
-        filtered.push(sum / blockSize);
+        filtered.push(sum / Math.max(1, end - start));
       }
-      const max = Math.max(...filtered);
-      setWaveformData(filtered.map((v) => v / max));
+      const max = Math.max(...filtered, 0);
+      setWaveformData(max > 0 ? filtered.map((v) => v / max) : Array.from({ length: samples }, () => 0.25));
       ctx.close();
     } catch {
       setWaveformData(Array.from({ length: 80 }, () => 0.2 + Math.random() * 0.8));
@@ -267,73 +256,112 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
   const [data, setData] = useState<SoulPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [queryState, setQueryState] = useState<"loading" | "retrying" | "ready" | "not_found" | "error">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
   const isDemo = id === "demo";
 
   useEffect(() => {
     let cancelled = false;
+    const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
     const fetchSoulData = async () => {
       setLoading(true);
       setData(null);
       setErrorMsg(null);
+      setQueryState("loading");
 
       // Preview mode (inline modal)
       if (previewMode && previewData) {
-        if (!cancelled) { setData(previewData); setLoading(false); }
+        if (!cancelled) { setData(previewData); setQueryState("ready"); setLoading(false); }
         return;
       }
 
       // Demo mode
       if (isDemo) {
-        if (!cancelled) { setData(DEMO_DATA); setLoading(false); }
+        if (!cancelled) { setData(DEMO_DATA); setQueryState("ready"); setLoading(false); }
         return;
       }
 
       const normalizedId = (id || "").trim();
       if (!normalizedId) {
-        if (!cancelled) { setErrorMsg("No memory ID found."); setLoading(false); }
+        if (!cancelled) { setErrorMsg("No memory ID found."); setQueryState("error"); setLoading(false); }
         return;
       }
 
-      // UUID lookup from database (DB stores full Cloudinary asset URLs)
       try {
-        const { data: order, error } = await supabase
-          .from("animus_orders")
-          .select("id, pet_name, pet_photo_url, audio_url")
-          .eq("id", normalizedId)
-          .maybeSingle();
+        for (let attempt = 0; attempt < QUERY_RETRY_LIMIT; attempt++) {
+          const { data: order, error } = await supabase
+            .from("animus_orders")
+            .select("id, pet_name, pet_photo_url, audio_url, cloudinary_folder_url")
+            .eq("id", normalizedId)
+            .maybeSingle();
 
-        if (cancelled) return;
+          if (cancelled) return;
 
-        if (error) {
-          console.error("[SoulPage] DB error:", error);
-          setErrorMsg("Could not load this memory. Please try again.");
+          console.log("[SoulPage] Query result for ID:", normalizedId, order);
+
+          if (error) {
+            console.error("[SoulPage] DB error:", error);
+
+            if (attempt < QUERY_RETRY_LIMIT - 1) {
+              setQueryState("retrying");
+              await wait(QUERY_RETRY_DELAY_MS);
+              if (cancelled) return;
+              continue;
+            }
+
+            setErrorMsg("Could not load this memory. Please try again.");
+            setQueryState("error");
+            setLoading(false);
+            return;
+          }
+
+          const resolvedData = order ? mapOrderToSoulPageData(order) : null;
+
+          if (resolvedData) {
+            setData(resolvedData);
+            setQueryState("ready");
+            setLoading(false);
+            return;
+          }
+
+          console.error("[SoulPage] No usable media found for memory:", { id: normalizedId, order });
+
+          if (attempt < QUERY_RETRY_LIMIT - 1) {
+            setQueryState("retrying");
+            await wait(QUERY_RETRY_DELAY_MS);
+            if (cancelled) return;
+            continue;
+          }
+
+          setErrorMsg(order ? "This memory is still syncing. Please retry in a moment." : "This memory page was not found.");
+          setQueryState("not_found");
           setLoading(false);
           return;
-        }
-
-        if (order) {
-          setData(mapOrderToSoulData(order));
-        } else {
-          setErrorMsg("This memory page was not found.");
         }
       } catch (err) {
         if (cancelled) return;
         console.error("[SoulPage] Fetch error:", err);
         setErrorMsg("Something went wrong loading this memory.");
+        setQueryState("error");
+        setLoading(false);
+        return;
       }
-
-      if (!cancelled) setLoading(false);
     };
 
     void fetchSoulData();
     return () => { cancelled = true; };
-  }, [id, isDemo, previewMode, previewData]);
+  }, [id, isDemo, previewMode, previewData, reloadKey]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto" />
+          <p className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground font-sans">
+            {queryState === "retrying" ? "Syncing Memory" : "Loading Memory"}
+          </p>
+        </div>
       </div>
     );
   }
@@ -344,18 +372,41 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
         <div className="max-w-md text-center space-y-4">
           <p className="text-[10px] tracking-[0.4em] uppercase text-gold/60 font-sans">Animus</p>
           <p className="text-muted-foreground font-sans">{errorMsg || "Memory not found."}</p>
-          <Link
-            to="/"
-            className="inline-block border border-gold/30 text-gold px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/50 transition-all duration-300 mt-4"
-          >
-            Create Your Own Memory
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setReloadKey((current) => current + 1)}
+              className="inline-block border border-border text-foreground px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-muted transition-all duration-300"
+            >
+              Retry Loading Memory
+            </button>
+            <Link
+              to="/"
+              className="inline-block border border-gold/30 text-gold px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-gold/10 hover:border-gold/50 transition-all duration-300"
+            >
+              Create Your Own Memory
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md text-center space-y-4">
+          <p className="text-[10px] tracking-[0.4em] uppercase text-gold/60 font-sans">Animus</p>
+          <p className="text-muted-foreground font-sans">{errorMsg || "This memory could not be displayed."}</p>
+          <button
+            onClick={() => setReloadKey((current) => current + 1)}
+            className="inline-block border border-border text-foreground px-8 py-3 text-[10px] tracking-[0.3em] uppercase hover:bg-muted transition-all duration-300"
+          >
+            Retry Loading Memory
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return <SoulPageContent data={data} isDemo={isDemo} previewMode={previewMode} onClose={onClose} />;
 };
