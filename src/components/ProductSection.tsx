@@ -128,13 +128,43 @@ const ProductSection = () => {
     return buildSoulPageUrl(preOrderId);
   }, [preOrderId]);
 
+  // Save a draft record as soon as audio + photo are ready, so the UUID exists in the DB
+  // before checkout. This prevents "ghost UUIDs" if a user scans the QR preview early.
+  const [draftSaved, setDraftSaved] = useState(false);
+
   useEffect(() => {
-    if (!audioUrl) { setQrDataUrl(null); return; }
+    if (!audioUrl || !photoUrl || draftSaved) return;
+
+    const petNameVal = backText.trim() || dedicatedText.trim() || "Memorial";
+    const soulPageUrl = generateSoulPageUrl();
+
+    supabase.from("animus_orders").upsert({
+      id: preOrderId,
+      pet_name: petNameVal,
+      audio_url: audioUrl,
+      pet_photo_url: photoUrl,
+      soul_page_url: soulPageUrl,
+      svg_content: "<svg></svg>", // placeholder until checkout
+      status: "draft",
+      add_name_to_back: addTextToBack,
+    } as any, { onConflict: "id" }).then(({ error }) => {
+      if (error) {
+        console.error("[ANIMUS] Draft save failed:", error);
+      } else {
+        console.log("[ANIMUS] ✓ Draft record created:", preOrderId);
+        setDraftSaved(true);
+      }
+    });
+  }, [audioUrl, photoUrl, draftSaved, preOrderId, generateSoulPageUrl, dedicatedText, backText, addTextToBack]);
+
+  // Generate QR only after draft is persisted
+  useEffect(() => {
+    if (!audioUrl || !draftSaved) { setQrDataUrl(null); return; }
     const url = generateSoulPageUrl();
     QRCode.toDataURL(url, { margin: 1, width: 200, color: { dark: "#B78E48", light: "#00000000" } })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
-  }, [audioUrl, dedicatedText, photoUrl, generateSoulPageUrl]);
+  }, [audioUrl, draftSaved, dedicatedText, photoUrl, generateSoulPageUrl]);
 
   const handleAudioUrl = useCallback((url: string) => {
     setAudioUrl(url);
