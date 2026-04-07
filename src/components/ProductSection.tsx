@@ -238,12 +238,11 @@ const ProductSection = () => {
         return;
       }
 
-      // 3. Upload ALL production + soul page assets to Cloudinary
+      // 3. Upload production assets to Supabase Storage
       let designImageUrl = "";
       if (orderData?.id) {
         const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         
-        // Retry logic for upload verification
         const MAX_RETRIES = 2;
         let uploadResult: any = null;
         
@@ -267,14 +266,13 @@ const ProductSection = () => {
             }),
           });
           uploadResult = await uploadResp.json();
-          console.log(`[ANIMUS] Cloudinary upload attempt ${attempt + 1}:`, uploadResult);
+          console.log(`[ANIMUS] Asset upload attempt ${attempt + 1}:`, uploadResult);
 
           if (!uploadResp.ok) {
             console.error("[ANIMUS] Upload function error:", uploadResult);
             continue;
           }
           
-          // Verification gate: check that critical assets are present
           if (uploadResult?.verified && uploadResult?.frontUrl) {
             break;
           }
@@ -289,7 +287,7 @@ const ProductSection = () => {
           return;
         }
         
-        console.log("[ANIMUS] ✓ All assets verified in Cloudinary");
+        console.log("[ANIMUS] ✓ All assets verified in Supabase Storage");
 
         const persistedOrder = await verifyPersistedOrder(orderData.id, soulPageUrl);
         console.log("[ANIMUS] Verified persisted Soul Page record:", persistedOrder);
