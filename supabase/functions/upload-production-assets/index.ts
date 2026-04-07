@@ -22,14 +22,11 @@ async function uploadToCloudinary(
   apiSecret: string
 ): Promise<string> {
   const b64 = base64Encode(fileBytes);
-  const dataUri = `data:image/png;base64,${b64}`;
+  const mime = resourceType === "video" ? "audio/mpeg" : "image/svg+xml";
+  const dataUri = `data:${mime};base64,${b64}`;
   const timestamp = Math.floor(Date.now() / 1000).toString();
 
-  const params: Record<string, string> = {
-    folder,
-    public_id: publicId,
-    timestamp,
-  };
+  const params: Record<string, string> = { folder, public_id: publicId, timestamp };
   const signature = await generateSignature(params, apiSecret);
 
   const form = new FormData();
@@ -62,12 +59,7 @@ async function uploadTextToCloudinary(
   apiSecret: string
 ): Promise<string> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
-
-  const params: Record<string, string> = {
-    folder,
-    public_id: publicId,
-    timestamp,
-  };
+  const params: Record<string, string> = { folder, public_id: publicId, timestamp };
   const signature = await generateSignature(params, apiSecret);
 
   const form = new FormData();
@@ -92,6 +84,40 @@ async function uploadTextToCloudinary(
   return data.secure_url;
 }
 
+async function uploadRemoteFileToCloudinary(
+  remoteUrl: string,
+  folder: string,
+  publicId: string,
+  resourceType: string,
+  apiKey: string,
+  apiSecret: string
+): Promise<string> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const params: Record<string, string> = { folder, public_id: publicId, timestamp };
+  const signature = await generateSignature(params, apiSecret);
+
+  const form = new FormData();
+  form.append("file", remoteUrl);
+  form.append("folder", folder);
+  form.append("public_id", publicId);
+  form.append("timestamp", timestamp);
+  form.append("api_key", apiKey);
+  form.append("signature", signature);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Cloudinary remote upload failed: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.secure_url;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -104,7 +130,7 @@ serve(async (req) => {
       throw new Error("Cloudinary credentials not configured");
     }
 
-    const { orderId, petName, svgContent, soulPageUrl, backText } = await req.json();
+    const { orderId, petName, svgContent, soulPageUrl, backText, audioUrl, photoUrl } = await req.json();
     if (!orderId || !svgContent) {
       return new Response(JSON.stringify({ error: "orderId and svgContent required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -113,38 +139,76 @@ serve(async (req) => {
 
     const safeName = (petName || "Order").replace(/[^a-zA-Z0-9]/g, "_");
     const shortId = orderId.slice(0, 8);
-    const folder = `Orders/${safeName}_${shortId}`;
+    const rootFolder = `ANIMUS_ORDERS/${shortId}_${safeName}`;
+    const soulAssetsFolder = `${rootFolder}/SoulPage_Assets`;
+    const productionFolder = `${rootFolder}/Production_Assets`;
 
-    // Upload front engraving SVG as PNG-ready file (SVG content as image)
+    const results: Record<string, string> = {};
+
+    // === Production_Assets: Upload front engraving SVG ===
     const svgBytes = new TextEncoder().encode(svgContent);
-    const frontUrl = await uploadToCloudinary(
-      svgBytes, folder, "Front_Engraving_HighRes", "image", CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+    results.frontEngravingUrl = await uploadToCloudinary(
+      svgBytes, productionFolder, "final_engraving_design", "image",
+      CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
     );
 
-    // Upload QR code as separate backup (generate simple QR SVG)
-    // We'll upload the SVG itself since it contains the QR
-    let qrUrl = "";
-    try {
-      qrUrl = await uploadToCloudinary(
-        svgBytes, folder, "Soul_Page_QR", "image", CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
-      );
-    } catch (e) {
-      console.error("QR upload failed (non-critical):", e);
+    // === SoulPage_Assets: Upload customer photo (remote URL) ===
+    if (photoUrl) {
+      try {
+        results.customerPhotoUrl = await uploadRemoteFileToCloudinary(
+          photoUrl, soulAssetsFolder, "customer_photo", "image",
+          CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+        );
+      } catch (e) {
+        console.error("Photo upload failed (non-critical):", e);
+      }
     }
 
-    // Upload back text reference if provided
-    let backTextUrl = "";
+    // === SoulPage_Assets: Upload customer audio (remote URL) ===
+    if (audioUrl) {
+      try {
+        results.customerAudioUrl = await uploadRemoteFileToCloudinary(
+          audioUrl, soulAssetsFolder, "customer_audio", "video",
+          CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+        );
+      } catch (e) {
+        console.error("Audio upload failed (non-critical):", e);
+      }
+    }
+
+    // === SoulPage_Assets: Upload metadata.json ===
+    const metadata = JSON.stringify({
+      petName: petName || "",
+      soulPageUrl: soulPageUrl || "",
+      backText: backText || "",
+      orderId,
+      createdAt: new Date().toISOString(),
+    }, null, 2);
+
+    try {
+      results.metadataUrl = await uploadTextToCloudinary(
+        metadata, soulAssetsFolder, "metadata", CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+      );
+    } catch (e) {
+      console.error("Metadata upload failed (non-critical):", e);
+    }
+
+    // === SoulPage_Assets: Upload back text reference ===
     if (backText && backText.trim()) {
       try {
-        backTextUrl = await uploadTextToCloudinary(
-          backText.trim(), folder, "Back_Text_Reference", CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+        results.backTextUrl = await uploadTextToCloudinary(
+          backText.trim(), soulAssetsFolder, "back_text_reference",
+          CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
         );
       } catch (e) {
         console.error("Back text upload failed (non-critical):", e);
       }
     }
 
-    const folderUrl = `https://console.cloudinary.com/console/media_library/folders/${encodeURIComponent(folder)}?cloud_name=${CLOUD_NAME}`;
+    const folderUrl = `https://console.cloudinary.com/console/media_library/folders/${encodeURIComponent(rootFolder)}?cloud_name=${CLOUD_NAME}`;
+
+    // === Verification: Check critical assets exist ===
+    const verified = !!results.frontEngravingUrl;
 
     // Update order in database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -153,15 +217,18 @@ serve(async (req) => {
 
     await supabase.from("animus_orders").update({
       cloudinary_folder_url: folderUrl,
-      design_image_url: frontUrl,
+      design_image_url: results.frontEngravingUrl || null,
     }).eq("id", orderId);
 
     return new Response(JSON.stringify({
       success: true,
+      verified,
       folderUrl,
-      frontUrl,
-      qrUrl,
-      backTextUrl,
+      frontUrl: results.frontEngravingUrl || "",
+      customerPhotoUrl: results.customerPhotoUrl || "",
+      customerAudioUrl: results.customerAudioUrl || "",
+      metadataUrl: results.metadataUrl || "",
+      backTextUrl: results.backTextUrl || "",
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
