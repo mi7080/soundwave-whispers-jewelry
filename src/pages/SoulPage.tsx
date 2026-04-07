@@ -33,8 +33,6 @@ interface SoulPageDebugState {
   source: "preview" | "demo" | "uuid" | "legacy" | "missing-id" | "hardcoded-check";
 }
 
-const DEBUG_UUID = "92ddd09f-5e0e-4341-bb8f-da5c9bb46349";
-
 const mapOrderToSoulData = (order: {
   pet_name: string;
   pet_photo_url: string | null;
@@ -278,30 +276,6 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
 
   useEffect(() => {
     let cancelled = false;
-
-    const verifyKnownUuid = async () => {
-      console.log("[SoulPage] Hardcoded verification starting for UUID:", DEBUG_UUID);
-      const { data: order, error } = await supabase
-        .from("animus_orders")
-        .select("id, pet_name, pet_photo_url, audio_url")
-        .eq("id", DEBUG_UUID)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      console.log("[SoulPage] Hardcoded verification result:", { id: DEBUG_UUID, data: order, error });
-
-      if (error) {
-        console.error("[SoulPage] Hardcoded verification FULL ERROR OBJECT:", error);
-        setDebugState({
-          searchedId: DEBUG_UUID,
-          source: "hardcoded-check",
-          status: `Hardcoded verification failed: ${error.code || "unknown"} ${error.message}`,
-        });
-      }
-    };
-
-    void verifyKnownUuid();
 
     const fetchSoulData = async () => {
       console.log("Fetching ID from URL:", id);

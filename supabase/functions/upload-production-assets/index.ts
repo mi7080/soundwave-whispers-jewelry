@@ -215,10 +215,18 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    await supabase.from("animus_orders").update({
+    const updatePayload: Record<string, string | null> = {
       cloudinary_folder_url: folderUrl,
       design_image_url: results.frontEngravingUrl || null,
-    }).eq("id", orderId);
+    };
+    // Update photo/audio URLs to point to the organized sub-folder copies
+    if (results.customerPhotoUrl) {
+      updatePayload.pet_photo_url = results.customerPhotoUrl;
+    }
+    if (results.customerAudioUrl) {
+      updatePayload.audio_url = results.customerAudioUrl;
+    }
+    await supabase.from("animus_orders").update(updatePayload).eq("id", orderId);
 
     return new Response(JSON.stringify({
       success: true,
