@@ -33,8 +33,6 @@ interface SoulPageDebugState {
   source: "preview" | "demo" | "uuid" | "legacy" | "missing-id" | "hardcoded-check";
 }
 
-const DEBUG_UUID = "92ddd09f-5e0e-4341-bb8f-da5c9bb46349";
-
 const mapOrderToSoulData = (order: {
   pet_name: string;
   pet_photo_url: string | null;
