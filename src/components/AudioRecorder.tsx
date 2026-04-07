@@ -1,8 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, MicOff, Upload, Play, Pause, X, Check, Loader2 } from "lucide-react";
-
-const CLOUDINARY_CLOUD_NAME = "dsmbuwxqf";
-const CLOUDINARY_UPLOAD_PRESET = "animus_unsigned";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AudioRecorderProps {
   onAudioUrl?: (url: string) => void;
@@ -28,7 +26,6 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -122,25 +119,32 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
     setRecordingTime(0);
   };
 
-  const uploadToCloudinary = async () => {
+  const uploadToSupabase = async () => {
     if (!audioBlob) return;
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", audioBlob);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-      formData.append("resource_type", "auto");
+      const tempId = crypto.randomUUID();
+      const ext = fileName?.split(".").pop() || "webm";
+      const filePath = `${tempId}/audio.${ext}`;
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
-        { method: "POST", body: formData }
-      );
-      const data = await res.json();
-      if (data.secure_url) {
-        setUploadedUrl(data.secure_url);
-        onAudioUrl?.(data.secure_url);
+      const { error: uploadError } = await supabase.storage
+        .from("soul_assets")
+        .upload(filePath, audioBlob, {
+          contentType: audioBlob.type || "audio/webm",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("soul_assets")
+        .getPublicUrl(filePath);
+
+      if (urlData?.publicUrl) {
+        setUploadedUrl(urlData.publicUrl);
+        onAudioUrl?.(urlData.publicUrl);
       } else {
-        throw new Error("Upload failed");
+        throw new Error("Failed to get public URL");
       }
     } catch (err) {
       console.error(err);
@@ -262,10 +266,10 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
         )}
       </div>
 
-      {/* Upload to Cloudinary */}
+      {/* Upload to Supabase */}
       {audioUrl && !uploadedUrl && (
         <button
-          onClick={uploadToCloudinary}
+          onClick={uploadToSupabase}
           disabled={isUploading}
           className="w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-50"
         >
@@ -290,9 +294,6 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
           <div>
             <p className="text-sm text-foreground font-sans">
               Sound uploaded successfully
-            </p>
-            <p className="text-xs text-muted-foreground truncate max-w-xs">
-              {uploadedUrl}
             </p>
           </div>
         </div>
