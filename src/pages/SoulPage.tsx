@@ -100,7 +100,7 @@ const SoulPageDebugMonitor = ({ debugState }: { debugState: SoulPageDebugState }
   </div>
 );
 
-const SoulPageContent = ({ data, isDemo, previewMode, onClose }: {
+const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: {
   data: { petName: string; photoUrl: string; audioUrl: string };
   isDemo: boolean;
   previewMode?: boolean;
