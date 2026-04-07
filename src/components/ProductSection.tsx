@@ -177,31 +177,53 @@ const ProductSection = () => {
         return;
       }
 
-      // 3. Upload production assets to Cloudinary and WAIT for it
+      // 3. Upload ALL production + soul page assets to Cloudinary
       let designImageUrl = "";
       if (orderData?.id) {
         const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const uploadResp = await fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: orderData.id,
-            petName: petNameVal,
-            svgContent,
-            soulPageUrl,
-            backText: addTextToBack ? backText.trim() : "",
-          }),
-        });
-        const uploadResult = await uploadResp.json();
+        
+        // Retry logic for upload verification
+        const MAX_RETRIES = 2;
+        let uploadResult: any = null;
+        
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            toast.info("Finalizing your memory... retrying upload");
+            await new Promise(r => setTimeout(r, 2000));
+          }
+          
+          const uploadResp = await fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: orderData.id,
+              petName: petNameVal,
+              svgContent,
+              soulPageUrl,
+              backText: addTextToBack ? backText.trim() : "",
+              audioUrl: audioUrl,
+              photoUrl: photoUrl,
+            }),
+          });
+          uploadResult = await uploadResp.json();
+          console.log(`[ANIMUS] Cloudinary upload attempt ${attempt + 1}:`, uploadResult);
+          
+          // Verification gate: check that critical assets are present
+          if (uploadResult?.verified && uploadResult?.frontUrl) {
+            break;
+          }
+        }
+        
         designImageUrl = uploadResult?.frontUrl || "";
-        console.log("[ANIMUS] Cloudinary upload complete:", uploadResult);
 
-        if (!designImageUrl) {
-          console.error("[ANIMUS] CRITICAL: No _Design_Image URL returned from Cloudinary!", uploadResult);
+        if (!designImageUrl || !uploadResult?.verified) {
+          console.error("[ANIMUS] CRITICAL: Asset verification failed after retries!", uploadResult);
           toast.error("Design upload failed. Please try again.");
           setCartLoading(false);
           return;
         }
+        
+        console.log("[ANIMUS] ✓ All assets verified in Cloudinary");
       } else {
         toast.error("Order creation failed. Please try again.");
         setCartLoading(false);
