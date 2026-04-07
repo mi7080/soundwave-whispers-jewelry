@@ -284,9 +284,19 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
     } else {
       // Legacy: try decoding base64 payload from URL
       try {
-        const decoded = JSON.parse(atob(decodeURIComponent(id)));
-        setData(decoded);
-      } catch {
+        // Handle URL-safe base64 (replace - with + and _ with /)
+        const raw = decodeURIComponent(id);
+        const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonStr = atob(b64);
+        const decoded = JSON.parse(jsonStr);
+        console.log("[SoulPage] Legacy base64 decoded:", { petName: decoded.petName, hasPhoto: !!decoded.photoUrl, hasAudio: !!decoded.audioUrl });
+        setData({
+          petName: decoded.petName || decoded.name || "Beloved Pet",
+          photoUrl: decoded.photoUrl || decoded.photo || "",
+          audioUrl: decoded.audioUrl || decoded.audio || "",
+        });
+      } catch (err) {
+        console.error("[SoulPage] Failed to decode base64 data:", err);
         setData(null);
       }
       setLoading(false);
