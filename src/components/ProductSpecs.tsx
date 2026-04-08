@@ -18,7 +18,7 @@ const ProductSpecs = () => {
             Specifications
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Product Details
+            Pendant Details
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-4xl mx-auto">

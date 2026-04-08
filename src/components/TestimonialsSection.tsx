@@ -3,22 +3,22 @@ import { Star } from "lucide-react";
 const testimonials = [
   {
     name: "Sarah M.",
-    text: "I lost my golden retriever last year. Having his bark preserved in this beautiful tag brings me so much comfort. The QR code plays his sound instantly — it's magical.",
+    text: "I lost my golden retriever last year. Having his bark preserved in this beautiful pendant brings me so much comfort. The QR code plays his sound instantly — it's magical.",
     rating: 5,
   },
   {
     name: "James & Emily K.",
-    text: "We created a tag with our grandmother's voice saying 'I love you.' The whole family cried. It's the most meaningful piece of jewelry we own.",
+    text: "We created a pendant with our grandmother's voice saying 'I love you.' The whole family cried. It's the most meaningful piece of jewelry we own.",
     rating: 5,
   },
   {
     name: "Dr. Priya R.",
-    text: "I recorded my baby's first laugh and turned it into a tag. The waveform is uniquely hers. I wear it every day as a reminder of that perfect moment.",
+    text: "I recorded my baby's first laugh and turned it into a pendant. The waveform is uniquely hers. I wear it every day as a reminder of that perfect moment.",
     rating: 5,
   },
   {
     name: "Michael T.",
-    text: "Ordered this for my wife's birthday with our puppy's first bark. She cried happy tears. The quality of the engraving is incredible.",
+    text: "Ordered this for my wife's birthday with a recording of our wedding vows. She cried happy tears. The quality of the engraving is incredible.",
     rating: 5,
   },
 ];

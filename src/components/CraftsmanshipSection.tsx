@@ -21,10 +21,10 @@ const CraftsmanshipSection = () => {
               <span className="italic text-gold">Purpose</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
-              Partnered with ShineOn's premium manufacturing, every dog tag
+              Partnered with ShineOn's premium manufacturing, every pendant
               is meticulously engraved using state-of-the-art laser technology.
               The result is a polished metal pendant built to last a lifetime —
-              for pets and loved ones alike.
+              a timeless tribute to any loved one or memory.
             </p>
             <div className="flex flex-wrap gap-8 pt-4">
               {features.map((item) => (
@@ -40,7 +40,7 @@ const CraftsmanshipSection = () => {
           <div className="order-1 lg:order-2">
             <img
               src={craftsmanshipImage}
-              alt="ANIMUS dog tag laser engraving process"
+              alt="ANIMUS pendant laser engraving process"
               loading="lazy"
               width={800}
               height={600}

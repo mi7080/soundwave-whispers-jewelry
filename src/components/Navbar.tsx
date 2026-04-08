@@ -25,7 +25,7 @@ const Navbar = () => {
             href="/#customize"
             className="hidden md:inline-block bg-gold text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold-light transition-colors"
           >
-            Design Your Tag
+            Design Your Pendant
           </a>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -47,7 +47,7 @@ const Navbar = () => {
             onClick={() => setMenuOpen(false)}
             className="block bg-gold text-background px-6 py-3 text-xs tracking-widest uppercase text-center hover:bg-gold-light transition-colors mt-2"
           >
-            Design Your Tag
+            Design Your Pendant
           </a>
         </div>
       )}
