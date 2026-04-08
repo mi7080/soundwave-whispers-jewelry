@@ -34,8 +34,8 @@ const faqs = [
     a: "We offer two premium options: 14K Gold Finish over stainless steel for a luxurious warm tone, and .316L Surgical Steel for a sleek silver look. Both are hypoallergenic, tarnish-resistant, and built to last.",
   },
   {
-    q: "Can I use a recording of a person's voice instead of a pet?",
-    a: "Absolutely. While our brand is pet-focused, many customers create necklaces from a child's laughter, a loved one's voice message, or any meaningful sound.",
+    q: "What kinds of sounds can I use?",
+    a: "Anything meaningful. Customers create pendants from a child's laughter, a loved one's voice message, a heartbeat, a favorite song, or any sound that carries a memory.",
   },
   {
     q: "What if I'm not satisfied with my order?",

@@ -5,7 +5,7 @@ const features = [
   { label: "Plays Audio via QR Code", animus: true, traditional: false },
   { label: "Permanent Laser Etching", animus: true, traditional: false },
   { label: "Fades Over Time", animus: false, traditional: true },
-  { label: "For Pets & Loved Ones", animus: true, traditional: false },
+  { label: "For All Loved Ones & Memories", animus: true, traditional: false },
   { label: "Cloud-Hosted Audio Forever", animus: true, traditional: false },
   { label: "Premium Metal Construction", animus: true, traditional: false },
 ];
@@ -22,7 +22,7 @@ const ComparisonSection = () => {
             Why Animus?
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            See how our laser-engraved dog tag compares to traditional memorials.
+            See how our laser-engraved Memory Pendant compares to traditional memorials.
           </p>
         </div>
         <div className="max-w-2xl mx-auto">

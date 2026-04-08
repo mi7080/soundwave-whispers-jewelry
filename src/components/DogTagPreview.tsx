@@ -175,7 +175,7 @@ const DogTagPreview = ({
       ctx.restore();
     }
 
-    // Draw pet name with overlay blend
+    // Draw name with overlay blend
     if (petName.trim()) {
       ctx.save();
       ctx.globalCompositeOperation = "overlay";

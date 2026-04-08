@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 const PRESETS = [
   { label: "Baby's First Laugh", emoji: "👶", description: "A joyful giggle" },
   { label: "Heartbeat", emoji: "❤️", description: "The rhythm of life" },
-  { label: "Pet Bark", emoji: "🐾", description: "A loyal companion's voice" },
+  { label: "A Beloved Voice", emoji: "🐾", description: "A loyal companion's sound" },
   { label: '"I Love You"', emoji: "💬", description: "Three words, forever" },
 ];
 

@@ -86,7 +86,7 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
 }
 
 /**
- * Generate back-engraving SVG with pet name centered in luxury serif
+ * Generate back-engraving SVG with name centered in luxury serif
  * Also 1000x1788 to match front dimensions
  */
 export function generateBackEngravingSvg(petName: string): string {
@@ -97,7 +97,7 @@ export function generateBackEngravingSvg(petName: string): string {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- BACK SIDE: Pet Name Engraving for ShineOn Acrylic Heart ID 279 -->
+  <!-- BACK SIDE: Name Engraving for ShineOn Acrylic Heart ID 279 -->
   <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', Georgia, serif" font-size="80" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
 </svg>`;
 }

@@ -45,7 +45,7 @@ const AdminDashboard = () => {
   };
 
   const handleDownloadBack = (order: AnimusOrder) => {
-    if (!order.pet_name.trim()) { toast.error("No pet name for back engraving."); return; }
+    if (!order.pet_name.trim()) { toast.error("No name for back engraving."); return; }
     const backSvg = generateBackEngravingSvg(order.pet_name);
     const filename = `ANIMUS_BACK_${order.pet_name.replace(/\s+/g, "_")}_${order.id.slice(0, 8)}.svg`;
     downloadSvg(backSvg, filename);
@@ -92,7 +92,7 @@ const AdminDashboard = () => {
             </Link>
             <h1 className="text-2xl font-serif text-foreground">ANIMUS Production Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              ShineOn Dog Tag Necklace — Download print-ready engraving SVGs
+              Memory Pendant — Download print-ready engraving SVGs
             </p>
           </div>
           <button
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
                     </a>
                     {order.pet_photo_url && (
                       <a href={order.pet_photo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] text-gold/70 hover:text-gold transition-colors border border-gold/20 rounded-sm px-3 py-1.5 hover:border-gold/40">
-                        <Image className="w-3 h-3" /> Pet Photo <ExternalLink className="w-2.5 h-2.5" />
+                        <Image className="w-3 h-3" /> Memory Photo <ExternalLink className="w-2.5 h-2.5" />
                       </a>
                     )}
                     {order.cloudinary_folder_url && (

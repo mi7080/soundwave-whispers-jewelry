@@ -24,7 +24,7 @@ const FourSideGuide = ({ inline }: FourSideGuideProps) => {
     return (
       <div className="border border-border/30 rounded-sm p-5 bg-background/30 space-y-4">
         <p className="text-[10px] tracking-[0.3em] uppercase text-gold/70 font-sans text-center">
-          Your Dog Tag Layout
+          Your Pendant Layout
         </p>
         <div className="grid grid-cols-2 gap-3">
           {sides.map((item) => (
@@ -53,10 +53,10 @@ const FourSideGuide = ({ inline }: FourSideGuideProps) => {
             Every Detail Matters
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Your Dog Tag, <span className="italic text-gold">Two Sides</span>
+            Your Pendant, <span className="italic text-gold">Two Sides</span>
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto font-light">
-            Each face of the ANIMUS dog tag is crafted with intention.
+            Each face of the ANIMUS Memory Pendant is crafted with intention.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-6 md:gap-10 max-w-2xl mx-auto">
