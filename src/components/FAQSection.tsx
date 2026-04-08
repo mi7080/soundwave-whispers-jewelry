@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: "Who is this for?",
-    a: "ANIMUS is a universal memorial brand. Customers create pendants from a loved one's voice, a child's laughter, a pet's bark, a heartbeat, or any meaningful sound. It's for anyone who wants to carry a memory close to their heart.",
+    a: "ANIMUS is a universal memorial brand. Customers create pendants from a loved one's voice, a child's laughter, a heartbeat, or any meaningful sound. It's for anyone who wants to carry a memory close to their heart.",
   },
   {
     q: "What if I'm not satisfied with my order?",

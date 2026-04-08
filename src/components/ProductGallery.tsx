@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 const images = [
-  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_15471.png?v=1775475000", alt: "ANIMUS Engraved Dog Tag – 18K Yellow Gold Finish" },
-  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_753_transformation_15472.png?v=1775475002", alt: "ANIMUS Engraved Dog Tag – Detail View" },
+  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_15471.png?v=1775475000", alt: "ANIMUS Memory Pendant – 18K Yellow Gold Finish" },
+  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_753_transformation_15472.png?v=1775475002", alt: "ANIMUS Memory Pendant – Detail View" },
 ];
 
 const ProductGallery = () => {

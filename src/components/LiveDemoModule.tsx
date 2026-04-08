@@ -5,7 +5,7 @@ import messageCardImage from "@/assets/animus-message-card.png";
 
 const DEMO_PET_NAME = "Grandma Rose";
 const DEMO_PHOTO = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=600&fit=crop&crop=face";
-const DEMO_AUDIO = "https://res.cloudinary.com/dsmbuwxqf/video/upload/v1700000000/sample-dog-bark.mp3";
+const DEMO_AUDIO = "https://res.cloudinary.com/dsmbuwxqf/video/upload/v1700000000/sample-audio.mp3";
 
 const LiveDemoModule = () => {
   const [showDemo, setShowDemo] = useState(false);
