@@ -7,22 +7,22 @@ const HeroSection = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="space-y-8 animate-fade-up">
             <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-              ANIMUS Signature Tags
+              ANIMUS Memory Pendants
             </p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif leading-tight text-foreground">
               Every Sound Tells a Story.{" "}
               <span className="italic gold-shimmer">Wear Yours.</span>
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg font-sans font-light">
-              Capture a first laugh, a heartbeat, a whispered "I love you," or a beloved pet's bark — 
-              and transform it into a luxury engraved tag with a scannable QR Soul Page.
+              Capture a first laugh, a heartbeat, a whispered "I love you," or a beloved voice — 
+              and transform it into a luxury engraved pendant with a scannable QR Soul Page.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <a
                 href="#customize"
                 className="inline-flex items-center justify-center bg-gold text-background px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-colors"
               >
-                Design Your Tag
+                Design Your Pendant
               </a>
               <a
                 href="#experience"
@@ -35,7 +35,7 @@ const HeroSection = () => {
           <div className="animate-fade-up-delay-1">
             <img
               src={heroConcept}
-              alt="ANIMUS Signature Tag with soundwave and QR code engraving"
+              alt="ANIMUS Memory Pendant with soundwave and QR code engraving"
               width={1024}
               height={1024}
               className="w-full rounded-sm shadow-2xl"

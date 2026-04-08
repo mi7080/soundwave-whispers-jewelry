@@ -29,6 +29,7 @@ export type Database = {
           soul_page_url: string
           status: string
           svg_content: string
+          text_message: string | null
           updated_at: string
           waveform_data: Json | null
         }
@@ -46,6 +47,7 @@ export type Database = {
           soul_page_url: string
           status?: string
           svg_content: string
+          text_message?: string | null
           updated_at?: string
           waveform_data?: Json | null
         }
@@ -63,6 +65,7 @@ export type Database = {
           soul_page_url?: string
           status?: string
           svg_content?: string
+          text_message?: string | null
           updated_at?: string
           waveform_data?: Json | null
         }

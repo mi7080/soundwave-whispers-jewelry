@@ -201,7 +201,7 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
           )}
           {!isRecording && !audioUrl && (
             <p className="text-xs text-muted-foreground/50 tracking-wide">
-              Record or upload your pet's sound
+              Record or upload a meaningful sound
             </p>
           )}
           {fileName && !isRecording && (

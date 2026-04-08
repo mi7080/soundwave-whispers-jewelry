@@ -3,8 +3,8 @@ import { Play, Sparkles } from "lucide-react";
 import SoulPage from "@/pages/SoulPage";
 import messageCardImage from "@/assets/animus-message-card.png";
 
-const DEMO_PET_NAME = "Luna";
-const DEMO_PHOTO = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&h=600&fit=crop&crop=face";
+const DEMO_PET_NAME = "Grandma Rose";
+const DEMO_PHOTO = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=600&fit=crop&crop=face";
 const DEMO_AUDIO = "https://res.cloudinary.com/dsmbuwxqf/video/upload/v1700000000/sample-dog-bark.mp3";
 
 const LiveDemoModule = () => {
@@ -27,7 +27,7 @@ const LiveDemoModule = () => {
 
         <p className="text-sm text-muted-foreground font-light leading-relaxed">
           Experience the full Soul Page in under 5 seconds — no uploads needed.
-          We've prepared a premium sample with {DEMO_PET_NAME}'s recording.
+          We've prepared a premium sample memorial for {DEMO_PET_NAME}.
         </p>
 
         <div className="pt-2">

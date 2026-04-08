@@ -9,11 +9,11 @@ const QRCardSection = () => {
             The Digital Soul Page
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight">
-            More Than a Dog Tag —{" "}
+            More Than a Pendant —{" "}
             <span className="italic text-gold">A Living Memory.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed font-light text-lg max-w-2xl mx-auto">
-            Every ANIMUS dog tag includes a unique QR code engraved directly on the metal.
+            Every ANIMUS pendant includes a unique QR code engraved directly on the metal.
             Scan it with any smartphone and instantly play the original audio recording —
             hear their voice anytime, anywhere.
           </p>

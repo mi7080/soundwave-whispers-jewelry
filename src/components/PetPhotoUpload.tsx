@@ -66,7 +66,7 @@ const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
         <label className="flex flex-col items-center justify-center gap-3 h-40 border-2 border-dashed border-border/50 rounded-sm cursor-pointer hover:border-gold/40 transition-colors bg-background/30">
           <Camera className="w-8 h-8 text-muted-foreground/40" />
           <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-sans">
-            Tap to upload photo
+            Tap to upload memory photo
           </span>
           <span className="text-[10px] text-muted-foreground/40">JPG or PNG</span>
           <input
@@ -93,7 +93,7 @@ const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
             />
             <img
               src={previewUrl}
-              alt="Pet photo preview"
+              alt="Memory photo preview"
               className="relative z-10 w-full max-h-64 object-contain mx-auto"
             />
           </div>

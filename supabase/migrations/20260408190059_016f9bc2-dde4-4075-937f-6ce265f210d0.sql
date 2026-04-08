@@ -1,0 +1,1 @@
+ALTER TABLE public.animus_orders ADD COLUMN IF NOT EXISTS text_message text DEFAULT NULL;

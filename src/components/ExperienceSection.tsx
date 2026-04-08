@@ -5,7 +5,7 @@ const steps = [
     icon: Upload,
     step: "01",
     title: "Upload Your Sound",
-    description: "Record or upload any meaningful audio — a laugh, a heartbeat, a bark, a whispered 'I love you.'",
+    description: "Record or upload any meaningful audio — a laugh, a heartbeat, a whispered 'I love you,' or a beloved voice.",
   },
   {
     icon: Waves,
@@ -17,13 +17,13 @@ const steps = [
     icon: QrCode,
     step: "03",
     title: "QR Soul Page",
-    description: "A scannable QR code links to a private digital page with your sound, photo, and story.",
+    description: "A scannable QR code links to a private digital page with your sound, photo, and personal message.",
   },
   {
     icon: Package,
     step: "04",
-    title: "Receive Your Tag",
-    description: "Your ANIMUS Signature Tag arrives laser-engraved in polished stainless steel or 18K gold.",
+    title: "Receive Your Pendant",
+    description: "Your ANIMUS Memory Pendant arrives laser-engraved in polished stainless steel or 18K gold.",
   },
 ];
 

@@ -11,20 +11,20 @@ const faqs = [
     a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files — .mp3, .wav, .m4a, and more.",
   },
   {
-    q: "What is the Dog Tag made of?",
-    a: "The ANIMUS Dog Tag is a premium polished metal pendant manufactured by ShineOn. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
+    q: "What is the Memory Pendant made of?",
+    a: "The ANIMUS Memory Pendant is a premium polished metal piece manufactured by ShineOn. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
   },
   {
     q: "How long does shipping take?",
-    a: "Each dog tag is custom-made to order. Production takes 5-7 business days, and shipping is free within the US. Domestic orders arrive in 7-12 business days; international orders in 10-18 business days.",
+    a: "Each pendant is custom-made to order. Production takes 5-7 business days, and shipping is free within the US. Domestic orders arrive in 7-12 business days; international orders in 10-18 business days.",
   },
   {
     q: "How does the QR Code work?",
-    a: "Every dog tag includes a QR code engraved directly on the metal. When scanned with any smartphone camera, it opens your personal Soul Page where the original audio plays instantly.",
+    a: "Every pendant includes a QR code engraved directly on the metal. When scanned with any smartphone camera, it opens your personal Soul Page where the original audio plays instantly.",
   },
   {
-    q: "Can I memorialize a person as well as a pet?",
-    a: "Absolutely. ANIMUS is a universal memorial brand. Customers create dog tags from a pet's bark, a loved one's voice message, a child's laughter, or any meaningful sound.",
+    q: "Who is this for?",
+    a: "ANIMUS is a universal memorial brand. Customers create pendants from a loved one's voice, a child's laughter, a pet's bark, a heartbeat, or any meaningful sound. It's for anyone who wants to carry a memory close to their heart.",
   },
   {
     q: "What if I'm not satisfied with my order?",
