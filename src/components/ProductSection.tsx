@@ -20,7 +20,7 @@ const PRODUCT_GID = "gid://shopify/Product/10550449602872";
 const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
   id: PRODUCT_GID,
   title: "ANIMUS Personalized Soundwave Jewelry with Scannable Memory Page",
-  description: "A luxury engraved dog tag necklace featuring your unique soundwave and scannable QR Soul Page.",
+  description: "A luxury engraved memory pendant featuring your unique soundwave and scannable QR Soul Page.",
   handle: PRODUCT_HANDLE,
   priceRange: { minVariantPrice: { amount: "49.90", currencyCode: "USD" } },
   images: { edges: [] },
@@ -368,10 +368,10 @@ const ProductSection = () => {
             Create Your Keepsake
           </p>
           <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Design Your ANIMUS Signature Tag
+            Design Your Memory Pendant
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto font-light">
-            A first laugh, a heartbeat, a pet's bark — any meaningful sound, engraved forever on a luxury tag with a scannable QR Soul Page.
+            A first laugh, a heartbeat, a whispered "I love you" — any meaningful sound, engraved forever on a luxury pendant with a scannable QR Soul Page.
           </p>
         </div>
 
@@ -428,7 +428,7 @@ const ProductSection = () => {
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
-              A baby's first laugh, a heartbeat, a whispered "I love you," or a pet's bark
+              A loved one's voice, a baby's laugh, a heartbeat, or any meaningful sound
             </p>
             <AudioRecorder onAudioUrl={handleAudioUrl} />
             <AudioPresets />
@@ -468,7 +468,7 @@ const ProductSection = () => {
             </div>
             <input
               type="text"
-              placeholder="e.g. Buddy, Mom, Forever Loved, Baby Luna"
+              placeholder="e.g. Mom, Grandpa, Baby Luna, Forever Loved"
               value={dedicatedText}
               onChange={(e) => setDedicatedText(e.target.value)}
               className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
