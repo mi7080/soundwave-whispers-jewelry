@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Waves, QrCode } from "lucide-react";
 import logo from "@/assets/logo.png";
+import pendantHero from "@/assets/pendant-hero.jpg";
 
 const steps = [
   {
