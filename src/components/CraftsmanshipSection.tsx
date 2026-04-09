@@ -21,8 +21,8 @@ const CraftsmanshipSection = () => {
               <span className="italic text-gold">Purpose</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
-              Partnered with ShineOn's premium manufacturing, every pendant
-              is meticulously engraved using state-of-the-art laser technology.
+              Every pendant is meticulously engraved at our US-based facility
+              using state-of-the-art laser technology.
               The result is a polished metal pendant built to last a lifetime —
               a timeless tribute to any loved one or memory.
             </p>

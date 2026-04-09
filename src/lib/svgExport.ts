@@ -8,8 +8,8 @@ interface SvgExportOptions {
 }
 
 /**
- * Generate a production-ready SVG for ShineOn Acrylic Heart (ID 279):
- * Canvas: 1000×1788px (ShineOn spec)
+ * Generate a production-ready SVG for Acrylic Heart pendant (ID 279):
+ * Canvas: 1000×1788px
  * - FRONT: Centered waveform (upper) + centered QR code (below)
  * - All pure black (#000000) on transparent background
  * - Waveform = vertical bars, chronological L→R
@@ -62,7 +62,7 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   // --- Build Front SVG ---
   const frontSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- FRONT SIDE: Waveform + QR for ShineOn Acrylic Heart ID 279 (1000x1788) -->
+  <!-- FRONT SIDE: Waveform + QR for ANIMUS Acrylic Heart (1000x1788) -->
 
   <!-- Waveform (vertical bars, chronological L→R) -->
   <g id="waveform">
@@ -97,7 +97,7 @@ export function generateBackEngravingSvg(petName: string): string {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- BACK SIDE: Name Engraving for ShineOn Acrylic Heart ID 279 -->
+  <!-- BACK SIDE: Name Engraving for ANIMUS Acrylic Heart -->
   <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', Georgia, serif" font-size="80" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
 </svg>`;
 }
