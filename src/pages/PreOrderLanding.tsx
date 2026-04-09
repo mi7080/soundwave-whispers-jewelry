@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Waves, QrCode } from "lucide-react";
 import logo from "@/assets/logo.png";
+import pendantHero from "@/assets/pendant-hero.jpg";
 
 const steps = [
   {
@@ -87,15 +88,14 @@ const PreOrderLanding = () => {
       {/* Visual Anchor — Product Placeholder */}
       <section className="px-6 py-12 md:py-20">
         <div className="max-w-3xl mx-auto">
-          <div className="aspect-video rounded-lg border border-border bg-card flex items-center justify-center overflow-hidden">
-            <div className="text-center space-y-4 p-8">
-              <div className="w-16 h-16 mx-auto rounded-full border border-gold/40 flex items-center justify-center">
-                <Waves className="w-7 h-7 text-gold" strokeWidth={1.5} />
-              </div>
-              <p className="text-muted-foreground text-sm tracking-widest uppercase">
-                Product Video Coming Soon
-              </p>
-            </div>
+          <div className="rounded-lg overflow-hidden border border-border">
+            <img
+              src={pendantHero}
+              alt="ANIMUS Memory Pendant with engraved soundwave and QR code"
+              width={1024}
+              height={1024}
+              className="w-full h-auto object-cover"
+            />
           </div>
           <p className="text-center mt-6 font-serif text-xl md:text-2xl text-foreground/80 italic">
             "A piece of them, always with you."
