@@ -60,7 +60,7 @@ const PreOrderLanding = () => {
           <p className="text-muted-foreground text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
             Be one of the first 250 founding members to eternalize your memories
             with an exclusive launch discount on the{" "}
-            <span className="text-foreground font-medium">Eternal Echo Memory Pendant</span>.
+            <span className="text-foreground font-medium">ANIMUS Memory Pendant</span>.
           </p>
 
           {/* Description */}
