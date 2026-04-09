@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "What is the Memory Pendant made of?",
-    a: "The ANIMUS Memory Pendant is a premium polished metal piece manufactured by ShineOn. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
+    a: "The ANIMUS Memory Pendant is a premium polished metal piece crafted at our US-based facility. It features high-precision laser engraving that captures every detail of your soundwave and QR code.",
   },
   {
     q: "How long does shipping take?",

@@ -8,8 +8,8 @@ interface SvgExportOptions {
 }
 
 /**
- * Generate a production-ready SVG for ShineOn Acrylic Heart (ID 279):
- * Canvas: 1000×1788px (ShineOn spec)
+ * Generate a production-ready SVG for Acrylic Heart pendant (ID 279):
+ * Canvas: 1000×1788px
  * - FRONT: Centered waveform (upper) + centered QR code (below)
  * - All pure black (#000000) on transparent background
  * - Waveform = vertical bars, chronological L→R
