@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCartSync } from "@/hooks/useCartSync";
 import Index from "./pages/Index.tsx";
 import FAQ from "./pages/FAQ.tsx";
+import PreOrderLanding from "./pages/PreOrderLanding.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
@@ -31,7 +32,8 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<PreOrderLanding />} />
+        <Route path="/early-access-store" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
