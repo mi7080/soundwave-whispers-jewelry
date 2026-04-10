@@ -190,8 +190,8 @@ const PreOrderLanding = () => {
                 type="submit"
                 disabled={status === "loading"}
                 onClick={() => {
-                  if (typeof window !== "undefined" && (window as any).fbq) {
-                    (window as any).fbq("track", "CompleteRegistration");
+                  if (typeof window !== "undefined" && (window as any).firePixelRegistration) {
+                    (window as any).firePixelRegistration();
                     console.log("PIXEL CLICK FIRED");
                   }
                 }}
