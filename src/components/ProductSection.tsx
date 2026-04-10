@@ -29,25 +29,25 @@ const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
       {
         node: {
           id: "gid://shopify/ProductVariant/52035637805368",
-          title: "Stainless Steel",
+          title: "Polished Stainless Steel",
           price: { amount: "49.90", currencyCode: "USD" },
           availableForSale: true,
-          selectedOptions: [{ name: "Finish", value: "Stainless Steel" }],
+          selectedOptions: [{ name: "Finish", value: "Polished Stainless Steel" }],
         },
       },
       {
         node: {
           id: "gid://shopify/ProductVariant/52035637838136",
-          title: "18K Yellow Gold",
+          title: "18K Yellow Gold Finish",
           price: { amount: "59.90", currencyCode: "USD" },
           availableForSale: true,
-          selectedOptions: [{ name: "Finish", value: "18K Yellow Gold" }],
+          selectedOptions: [{ name: "Finish", value: "18K Yellow Gold Finish" }],
         },
       },
     ],
   },
   options: [
-    { name: "Finish", values: ["Stainless Steel", "18K Yellow Gold"] },
+    { name: "Finish", values: ["Polished Stainless Steel", "18K Yellow Gold Finish"] },
   ],
 };
 
