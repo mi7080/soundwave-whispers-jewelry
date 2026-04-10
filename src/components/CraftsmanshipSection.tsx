@@ -21,10 +21,10 @@ const CraftsmanshipSection = () => {
               <span className="italic text-gold">Purpose</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed font-light text-lg">
-              Every pendant is meticulously engraved at our US-based facility
-              using state-of-the-art laser technology.
-              The result is a polished metal pendant built to last a lifetime —
-              a timeless tribute to any loved one or memory.
+              Every pendant is precision-engraved on high-grade 316L Stainless Steel
+              (or 18K Yellow Gold finish) using state-of-the-art laser technology at
+              our US-based facility. The result is a dog-tag style pendant built
+              to last a lifetime — a timeless tribute to any loved one or memory.
             </p>
             <div className="flex flex-wrap gap-8 pt-4">
               {features.map((item) => (

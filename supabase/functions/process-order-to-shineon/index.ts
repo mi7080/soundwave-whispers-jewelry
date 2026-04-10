@@ -57,7 +57,7 @@ serve(async (req) => {
 
     console.log(`[ShineOn] Design UUID: ${designUuid}`);
 
-    // Retrieve production render URL from animus_orders
+    // Retrieve production render URL and pet_name from animus_orders
     const { data: order, error: dbError } = await supabase
       .from("animus_orders")
       .select("id, design_image_url, pet_name")
@@ -97,23 +97,32 @@ serve(async (req) => {
     const shopifyOrderId = body.id?.toString() || "";
     const orderNumber = body.order_number?.toString() || body.name || "";
 
-    // Construct ShineOn order payload
+    // Notification URL for shipment tracking callbacks
+    const notificationUrl = `${supabaseUrl}/functions/v1/shopify-order-webhook`;
+
+    // Construct ShineOn V2 order payload (wrapped in "order" object)
     const shineonPayload = {
-      source_id: `shopify-${shopifyOrderId}`,
-      shipping_address: shippingAddress,
-      line_items: [
-        {
-          product_id: SHINEON_PRODUCT_ID,
-          template: SHINEON_TEMPLATE,
-          quantity: 1,
-          personalizations: {
-            back: order.design_image_url,
+      order: {
+        source_id: `shopify-${shopifyOrderId}`,
+        shipment_notification_url: notificationUrl,
+        shipping_address: shippingAddress,
+        line_items: [
+          {
+            product_id: SHINEON_PRODUCT_ID,
+            template: SHINEON_TEMPLATE,
+            quantity: 1,
+            personalizations: {
+              front: order.design_image_url,
+            },
+            properties: {
+              "Engraving Line 1": order.pet_name || "",
+            },
           },
-        },
-      ],
+        ],
+      },
     };
 
-    console.log(`[ShineOn] Submitting order for Shopify #${orderNumber}, design: ${order.design_image_url}`);
+    console.log(`[ShineOn] Submitting order for Shopify #${orderNumber}, design: ${order.design_image_url}, name: ${order.pet_name}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -129,7 +138,6 @@ serve(async (req) => {
 
     if (!shineonResponse.ok) {
       console.error(`[ShineOn] API error: ${shineonResponse.status} - ${shineonResult}`);
-      // Still return success to Shopify to prevent retries
       return new Response(JSON.stringify({ success: true, shineon_error: true, status: shineonResponse.status }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -142,7 +150,6 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("[ShineOn] Unexpected error:", err);
-    // Return success to Shopify to prevent duplicate retries
     return new Response(JSON.stringify({ success: true, error: err.message }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

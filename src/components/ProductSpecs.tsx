@@ -1,11 +1,11 @@
 import { Ruler, Link2, Lock, Gem, Waves, Gift } from "lucide-react";
 
 const specs = [
-  { icon: Ruler, title: "Pendant Size", detail: '1.1" × 2" (28.5mm × 51mm)' },
-  { icon: Link2, title: "Chain", detail: "24\" Military-Style Ball Chain (61cm)" },
+  { icon: Ruler, title: "Pendant Size", detail: '1.1" × 2" (28.5 × 51 mm) — Classic Dog-Tag Shape' },
+  { icon: Link2, title: "Chain", detail: '24" Military-Style Ball Chain (61 cm)' },
   { icon: Lock, title: "Clasp", detail: "Lobster Clasp Attachment" },
-  { icon: Gem, title: "Material", detail: "Polished Stainless Steel / 18K Yellow Gold" },
-  { icon: Waves, title: "Engraving", detail: "Laser-Etched Soundwave & QR Code" },
+  { icon: Gem, title: "Material", detail: "316L Stainless Steel / 18K Yellow Gold Finish" },
+  { icon: Waves, title: "Engraving", detail: "Laser-Etched Soundwave (Front) · Custom Name (Back)" },
   { icon: Gift, title: "Packaging", detail: "Complimentary Luxury Gift Box" },
 ];
 
