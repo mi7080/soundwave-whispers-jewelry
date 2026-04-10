@@ -6,48 +6,35 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, PRODUCT_BY_ID_QUERY, ShopifyProduct, CartItem, createShopifyCart } from "@/lib/shopify";
+import { ShopifyProduct, CartItem, createShopifyCart } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { buildSoulPageUrl } from "@/lib/soulPage";
+import { PRODUCT_CONFIG } from "@/config/product";
 
-const PRODUCT_HANDLE = "animus-personalized-soundwave-jewelry-with-scannable-memory-page";
-const PRODUCT_GID = "gid://shopify/Product/10550449602872";
-
-// Fallback product data if Storefront API can't find the product (sales channel not configured)
-const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
-  id: PRODUCT_GID,
-  title: "The Universal Memorial Pendant — 316L Stainless Steel",
-  description: "A luxury laser-engraved dog-tag pendant in 316L Stainless Steel or 18K Yellow Gold finish. Soundwave on the front, custom name on the back, and a scannable QR Soul Page.",
-  handle: PRODUCT_HANDLE,
-  priceRange: { minVariantPrice: { amount: "49.90", currencyCode: "USD" } },
+// Build ShopifyProduct shape from central config
+const HARDCODED_PRODUCT: ShopifyProduct["node"] = {
+  id: PRODUCT_CONFIG.shopifyGid,
+  title: PRODUCT_CONFIG.title,
+  description: PRODUCT_CONFIG.description,
+  handle: PRODUCT_CONFIG.shopifyHandle,
+  priceRange: { minVariantPrice: { amount: PRODUCT_CONFIG.foundersPrice.toFixed(2), currencyCode: PRODUCT_CONFIG.currency } },
   images: { edges: [] },
   variants: {
-    edges: [
-      {
-        node: {
-          id: "gid://shopify/ProductVariant/52035637805368",
-          title: "Polished Stainless Steel",
-          price: { amount: "49.90", currencyCode: "USD" },
-          availableForSale: true,
-          selectedOptions: [{ name: "Finish", value: "Polished Stainless Steel" }],
-        },
+    edges: PRODUCT_CONFIG.variants.map((v) => ({
+      node: {
+        id: v.id,
+        title: v.title,
+        price: { amount: v.foundersPrice.toFixed(2), currencyCode: PRODUCT_CONFIG.currency },
+        availableForSale: true,
+        selectedOptions: [{ name: "Finish", value: v.title }],
       },
-      {
-        node: {
-          id: "gid://shopify/ProductVariant/52035637838136",
-          title: "18K Yellow Gold Finish",
-          price: { amount: "59.90", currencyCode: "USD" },
-          availableForSale: true,
-          selectedOptions: [{ name: "Finish", value: "18K Yellow Gold Finish" }],
-        },
-      },
-    ],
+    })),
   },
   options: [
-    { name: "Finish", values: ["Polished Stainless Steel", "18K Yellow Gold Finish"] },
+    { name: "Finish", values: PRODUCT_CONFIG.variants.map((v) => v.title) },
   ],
 };
 
@@ -71,7 +58,7 @@ const ProductSection = () => {
 
   // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
   useEffect(() => {
-    setProduct(FALLBACK_PRODUCT);
+    setProduct(HARDCODED_PRODUCT);
     setLoading(false);
   }, []);
 
