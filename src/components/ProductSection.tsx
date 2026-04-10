@@ -69,32 +69,10 @@ const ProductSection = () => {
   const [showBackPreview, setShowBackPreview] = useState(false);
   const [preOrderId] = useState(() => crypto.randomUUID());
 
+  // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
   useEffect(() => {
-    async function fetchProduct() {
-      try {
-        // Try by handle first
-        let data = await storefrontApiRequest(PRODUCT_BY_HANDLE_QUERY, { handle: PRODUCT_HANDLE });
-        if (data?.data?.product) {
-          setProduct(data.data.product);
-          return;
-        }
-        // Try by GraphQL ID
-        data = await storefrontApiRequest(PRODUCT_BY_ID_QUERY, { id: PRODUCT_GID });
-        if (data?.data?.product) {
-          setProduct(data.data.product);
-          return;
-        }
-        // Use fallback hardcoded data
-        console.warn("[ANIMUS] Product not found via Storefront API, using fallback data");
-        setProduct(FALLBACK_PRODUCT);
-      } catch (err) {
-        console.error("Failed to fetch product:", err);
-        setProduct(FALLBACK_PRODUCT);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProduct();
+    setProduct(FALLBACK_PRODUCT);
+    setLoading(false);
   }, []);
 
   const verifyPersistedOrder = useCallback(async (orderId: string, expectedSoulPageUrl: string) => {

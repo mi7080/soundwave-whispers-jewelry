@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 const images = [
-  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_281_transformation_15471.png?v=1775475000", alt: "ANIMUS Memory Pendant – 18K Yellow Gold Finish" },
-  { src: "https://cdn.shopify.com/s/files/1/0992/5050/3992/files/asset_753_transformation_15472.png?v=1775475002", alt: "ANIMUS Memory Pendant – Detail View" },
+  { src: "https://shineon.com/cdn/shop/files/DogTag_Gold_Front_1200x.png", alt: "ANIMUS Memorial Pendant – 18K Yellow Gold Dog Tag Front" },
+  { src: "https://shineon.com/cdn/shop/files/DogTag_Steel_Front_1200x.png", alt: "ANIMUS Memorial Pendant – Polished Stainless Steel Dog Tag Front" },
 ];
 
 const ProductGallery = () => {
