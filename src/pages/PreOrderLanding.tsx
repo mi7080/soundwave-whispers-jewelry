@@ -55,6 +55,14 @@ const PreOrderLanding = () => {
       return;
     }
 
+    // Sync to Shopify as customer with Waitlist_Founders tag (fire and forget)
+    const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    fetch(`https://${projId}.supabase.co/functions/v1/sync-waitlist-to-shopify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    }).catch((err) => console.warn("[Waitlist] Shopify sync failed:", err));
+
     setStatus("success");
   };
 
