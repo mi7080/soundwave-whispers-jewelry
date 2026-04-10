@@ -32,6 +32,10 @@ const PreOrderLanding = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "CompleteRegistration");
+      console.log("PIXEL SUBMIT FIRED (backup)");
+    }
     if (!email.trim()) return;
 
     setStatus("loading");
