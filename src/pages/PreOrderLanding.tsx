@@ -64,6 +64,7 @@ const PreOrderLanding = () => {
     }).catch((err) => console.warn("[Waitlist] Shopify sync failed:", err));
 
     setStatus("success");
+  };
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
