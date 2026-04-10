@@ -59,13 +59,37 @@ serve(async (req) => {
       console.log(`[Webhook] ✓ Order ${animusOrderId} updated to 'paid', Shopify #${orderNumber}`);
     }
 
+    // --- Chain: invoke process-order-to-shineon for fulfillment ---
+    try {
+      const fnUrl = `${supabaseUrl}/functions/v1/process-order-to-shineon`;
+      console.log(`[Webhook] Chaining to process-order-to-shineon for order ${animusOrderId}`);
+      const chainResp = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          animusOrderId,
+          shopifyOrderId: shopifyOrderId,
+          shopifyOrderNumber: orderNumber,
+          shippingAddress: body.shipping_address || null,
+        }),
+      });
+      const chainResult = await chainResp.json();
+      console.log(`[Webhook] ✓ ShineOn chain result:`, JSON.stringify(chainResult));
+    } catch (chainErr) {
+      console.error("[Webhook] ShineOn chain failed (non-blocking):", chainErr);
+    }
+
     return new Response(JSON.stringify({ success: true, animusOrderId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[Webhook] Error:", err);
+    // Always return 200 to Shopify to prevent retries
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
