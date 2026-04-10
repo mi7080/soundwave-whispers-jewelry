@@ -1,9 +1,7 @@
 import { useState } from "react";
+import { PRODUCT_CONFIG } from "@/config/product";
 
-const images = [
-  { src: "https://shineon.com/cdn/shop/files/DogTag_Gold_Front_1200x.png", alt: "ANIMUS Memorial Pendant – 18K Yellow Gold Dog Tag Front" },
-  { src: "https://shineon.com/cdn/shop/files/DogTag_Steel_Front_1200x.png", alt: "ANIMUS Memorial Pendant – Polished Stainless Steel Dog Tag Front" },
-];
+const images = PRODUCT_CONFIG.galleryImages;
 
 const ProductGallery = () => {
   const [selected, setSelected] = useState(0);
