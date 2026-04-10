@@ -33,6 +33,7 @@
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', '1572365390530947');
     fbq('track', 'PageView');
+    window.firePixelRegistration = function() { fbq('track', 'CompleteRegistration'); console.log('Global Pixel Function: CompleteRegistration Fired'); };
   </script>
   <!-- End Meta Pixel -->
 </head>
