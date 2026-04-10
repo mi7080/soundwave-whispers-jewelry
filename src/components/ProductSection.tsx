@@ -19,8 +19,8 @@ const PRODUCT_GID = "gid://shopify/Product/10550449602872";
 // Fallback product data if Storefront API can't find the product (sales channel not configured)
 const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
   id: PRODUCT_GID,
-  title: "ANIMUS Personalized Soundwave Jewelry with Scannable Memory Page",
-  description: "A luxury engraved memory pendant featuring your unique soundwave and scannable QR Soul Page.",
+  title: "The Universal Memorial Pendant — 316L Stainless Steel",
+  description: "A luxury laser-engraved dog-tag pendant in 316L Stainless Steel or 18K Yellow Gold finish. Soundwave on the front, custom name on the back, and a scannable QR Soul Page.",
   handle: PRODUCT_HANDLE,
   priceRange: { minVariantPrice: { amount: "49.90", currencyCode: "USD" } },
   images: { edges: [] },
@@ -29,26 +29,25 @@ const FALLBACK_PRODUCT: ShopifyProduct["node"] = {
       {
         node: {
           id: "gid://shopify/ProductVariant/52035637805368",
-          title: "Black / And 60cm keel chain",
+          title: "Stainless Steel",
           price: { amount: "49.90", currencyCode: "USD" },
           availableForSale: true,
-          selectedOptions: [{ name: "Color", value: "Black" }, { name: "style", value: "And 60cm keel chain" }],
+          selectedOptions: [{ name: "Finish", value: "Stainless Steel" }],
         },
       },
       {
         node: {
           id: "gid://shopify/ProductVariant/52035637838136",
-          title: "Black / And 60cm pearl chain",
-          price: { amount: "49.90", currencyCode: "USD" },
+          title: "18K Yellow Gold",
+          price: { amount: "59.90", currencyCode: "USD" },
           availableForSale: true,
-          selectedOptions: [{ name: "Color", value: "Black" }, { name: "style", value: "And 60cm pearl chain" }],
+          selectedOptions: [{ name: "Finish", value: "18K Yellow Gold" }],
         },
       },
     ],
   },
   options: [
-    { name: "Color", values: ["Black", "Gold", "Rose Gold", "Silver"] },
-    { name: "style", values: ["And 60cm keel chain", "And 60cm pearl chain", "Single military card"] },
+    { name: "Finish", values: ["Stainless Steel", "18K Yellow Gold"] },
   ],
 };
 
