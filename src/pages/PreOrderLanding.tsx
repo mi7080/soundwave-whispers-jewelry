@@ -192,6 +192,12 @@ const PreOrderLanding = () => {
               <button
                 type="submit"
                 disabled={status === "loading"}
+                onClick={() => {
+                  if (typeof window !== "undefined" && (window as any).fbq) {
+                    (window as any).fbq("track", "CompleteRegistration");
+                    console.log("PIXEL CLICK FIRED");
+                  }
+                }}
                 className="h-12 px-8 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors disabled:opacity-50 rounded-md whitespace-nowrap"
               >
                 {status === "loading" ? "Joining…" : "Reserve My Spot"}
