@@ -37,7 +37,7 @@ export const PRODUCT_CONFIG = {
   // Variants
   variants: [
     {
-      id: "gid://shopify/ProductVariant/52167512129848",
+      id: "gid://shopify/ProductVariant/52167512162616",
       title: "Polished Stainless Steel",
       fullPrice: 89.90,
       foundersPrice: 49.90,
