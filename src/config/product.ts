@@ -37,7 +37,7 @@ export const PRODUCT_CONFIG = {
   // Variants
   variants: [
     {
-      id: "gid://shopify/ProductVariant/52035637805368",
+      id: "gid://shopify/ProductVariant/52167512129848",
       title: "Polished Stainless Steel",
       fullPrice: 89.90,
       foundersPrice: 49.90,
@@ -45,7 +45,7 @@ export const PRODUCT_CONFIG = {
       imageAlt: "ANIMUS Memorial Pendant — Polished Stainless Steel Dog Tag",
     },
     {
-      id: "gid://shopify/ProductVariant/52035637838136",
+      id: "gid://shopify/ProductVariant/52167512129848",
       title: "18K Yellow Gold Finish",
       fullPrice: 109.90,
       foundersPrice: 59.90,
