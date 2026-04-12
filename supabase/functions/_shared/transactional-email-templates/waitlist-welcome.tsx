@@ -58,7 +58,7 @@ const WaitlistWelcomeEmail = () => (
 export const template = {
   component: WaitlistWelcomeEmail,
   subject: "You're on the list! Welcome to the ANIMUS Founders' Circle 🕊️",
-  displayName: 'Waitlist Welcome',
+  displayName: 'Welcome to waitlist',
   previewData: {},
 } satisfies TemplateEntry
 
