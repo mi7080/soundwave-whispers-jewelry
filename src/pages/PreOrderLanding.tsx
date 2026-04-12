@@ -55,6 +55,15 @@ const PreOrderLanding = () => {
       return;
     }
 
+    // Send welcome email (fire and forget)
+    supabase.functions.invoke('send-transactional-email', {
+      body: {
+        templateName: 'waitlist-welcome',
+        recipientEmail: email.trim().toLowerCase(),
+        idempotencyKey: `waitlist-welcome-${email.trim().toLowerCase()}`,
+      },
+    }).catch((err) => console.warn("[Waitlist] Welcome email failed:", err));
+
     // Sync to Shopify as customer with Waitlist_Founders tag (fire and forget)
     const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     fetch(`https://${projId}.supabase.co/functions/v1/sync-waitlist-to-shopify`, {
