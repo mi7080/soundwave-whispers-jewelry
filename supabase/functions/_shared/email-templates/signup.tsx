@@ -4,7 +4,6 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
@@ -25,37 +24,38 @@ interface SignupEmailProps {
 }
 
 export const SignupEmail = ({
-  siteName,
   siteUrl,
-  recipient,
   confirmationUrl,
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email for ANIMUS</Preview>
+    <Preview>You're on the list! Welcome to the ANIMUS Founders' Circle 🕊️</Preview>
     <Body style={main}>
       <Container style={container}>
         <Img src={LOGO_URL} alt="ANIMUS" width="120" height="auto" style={logo} />
-        <Heading style={h1}>Welcome to ANIMUS</Heading>
+        <Heading style={h1}>You're on the list! 🕊️</Heading>
+        <Text style={text}>Hello,</Text>
+        <Text style={text}>Welcome to the inner circle.</Text>
         <Text style={text}>
-          Thank you for joining{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>ANIMUS</strong>
-          </Link>
-          .
+          We've received your registration for the{' '}
+          <Link href={siteUrl} style={link}><strong>ANIMUS Founders' Edition</strong></Link>{' '}
+          waitlist. You are now officially one of the first people to secure priority access to the world's first scannable soundwave jewelry.
+        </Text>
+        <Heading style={h2}>What happens next?</Heading>
+        <Text style={text}>
+          As a member of the Founders' list, you've locked in your <strong style={{ color: '#b8975a' }}>40% launch discount</strong>. Once we go live, you will receive an exclusive link to design your Soulwave Pendant before the general public.
+        </Text>
+        <Heading style={h2}>Why it matters</Heading>
+        <Text style={text}>
+          At ANIMUS, we believe memories shouldn't just be stored—they should be <em>heard</em>.
         </Text>
         <Text style={text}>
-          Please confirm your email address (
-          <Link href={`mailto:${recipient}`} style={link}>
-            {recipient}
-          </Link>
-          ) by clicking the button below:
+          Keep an eye on your inbox. Your legacy is about to become wearable.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Verify Email
-        </Button>
-        <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
+        <Text style={signoff}>Stay tuned,</Text>
+        <Text style={signature}>
+          <strong>Michael</strong><br />
+          Founder, ANIMUS
         </Text>
       </Container>
     </Body>
@@ -74,22 +74,19 @@ const h1 = {
   color: '#0d0f12',
   margin: '0 0 20px',
 }
+const h2 = {
+  fontFamily: "'Playfair Display', Georgia, serif",
+  fontSize: '18px',
+  fontWeight: 'bold' as const,
+  color: '#0d0f12',
+  margin: '30px 0 10px',
+}
 const text = {
   fontSize: '14px',
   color: '#7a7d85',
   lineHeight: '1.6',
-  margin: '0 0 25px',
+  margin: '0 0 16px',
 }
 const link = { color: '#b8975a', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#b8975a',
-  color: '#0d0f12',
-  fontSize: '13px',
-  fontWeight: '600' as const,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  borderRadius: '4px',
-  padding: '14px 28px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const signoff = { fontSize: '14px', color: '#7a7d85', margin: '30px 0 4px' }
+const signature = { fontSize: '14px', color: '#0d0f12', lineHeight: '1.6', margin: '0' }
