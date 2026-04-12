@@ -55,13 +55,17 @@ const PreOrderLanding = () => {
       return;
     }
 
-    // Send welcome email (fire and forget)
+    // Send welcome email immediately after successful DB insert (fire and forget)
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('Email automation triggered for:', normalizedEmail);
     supabase.functions.invoke('send-transactional-email', {
       body: {
         templateName: 'waitlist-welcome',
-        recipientEmail: email.trim().toLowerCase(),
-        idempotencyKey: `waitlist-welcome-${email.trim().toLowerCase()}`,
+        recipientEmail: normalizedEmail,
+        idempotencyKey: `waitlist-welcome-${normalizedEmail}`,
       },
+    }).then((res) => {
+      console.log('Email automation response:', res);
     }).catch((err) => console.warn("[Waitlist] Welcome email failed:", err));
 
     // Sync to Shopify as customer with Waitlist_Founders tag (fire and forget)
