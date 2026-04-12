@@ -17,7 +17,7 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: "You're on the list! Welcome to the ANIMUS Founders' Circle 🕊️",
+  signup: "You're on the list! 🕊️",
   invite: "You've been invited",
   magiclink: 'Your login link',
   recovery: 'Reset your password',
