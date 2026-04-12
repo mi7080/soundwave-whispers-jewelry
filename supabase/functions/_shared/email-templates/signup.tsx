@@ -9,10 +9,13 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+const LOGO_URL = 'https://gcqmkltyifgtuizencka.supabase.co/storage/v1/object/public/soul_assets/email-assets%2Flogo.png'
 
 interface SignupEmailProps {
   siteName: string
@@ -29,16 +32,17 @@ export const SignupEmail = ({
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>Confirm your email for ANIMUS</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
+        <Img src={LOGO_URL} alt="ANIMUS" width="120" height="auto" style={logo} />
+        <Heading style={h1}>Welcome to ANIMUS</Heading>
         <Text style={text}>
-          Thanks for signing up for{' '}
+          Thank you for joining{' '}
           <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
+            <strong>ANIMUS</strong>
           </Link>
-          !
+          .
         </Text>
         <Text style={text}>
           Please confirm your email address (
@@ -60,27 +64,32 @@ export const SignupEmail = ({
 
 export default SignupEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
+const container = { padding: '40px 25px', maxWidth: '480px', margin: '0 auto' }
+const logo = { margin: '0 0 30px' }
 const h1 = {
-  fontSize: '22px',
+  fontFamily: "'Playfair Display', Georgia, serif",
+  fontSize: '24px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#0d0f12',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
+  color: '#7a7d85',
+  lineHeight: '1.6',
   margin: '0 0 25px',
 }
-const link = { color: 'inherit', textDecoration: 'underline' }
+const link = { color: '#b8975a', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  backgroundColor: '#b8975a',
+  color: '#0d0f12',
+  fontSize: '13px',
+  fontWeight: '600' as const,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  borderRadius: '4px',
+  padding: '14px 28px',
   textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

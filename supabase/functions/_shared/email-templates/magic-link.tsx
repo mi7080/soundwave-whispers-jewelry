@@ -9,9 +9,12 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+const LOGO_URL = 'https://gcqmkltyifgtuizencka.supabase.co/storage/v1/object/public/soul_assets/email-assets%2Flogo.png'
 
 interface MagicLinkEmailProps {
   siteName: string
@@ -24,12 +27,13 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Your ANIMUS login link</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
+        <Img src={LOGO_URL} alt="ANIMUS" width="120" height="auto" style={logo} />
+        <Heading style={h1}>Your Login Link</Heading>
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
+          Click the button below to log in to ANIMUS. This link will expire
           shortly.
         </Text>
         <Button style={button} href={confirmationUrl}>
@@ -45,26 +49,31 @@ export const MagicLinkEmail = ({
 
 export default MagicLinkEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
+const container = { padding: '40px 25px', maxWidth: '480px', margin: '0 auto' }
+const logo = { margin: '0 0 30px' }
 const h1 = {
-  fontSize: '22px',
+  fontFamily: "'Playfair Display', Georgia, serif",
+  fontSize: '24px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#0d0f12',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
+  color: '#7a7d85',
+  lineHeight: '1.6',
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  backgroundColor: '#b8975a',
+  color: '#0d0f12',
+  fontSize: '13px',
+  fontWeight: '600' as const,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  borderRadius: '4px',
+  padding: '14px 28px',
   textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

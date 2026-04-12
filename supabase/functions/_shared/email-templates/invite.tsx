@@ -9,10 +9,12 @@ import {
   Head,
   Heading,
   Html,
-  Link,
+  Img,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+const LOGO_URL = 'https://gcqmkltyifgtuizencka.supabase.co/storage/v1/object/public/soul_assets/email-assets%2Flogo.png'
 
 interface InviteEmailProps {
   siteName: string
@@ -27,17 +29,14 @@ export const InviteEmail = ({
 }: InviteEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
+    <Preview>You've been invited to join ANIMUS</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
+        <Img src={LOGO_URL} alt="ANIMUS" width="120" height="auto" style={logo} />
+        <Heading style={h1}>You've Been Invited</Heading>
         <Text style={text}>
-          You've been invited to join{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          . Click the button below to accept the invitation and create your
-          account.
+          You've been invited to join ANIMUS. Click the button below to accept
+          the invitation and create your account.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Accept Invitation
@@ -53,27 +52,31 @@ export const InviteEmail = ({
 
 export default InviteEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
+const container = { padding: '40px 25px', maxWidth: '480px', margin: '0 auto' }
+const logo = { margin: '0 0 30px' }
 const h1 = {
-  fontSize: '22px',
+  fontFamily: "'Playfair Display', Georgia, serif",
+  fontSize: '24px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#0d0f12',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
+  color: '#7a7d85',
+  lineHeight: '1.6',
   margin: '0 0 25px',
 }
-const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  backgroundColor: '#b8975a',
+  color: '#0d0f12',
+  fontSize: '13px',
+  fontWeight: '600' as const,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  borderRadius: '4px',
+  padding: '14px 28px',
   textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
