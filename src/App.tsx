@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Unsubscribe from "./pages/Unsubscribe.tsx";
 import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ function AppContent() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
         <Route path="/soul-page/:id" element={<LegacySoulPageRedirect />} />
+        <Route path="/unsubscribe" element={<Unsubscribe />} />
         <Route path="/:slug" element={<PolicyPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
