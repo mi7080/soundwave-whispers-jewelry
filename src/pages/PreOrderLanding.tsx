@@ -71,6 +71,11 @@ const PreOrderLanding = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }).catch((err) => console.warn("[Waitlist] Shopify sync failed:", err));
+    // Fire pixel only after successful DB insert
+    if (typeof window !== "undefined" && (window as any).firePixelRegistration) {
+      (window as any).firePixelRegistration();
+      console.log("PIXEL: CompleteRegistration fired after successful insert");
+    }
 
     setStatus("success");
   };
@@ -206,12 +211,6 @@ const PreOrderLanding = () => {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                onClick={() => {
-                  if (typeof window !== "undefined" && (window as any).firePixelRegistration) {
-                    (window as any).firePixelRegistration();
-                    console.log("PIXEL CLICK FIRED");
-                  }
-                }}
                 className="h-12 px-8 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors disabled:opacity-50 rounded-md whitespace-nowrap"
               >
                 {status === "loading" ? "Joining…" : "Reserve My Spot"}
