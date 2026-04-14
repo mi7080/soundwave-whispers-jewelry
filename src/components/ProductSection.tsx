@@ -7,7 +7,7 @@ import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShopifyProduct, CartItem, createShopifyCart } from "@/lib/shopify";
+import { ShopifyProduct } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
