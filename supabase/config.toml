@@ -13,3 +13,7 @@ project_id = "gcqmkltyifgtuizencka"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+  [functions.icount-create-payment]
+    verify_jwt = false
+  [functions.icount-payment-webhook]
+    verify_jwt = false

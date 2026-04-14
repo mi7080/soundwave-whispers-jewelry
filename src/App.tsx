@@ -13,6 +13,8 @@ import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
+import Checkout from "./pages/Checkout.tsx";
+import ThankYou from "./pages/ThankYou.tsx";
 import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ function AppContent() {
         <Route path="/early-access-store" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/thank-you" element={<ThankYou />} />
         <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
         <Route path="/soul-page/:id" element={<LegacySoulPageRedirect />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
