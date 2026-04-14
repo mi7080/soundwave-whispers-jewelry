@@ -263,40 +263,10 @@ const ProductSection = () => {
         return;
       }
 
-      // 4. Validate all URLs before proceeding
-      console.log("[ANIMUS] Pre-cart validation:", {
-        _Design_Image: designImageUrl,
-        _Soul_Page_Link: soulPageUrl,
-        _Custom_Text_Back: addTextToBack ? backText.trim() : "(none)",
-      });
-
-      // 5. Build custom attributes for cart line — all 3 properties always included
-      const customAttributes: Array<{ key: string; value: string }> = [
-        { key: "_Soul_Page_Link", value: soulPageUrl },
-        { key: "_Design_Image", value: designImageUrl },
-        { key: "_Custom_Text_Back", value: addTextToBack && backText.trim() ? backText.trim() : "" },
-      ];
-
-      // 5. Always create a FRESH Shopify cart (clears any previous ghost items)
-      const cartItem: CartItem = {
-        lineId: null,
-        product: { node: product } as ShopifyProduct,
-        variantId: selectedVariant.id,
-        variantTitle: selectedVariant.title,
-        price: selectedVariant.price,
-        quantity: 1,
-        selectedOptions: selectedVariant.selectedOptions,
-        customAttributes,
-      };
-
-      const result = await createShopifyCart(cartItem);
-      if (!result) {
-        throw new Error("Failed to create Shopify cart");
-      }
-
+      // 4. Redirect to native checkout page
+      console.log("[ANIMUS] ✓ All data ready, redirecting to checkout");
       setOrderComplete(true);
-      // 6. Redirect to Shopify checkout
-      window.open(result.checkoutUrl, "_blank");
+      navigate(`/checkout?order=${orderData.id}&variant=${selectedVariantIdx}`);
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       toast.error(err?.message || "Checkout failed. Please try again.");
