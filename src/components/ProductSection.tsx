@@ -40,6 +40,7 @@ const HARDCODED_PRODUCT: ShopifyProduct["node"] = {
 };
 
 const ProductSection = () => {
+  const navigate = useNavigate();
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [dedicatedText, setDedicatedText] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
