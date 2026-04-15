@@ -19,7 +19,17 @@ export const PRODUCT_CONFIG = {
   title: "The Universal Memorial Pendant",
   description:
     "A luxury laser-engraved dog-tag pendant in 316L Stainless Steel or 18K Yellow Gold finish. Soundwave on the front, custom text on the back, and a scannable QR Soul Page.",
-...
+
+  // Pricing
+  fullPrice: 89.90,
+  foundersPrice: 49.90, // ~40% off
+  currency: "USD",
+
+  // Specs
+  material: "316L Surgical Stainless Steel",
+  pendantSize: '1.1" × 2" (28.5 × 51 mm) — Classic Dog-Tag Shape',
+  chainLength: '24" Military-Style Ball Chain (61 cm)',
+  clasp: "Lobster Clasp Attachment",
   engraving: "Laser-Etched Soundwave (Front) · Custom Text (Back)",
   packaging: "Complimentary Luxury Gift Box",
   shipping: "Free US Shipping — 7–14 Business Days",
