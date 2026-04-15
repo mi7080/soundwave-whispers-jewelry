@@ -197,6 +197,31 @@ serve(async (req) => {
 
     console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn successfully`);
 
+    // Send shipping notification email
+    const shipEmail = body.client_email || body.email;
+    const shipName = body.client_name || body.first_name || "";
+    const trackingUrl = shineonResult ? (() => { try { return JSON.parse(shineonResult)?.order?.tracking_url; } catch { return undefined; } })() : undefined;
+    if (shipEmail) {
+      try {
+        await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "shipping-notification",
+            recipientEmail: shipEmail,
+            idempotencyKey: `shipping-${orderId}`,
+            templateData: {
+              name: shipName,
+              orderId,
+              petName: order?.pet_name || "",
+              trackingUrl: trackingUrl || "",
+            },
+          },
+        });
+        console.log(`[iCount Webhook] ✓ Shipping email queued for ${shipEmail}`);
+      } catch (emailErr) {
+        console.error("[iCount Webhook] Shipping email failed (non-blocking):", emailErr);
+      }
+    }
+
     return new Response(JSON.stringify({ success: true, shineon_submitted: true, orderId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
