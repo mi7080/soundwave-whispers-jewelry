@@ -4,7 +4,7 @@
  */
 
 import dogtagSteel from "@/assets/dogtag-steel.jpg";
-const dogtagGold = "user-uploads://ca2d878e-684a-4e99-a842-1254af949360.png";
+import dogtagGold from "@/assets/dogtag-gold.jpg";
 
 export const PRODUCT_CONFIG = {
   // ShineOn identifiers
