@@ -19,7 +19,9 @@ interface Particle {
 
 const ThankYou = () => {
   const [searchParams] = useSearchParams();
-  const orderId = searchParams.get("order");
+  const orderId = searchParams.get("order") || searchParams.get("order_id");
+  const amount = searchParams.get("amount");
+  const name = searchParams.get("name");
   const [particles, setParticles] = useState<Particle[]>([]);
 
   const createConfetti = useCallback(() => {
@@ -65,6 +67,10 @@ const ThankYou = () => {
     return () => clearInterval(interval);
   }, [particles.length]);
 
+  const displayName = name ? decodeURIComponent(name) : null;
+  const displayOrderId = orderId ? orderId.slice(0, 8).toUpperCase() : null;
+  const displayAmount = amount ? parseFloat(amount).toFixed(2) : null;
+
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
       {/* Confetti */}
@@ -85,39 +91,63 @@ const ThankYou = () => {
         />
       ))}
 
-      <div className="text-center px-6 z-10 max-w-lg">
+      <div className="text-center px-6 z-10 max-w-lg w-full">
         <img src={logo} alt="ANIMUS" className="h-14 mx-auto mb-10" />
 
         <div className="mb-8">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-gold flex items-center justify-center">
             <span className="text-gold text-3xl">✓</span>
           </div>
-          <h1 className="font-serif text-4xl md:text-5xl text-foreground mb-3">
-            Thank You
+          <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">
+            {displayName ? `Thank you, ${displayName}!` : "Thank You"}
           </h1>
           <p className="text-gold text-sm tracking-[0.3em] uppercase font-sans">
             Your Order Is Confirmed
           </p>
         </div>
 
-        <p className="text-muted-foreground text-base leading-relaxed mb-8">
+        {/* Order Summary Card */}
+        <div className="border border-border/50 rounded-lg p-6 bg-card mb-8 text-left">
+          <p className="text-xs tracking-[0.3em] uppercase text-gold font-sans mb-4 text-center">
+            Order Summary
+          </p>
+          <div className="space-y-3 text-sm">
+            {displayOrderId && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Order Number</span>
+                <span className="text-foreground font-mono tracking-wide">#{displayOrderId}</span>
+              </div>
+            )}
+            {displayAmount && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Total Amount</span>
+                <span className="text-gold font-serif text-lg">${displayAmount}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Status</span>
+              <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs tracking-widest uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Payment Confirmed
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-muted-foreground text-sm leading-relaxed mb-8">
           Your ANIMUS Memorial Pendant is being crafted with care.
           We'll send you a confirmation email with tracking information
           once your pendant ships.
         </p>
 
-        {orderId && (
-          <p className="text-muted-foreground/60 text-xs tracking-widest mb-8">
-            ORDER ID: {orderId.slice(0, 8).toUpperCase()}
-          </p>
-        )}
-
-        <Link
-          to="/"
-          className="inline-block h-12 px-10 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors rounded-md leading-[48px]"
-        >
-          Return Home
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/"
+            className="inline-block h-12 px-10 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors rounded-md leading-[48px]"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
 
       <footer className="absolute bottom-6 text-center text-muted-foreground/50 text-xs tracking-widest">
