@@ -150,7 +150,7 @@ const ThankYou = () => {
         </div>
       </div>
 
-      <footer className="absolute bottom-6 text-center text-muted-foreground/50 text-xs tracking-widest">
+      <footer className="mt-auto pb-6 pt-8 text-center text-muted-foreground/50 text-xs tracking-widest">
         © {new Date().getFullYear()} ANIMUS — All Rights Reserved
       </footer>
     </main>
