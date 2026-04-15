@@ -53,7 +53,8 @@ serve(async (req) => {
 
     // Build the callback URL for iCount webhooks
     const webhookUrl = `${supabaseUrl}/functions/v1/icount-payment-webhook`;
-    const successUrl = body.successUrl || `${body.siteUrl || ""}/thank-you?order=${orderId}`;
+    const encodedName = encodeURIComponent(fullName || "");
+    const successUrl = body.successUrl || `${body.siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
     const failureUrl = body.failureUrl || `${body.siteUrl || ""}/checkout?order=${orderId}&status=failed`;
 
     // Create payment via iCount API
