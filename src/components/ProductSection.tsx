@@ -520,7 +520,7 @@ const ProductSection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-t border-border/30">
             <div className="flex items-center justify-center gap-3 py-3">
               <Truck className="w-4 h-4 text-gold flex-shrink-0" />
-              <span className="text-xs text-muted-foreground tracking-wide">Fast US Shipping (2-5 Days)</span>
+              <span className="text-xs text-muted-foreground tracking-wide">Fast US Shipping (5-10 Days)</span>
             </div>
             <div className="flex items-center justify-center gap-3 py-3">
               <Shield className="w-4 h-4 text-gold flex-shrink-0" />
