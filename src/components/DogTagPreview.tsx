@@ -117,9 +117,9 @@ const DogTagPreview = ({
 
       const waveArea = {
         x: tx + tw * 0.1,
-        y: ty + th * 0.15,
+        y: ty + th * 0.12,
         w: tw * 0.8,
-        h: th * 0.25,
+        h: th * 0.22,
       };
 
       const centerY = waveArea.y + waveArea.h / 2;
@@ -129,7 +129,7 @@ const DogTagPreview = ({
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      // Draw continuous oscillating waveform (smooth curve, not bars)
+      // Draw continuous oscillating waveform (smooth curve)
       ctx.beginPath();
       for (let i = 0; i < waveformData.length; i++) {
         const x = waveArea.x + (i / (waveformData.length - 1)) * waveArea.w;
@@ -138,7 +138,6 @@ const DogTagPreview = ({
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
-          // Smooth curve using quadratic bezier to previous midpoint
           const prevX = waveArea.x + ((i - 1) / (waveformData.length - 1)) * waveArea.w;
           const prevAmp = waveformData[i - 1] * waveArea.h * 0.45;
           const prevY = centerY - prevAmp;
@@ -146,7 +145,6 @@ const DogTagPreview = ({
           ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
         }
       }
-      // Final segment
       const lastX = waveArea.x + waveArea.w;
       const lastAmp = waveformData[waveformData.length - 1] * waveArea.h * 0.45;
       ctx.quadraticCurveTo(lastX, centerY - lastAmp, lastX, centerY - lastAmp);
@@ -175,31 +173,18 @@ const DogTagPreview = ({
       ctx.restore();
     }
 
-    // Draw name with overlay blend
-    if (petName.trim()) {
-      ctx.save();
-      ctx.globalCompositeOperation = "overlay";
-      const nameSize = Math.max(10, tw * 0.07);
-      ctx.font = `600 ${nameSize}px 'Playfair Display', Georgia, serif`;
-      ctx.fillStyle = "rgba(210, 210, 210, 0.8)";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(petName, tx + tw / 2, ty + th * 0.08);
-      ctx.restore();
-    }
-
-    // Draw QR code with multiply blend
+    // Draw QR code directly below waveform
     if (qrImage) {
       ctx.save();
       ctx.globalCompositeOperation = "overlay";
-      const qrSize = tw * 0.35;
+      const qrSize = tw * 0.45;
       const qrX = tx + (tw - qrSize) / 2;
-      const qrY = ty + th * 0.52;
+      const qrY = ty + th * 0.38;
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
       ctx.restore();
     }
 
-    // "SCAN TO HEAR" label
+    // "SCAN TO HEAR" label below QR
     if (qrDataUrl) {
       ctx.save();
       ctx.globalCompositeOperation = "overlay";
@@ -208,7 +193,20 @@ const DogTagPreview = ({
       ctx.fillStyle = "rgba(180, 180, 180, 0.6)";
       ctx.textAlign = "center";
       ctx.letterSpacing = "3px";
-      ctx.fillText("SCAN TO HEAR", tx + tw / 2, ty + th * 0.88);
+      ctx.fillText("SCAN TO HEAR", tx + tw / 2, ty + th * 0.72);
+      ctx.restore();
+    }
+
+    // Draw name below QR area
+    if (petName.trim()) {
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      const nameSize = Math.max(10, tw * 0.07);
+      ctx.font = `600 ${nameSize}px 'Playfair Display', Georgia, serif`;
+      ctx.fillStyle = "rgba(210, 210, 210, 0.8)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(petName, tx + tw / 2, ty + th * 0.82);
       ctx.restore();
     }
   }, [baseImage, waveformData, petName, qrImage, qrDataUrl, showBack, backText, tag]);
