@@ -4,18 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface AudioRecorderProps {
   onAudioUrl?: (url: string) => void;
+  initialUrl?: string | null;
 }
 
-const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
+const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(initialUrl || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialUrl || null);
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(initialUrl ? "Previously uploaded sound" : null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -33,6 +34,18 @@ const AudioRecorder = ({ onAudioUrl }: AudioRecorderProps) => {
       if (audioContextRef.current) audioContextRef.current.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialUrl) return;
+    setAudioUrl(initialUrl);
+    setUploadedUrl(initialUrl);
+    setFileName("Previously uploaded sound");
+    fetch(initialUrl)
+      .then((r) => r.blob())
+      .then((blob) => generateWaveformFromBlob(blob))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl]);
 
   const generateWaveformFromBlob = useCallback(async (blob: Blob) => {
     const ctx = new AudioContext();
