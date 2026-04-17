@@ -414,7 +414,7 @@ const ProductSection = () => {
             <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
               A loved one's voice, a baby's laugh, a heartbeat, or any meaningful sound
             </p>
-            <AudioRecorder onAudioUrl={handleAudioUrl} />
+            <AudioRecorder onAudioUrl={handleAudioUrl} initialUrl={initialAudioUrl} />
             <AudioPresets />
           </div>
 
@@ -434,7 +434,7 @@ const ProductSection = () => {
             <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
               This photo will appear on your personal Soul Page
             </p>
-            <PetPhotoUpload onPhotoUrl={(url) => setPhotoUrl(url || null)} />
+            <PetPhotoUpload onPhotoUrl={(url) => setPhotoUrl(url || null)} initialUrl={initialPhotoUrl} />
           </div>
 
           {/* Step 3: Name / Dedicated Text */}
