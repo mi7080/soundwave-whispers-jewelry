@@ -1,16 +1,24 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, X, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PetPhotoUploadProps {
   onPhotoUrl?: (url: string) => void;
+  initialUrl?: string | null;
 }
 
-const PetPhotoUpload = ({ onPhotoUrl }: PetPhotoUploadProps) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+const PetPhotoUpload = ({ onPhotoUrl, initialUrl }: PetPhotoUploadProps) => {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialUrl || null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialUrl || null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialUrl) {
+      setPreviewUrl(initialUrl);
+      setUploadedUrl(initialUrl);
+    }
+  }, [initialUrl]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
