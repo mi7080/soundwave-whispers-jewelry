@@ -64,6 +64,8 @@ const ProductSection = () => {
   const [resumed, setResumed] = useState(false);
   const [initialAudioUrl, setInitialAudioUrl] = useState<string | null>(null);
   const [initialPhotoUrl, setInitialPhotoUrl] = useState<string | null>(null);
+  // Draft persistence flag (declared early so resume effect can short-circuit it)
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
   useEffect(() => {
@@ -143,10 +145,6 @@ const ProductSection = () => {
   const generateSoulPageUrl = useCallback(() => {
     return buildSoulPageUrl(preOrderId);
   }, [preOrderId]);
-
-  // Save a draft record as soon as audio + photo are ready, so the UUID exists in the DB
-  // before checkout. This prevents "ghost UUIDs" if a user scans the QR preview early.
-  const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => {
     if (!audioUrl || !photoUrl || draftSaved) return;
