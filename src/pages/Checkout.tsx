@@ -58,8 +58,17 @@ const Checkout = () => {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <nav className="w-full py-6 px-6 border-b border-border/30">
-        <div className="max-w-5xl mx-auto flex items-center justify-center">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Back to edit design"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Edit Design</span>
+          </button>
           <img src={logo} alt="ANIMUS" className="h-12" />
+          <div className="w-[88px]" aria-hidden="true" />
         </div>
       </nav>
 
