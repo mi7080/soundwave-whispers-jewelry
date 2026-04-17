@@ -6,7 +6,7 @@ import FourSideGuide from "@/components/FourSideGuide";
 import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ShopifyProduct } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,11 +41,15 @@ const HARDCODED_PRODUCT: ShopifyProduct["node"] = {
 
 const ProductSection = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumeOrderId = searchParams.get("order");
+  const resumeVariantIdx = parseInt(searchParams.get("variant") || "0", 10);
+
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [dedicatedText, setDedicatedText] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
-  const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState(resumeVariantIdx || 0);
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
@@ -56,13 +60,59 @@ const ProductSection = () => {
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
   const [showBackPreview, setShowBackPreview] = useState(false);
-  const [preOrderId] = useState(() => crypto.randomUUID());
+  const [preOrderId] = useState(() => resumeOrderId || crypto.randomUUID());
+  const [resumed, setResumed] = useState(false);
+  const [initialAudioUrl, setInitialAudioUrl] = useState<string | null>(null);
+  const [initialPhotoUrl, setInitialPhotoUrl] = useState<string | null>(null);
 
   // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
   useEffect(() => {
     setProduct(HARDCODED_PRODUCT);
     setLoading(false);
   }, []);
+
+  // Resume from existing draft order (when returning from checkout via "Edit Design")
+  useEffect(() => {
+    if (!resumeOrderId || resumed) return;
+    let cancelled = false;
+    supabase
+      .from("animus_orders")
+      .select("id, pet_name, audio_url, pet_photo_url, add_name_to_back, waveform_data")
+      .eq("id", resumeOrderId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) {
+          setResumed(true);
+          return;
+        }
+        if (data.audio_url) {
+          setAudioUrl(data.audio_url);
+          setInitialAudioUrl(data.audio_url);
+        }
+        if (data.pet_photo_url) {
+          setPhotoUrl(data.pet_photo_url);
+          setInitialPhotoUrl(data.pet_photo_url);
+        }
+        if (data.add_name_to_back) {
+          setAddTextToBack(true);
+          if (data.pet_name && data.pet_name !== "Memorial") setBackText(data.pet_name);
+        } else if (data.pet_name && data.pet_name !== "Memorial") {
+          setDedicatedText(data.pet_name);
+        }
+        if (Array.isArray(data.waveform_data)) {
+          setWaveformData(data.waveform_data as number[]);
+        }
+        setDraftSaved(true); // skip re-creating draft
+        setResumed(true);
+        toast.success("Your previous design has been restored.");
+        // Clean up URL params after hydration so refresh doesn't re-trigger
+        const next = new URLSearchParams(searchParams);
+        next.delete("order");
+        next.delete("variant");
+        setSearchParams(next, { replace: true });
+      });
+    return () => { cancelled = true; };
+  }, [resumeOrderId, resumed, searchParams, setSearchParams]);
 
   const verifyPersistedOrder = useCallback(async (orderId: string, expectedSoulPageUrl: string) => {
     const { data: persistedOrder, error } = await supabase
