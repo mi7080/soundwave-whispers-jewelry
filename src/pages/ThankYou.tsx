@@ -107,25 +107,25 @@ const ThankYou = () => {
         </div>
 
         {/* Order Summary Card */}
-        <div className="border border-border/50 rounded-lg p-6 bg-card mb-8 text-left">
+        <div className="border border-gold/20 rounded-lg p-5 sm:p-6 bg-[#1A1A1A] mb-8 text-left shadow-xl">
           <p className="text-xs tracking-[0.3em] uppercase text-gold font-sans mb-4 text-center">
             Order Summary
           </p>
           <div className="space-y-3 text-sm">
             {displayOrderId && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Order Number</span>
-                <span className="text-foreground font-mono tracking-wide">#{displayOrderId}</span>
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-white/60">Order Number</span>
+                <span className="text-white font-mono tracking-wide">#{displayOrderId}</span>
               </div>
             )}
             {displayAmount && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total Amount</span>
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-white/60">Total Amount</span>
                 <span className="text-gold font-serif text-lg">${displayAmount}</span>
               </div>
             )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Status</span>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-white/60">Status</span>
               <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs tracking-widest uppercase">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 Payment Confirmed
