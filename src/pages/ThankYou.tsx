@@ -24,6 +24,16 @@ const ThankYou = () => {
   const name = searchParams.get("name");
   const [particles, setParticles] = useState<Particle[]>([]);
 
+  const parsedAmount = amount ? parseFloat(amount) : NaN;
+  const decodedName = name ? decodeURIComponent(name).trim() : "";
+  const isValid =
+    !!orderId &&
+    orderId.trim().length > 0 &&
+    !!amount &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    decodedName.length > 0;
+
   const createConfetti = useCallback(() => {
     const newParticles: Particle[] = [];
     for (let i = 0; i < 120; i++) {
