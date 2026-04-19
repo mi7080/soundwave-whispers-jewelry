@@ -155,17 +155,14 @@ serve(async (req) => {
       shipping_address: shippingAddress,
       line_items: [
         {
-          variant_id: SHINEON_VARIANT_ID,
+          sku: SHINEON_SKU,
           quantity: 1,
-          engraving_text: engravingText,
-          personalizations: {
-            front: order.design_image_url,
-          },
+          line_item_print_url: order.design_image_url,
         },
       ],
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, variant: ${SHINEON_VARIANT_ID}, engraving: ${engravingText}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${order.design_image_url}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
