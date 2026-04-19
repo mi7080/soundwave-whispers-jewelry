@@ -23,11 +23,16 @@ const ThankYou = () => {
   const [searchParams] = useSearchParams();
   // iCount may forward params under different names depending on paypage config.
   const orderId =
+    searchParams.get("docnum") ||
     searchParams.get("order") ||
     searchParams.get("order_id") ||
     searchParams.get("info");
-  const amountParam = searchParams.get("amount") || searchParams.get("cs1");
+  const amountParam =
+    searchParams.get("total_paid") ||
+    searchParams.get("amount") ||
+    searchParams.get("cs1");
   const nameParam =
+    searchParams.get("customer_name") ||
     searchParams.get("name") ||
     searchParams.get("cs2") ||
     searchParams.get("client_name");
