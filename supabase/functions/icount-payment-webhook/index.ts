@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
-const SHINEON_VARIANT_ID = "5115334";
+const SHINEON_SKU = "SO-15845645";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
