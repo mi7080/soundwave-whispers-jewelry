@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadSvg, generateProductionSvg, generateBackEngravingSvg } from "@/lib/svgExport";
-import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen } from "lucide-react";
+import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen, FileSpreadsheet, CheckCircle2, Circle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -19,12 +19,32 @@ interface AnimusOrder {
   add_name_to_back: boolean | null;
   cloudinary_folder_url: string | null;
   design_image_url: string | null;
+  exported_at: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  amount: number | null;
 }
+
+const toLocalDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+const csvEscape = (val: unknown) => {
+  if (val === null || val === undefined) return "";
+  const s = String(val);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+};
 
 const AdminDashboard = () => {
   const [orders, setOrders] = useState<AnimusOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(new Date()));
+  const [marking, setMarking] = useState(false);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -37,6 +57,20 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => { fetchOrders(); }, []);
+
+  const filteredOrders = useMemo(
+    () => orders.filter(o => toLocalDateStr(new Date(o.created_at)) === selectedDate),
+    [orders, selectedDate]
+  );
+
+  const dateGroups = useMemo(() => {
+    const map = new Map<string, number>();
+    orders.forEach(o => {
+      const d = toLocalDateStr(new Date(o.created_at));
+      map.set(d, (map.get(d) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [orders]);
 
   const handleDownloadFront = (order: AnimusOrder) => {
     const filename = `ANIMUS_FRONT_${order.pet_name.replace(/\s+/g, "_")}_${order.id.slice(0, 8)}.svg`;
@@ -80,6 +114,72 @@ const AdminDashboard = () => {
     }
   };
 
+  const toggleExported = async (order: AnimusOrder) => {
+    const newVal = order.exported_at ? null : new Date().toISOString();
+    const prev = orders;
+    setOrders(p => p.map(o => o.id === order.id ? { ...o, exported_at: newVal } : o));
+    const { error } = await supabase
+      .from("animus_orders")
+      .update({ exported_at: newVal })
+      .eq("id", order.id);
+    if (error) {
+      setOrders(prev);
+      toast.error("Failed to update export status.");
+    } else {
+      toast.success(newVal ? "Marked as exported" : "Marked as not exported");
+    }
+  };
+
+  const handleDownloadCSV = async () => {
+    if (filteredOrders.length === 0) {
+      toast.error("No orders for the selected date.");
+      return;
+    }
+
+    const headers = [
+      "order_id", "created_at", "pet_name", "customer_name", "customer_email",
+      "amount", "right_side_engraving", "add_name_to_back", "status",
+      "soul_page_url", "audio_url", "pet_photo_url", "design_image_url",
+      "cloudinary_folder_url", "exported_at"
+    ];
+    const rows = filteredOrders.map(o => [
+      o.id, o.created_at, o.pet_name, o.customer_name, o.customer_email,
+      o.amount, o.right_side_engraving, o.add_name_to_back, o.status,
+      o.soul_page_url, o.audio_url, o.pet_photo_url, o.design_image_url,
+      o.cloudinary_folder_url, o.exported_at,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(csvEscape).join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ANIMUS_orders_${selectedDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setMarking(true);
+    const ids = filteredOrders.filter(o => !o.exported_at).map(o => o.id);
+    if (ids.length > 0) {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("animus_orders")
+        .update({ exported_at: now })
+        .in("id", ids);
+      if (error) {
+        toast.error("CSV downloaded, but failed to mark as exported.");
+      } else {
+        setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, exported_at: now } : o));
+        toast.success(`Exported ${filteredOrders.length} orders for ${selectedDate}`);
+      }
+    } else {
+      toast.success(`Re-exported ${filteredOrders.length} orders`);
+    }
+    setMarking(false);
+  };
+
+  const exportedCount = filteredOrders.filter(o => o.exported_at).length;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-6 py-12 max-w-5xl">
@@ -91,7 +191,7 @@ const AdminDashboard = () => {
             </Link>
             <h1 className="text-2xl font-serif text-foreground">ANIMUS Production Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Memory Pendant — Download print-ready engraving SVGs
+              Memory Pendant — Daily batch export to manufacturer
             </p>
           </div>
           <button
@@ -104,6 +204,52 @@ const AdminDashboard = () => {
           </button>
         </div>
 
+        {/* Date Filter + CSV Export */}
+        <div className="border border-border/30 rounded-sm p-5 mb-6 bg-card">
+          <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-[10px] tracking-[0.2em] uppercase text-muted-foreground mb-2">
+                Filter by Date
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 bg-background border border-border/50 rounded-sm text-sm text-foreground focus:outline-none focus:border-gold"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {dateGroups.slice(0, 5).map(([date, count]) => (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className={`px-3 py-1.5 text-[10px] tracking-[0.15em] uppercase border rounded-sm transition-colors ${
+                    selectedDate === date
+                      ? "border-gold text-gold bg-gold/5"
+                      : "border-border/40 text-muted-foreground hover:border-gold/50 hover:text-gold"
+                  }`}
+                >
+                  {date} <span className="opacity-60">({count})</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleDownloadCSV}
+              disabled={marking || filteredOrders.length === 0}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {marking ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              Download Daily CSV
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">
+            Showing <span className="text-foreground font-medium">{filteredOrders.length}</span> orders for {selectedDate}
+            {filteredOrders.length > 0 && (
+              <> • <span className="text-green-400">{exportedCount} exported</span> • <span className="text-gold">{filteredOrders.length - exportedCount} pending</span></>
+            )}
+          </p>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="border border-border/30 rounded-sm p-4 text-center">
@@ -111,12 +257,12 @@ const AdminDashboard = () => {
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Total Orders</p>
           </div>
           <div className="border border-border/30 rounded-sm p-4 text-center">
-            <p className="text-2xl font-serif text-gold">{orders.filter(o => o.status === "pending").length}</p>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Pending</p>
+            <p className="text-2xl font-serif text-gold">{orders.filter(o => !o.exported_at).length}</p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Not Exported</p>
           </div>
           <div className="border border-border/30 rounded-sm p-4 text-center">
-            <p className="text-2xl font-serif text-green-400">{orders.filter(o => o.status === "fulfilled").length}</p>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Fulfilled</p>
+            <p className="text-2xl font-serif text-green-400">{orders.filter(o => o.exported_at).length}</p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Exported</p>
           </div>
         </div>
 
@@ -125,26 +271,33 @@ const AdminDashboard = () => {
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-gold" />
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="text-center py-20 border border-border/30 rounded-sm">
-            <p className="text-muted-foreground">No orders yet</p>
-            <p className="text-xs text-muted-foreground/50 mt-2">Orders will appear here after customers complete checkout</p>
+            <p className="text-muted-foreground">No orders for {selectedDate}</p>
+            <p className="text-xs text-muted-foreground/50 mt-2">Pick another date above to see orders</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => (
-              <div key={order.id} className="border border-border/30 rounded-sm overflow-hidden bg-card hover:border-gold/30 transition-colors">
+            {filteredOrders.map((order) => (
+              <div key={order.id} className={`border rounded-sm overflow-hidden bg-card transition-colors ${
+                order.exported_at ? "border-green-500/20 hover:border-green-500/40" : "border-border/30 hover:border-gold/30"
+              }`}>
                 {/* Order Header */}
                 <div className="p-6 border-b border-border/20">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="text-lg font-serif text-foreground">{order.pet_name}</h3>
                         <span className={`text-[9px] tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm border ${
                           order.status === "pending" ? "border-gold/30 text-gold bg-gold/5" : "border-green-500/30 text-green-400 bg-green-500/5"
                         }`}>
                           {order.status}
                         </span>
+                        {order.exported_at && (
+                          <span className="text-[9px] tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm border border-green-500/30 text-green-400 bg-green-500/5 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Exported
+                          </span>
+                        )}
                         {order.add_name_to_back && (
                           <span className="text-[9px] tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm border border-blue-500/30 text-blue-400 bg-blue-500/5">
                             Back Engraving
@@ -152,13 +305,26 @@ const AdminDashboard = () => {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(order.created_at).toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                       {order.right_side_engraving && (
                         <p className="text-xs text-muted-foreground/70 mt-0.5">Side Engraving: "{order.right_side_engraving}"</p>
                       )}
+                      {order.exported_at && (
+                        <p className="text-[10px] text-green-400/60 mt-0.5">Exported {new Date(order.exported_at).toLocaleString()}</p>
+                      )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground/50 font-mono">{order.id.slice(0, 8)}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleExported(order)}
+                        className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase border border-border/40 hover:border-gold/50 rounded-sm px-2.5 py-1.5 text-muted-foreground hover:text-gold transition-colors"
+                        title="Toggle exported status"
+                      >
+                        {order.exported_at ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Circle className="w-3 h-3" />}
+                        {order.exported_at ? "Exported" : "Mark Exported"}
+                      </button>
+                      <p className="text-[10px] text-muted-foreground/50 font-mono">{order.id.slice(0, 8)}</p>
+                    </div>
                   </div>
                 </div>
 
