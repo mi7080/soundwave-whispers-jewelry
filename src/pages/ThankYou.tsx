@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { PRODUCT_CONFIG } from "@/config/product";
 import logo from "@/assets/logo.png";
 
 const CONFETTI_COLORS = ["#B78E48", "#D4AF37", "#FFD700", "#C9A84C", "#E8C07A", "#FFFFFF"];
@@ -19,20 +21,63 @@ interface Particle {
 
 const ThankYou = () => {
   const [searchParams] = useSearchParams();
-  const orderId = searchParams.get("order") || searchParams.get("order_id");
-  const amount = searchParams.get("amount");
-  const name = searchParams.get("name");
-  const [particles, setParticles] = useState<Particle[]>([]);
+  // iCount may forward params under different names depending on paypage config.
+  const orderId =
+    searchParams.get("order") ||
+    searchParams.get("order_id") ||
+    searchParams.get("info");
+  const amountParam = searchParams.get("amount") || searchParams.get("cs1");
+  const nameParam =
+    searchParams.get("name") ||
+    searchParams.get("cs2") ||
+    searchParams.get("client_name");
+  const status = searchParams.get("status");
 
-  const parsedAmount = amount ? parseFloat(amount) : NaN;
-  const decodedName = name ? decodeURIComponent(name).trim() : "";
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [resolvedName, setResolvedName] = useState<string>("");
+  const [resolvedAmount, setResolvedAmount] = useState<number | null>(null);
+  const [lookupDone, setLookupDone] = useState(false);
+
+  const parsedUrlAmount = amountParam ? parseFloat(amountParam) : NaN;
+  const decodedUrlName = nameParam ? decodeURIComponent(nameParam).trim() : "";
+
+  const effectiveName = decodedUrlName || resolvedName;
+  const effectiveAmount =
+    Number.isFinite(parsedUrlAmount) && parsedUrlAmount > 0
+      ? parsedUrlAmount
+      : resolvedAmount;
+
+  const explicitFailure = status === "failed" || status === "failure";
   const isValid =
+    !explicitFailure &&
     !!orderId &&
     orderId.trim().length > 0 &&
-    !!amount &&
-    Number.isFinite(parsedAmount) &&
-    parsedAmount > 0 &&
-    decodedName.length > 0;
+    !!effectiveAmount &&
+    effectiveAmount > 0 &&
+    effectiveName.length > 0;
+
+  // DB fallback for missing name/amount
+  useEffect(() => {
+    if (!orderId || lookupDone) return;
+    if (decodedUrlName && Number.isFinite(parsedUrlAmount) && parsedUrlAmount > 0) {
+      setLookupDone(true);
+      return;
+    }
+    supabase
+      .from("animus_orders")
+      .select("pet_name")
+      .eq("id", orderId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          if (!decodedUrlName && data.pet_name) setResolvedName(data.pet_name);
+          if (!Number.isFinite(parsedUrlAmount) || parsedUrlAmount <= 0) {
+            setResolvedAmount(PRODUCT_CONFIG.variants[0].foundersPrice);
+          }
+        }
+        setLookupDone(true);
+      });
+  }, [orderId, decodedUrlName, parsedUrlAmount, lookupDone]);
 
   const createConfetti = useCallback(() => {
     const newParticles: Particle[] = [];
@@ -78,9 +123,15 @@ const ThankYou = () => {
     return () => clearInterval(interval);
   }, [particles.length]);
 
-  const displayName = decodedName;
+  const displayName = effectiveName;
   const displayOrderId = orderId ?? "";
-  const displayAmount = parsedAmount.toFixed(2);
+  const displayAmount = effectiveAmount ? effectiveAmount.toFixed(2) : "";
+
+  // While DB fallback is resolving, render a blank background to avoid a
+  // brief "Payment Error" flash on real successful redirects.
+  if (!lookupDone && !explicitFailure) {
+    return <main className="min-h-screen bg-background" aria-busy="true" />;
+  }
 
   if (!isValid) {
     return (
