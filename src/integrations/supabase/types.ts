@@ -24,6 +24,7 @@ export type Database = {
           customer_email: string | null
           customer_name: string | null
           design_image_url: string | null
+          exported_at: string | null
           fulfillment_status: string
           id: string
           pet_name: string
@@ -45,6 +46,7 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           design_image_url?: string | null
+          exported_at?: string | null
           fulfillment_status?: string
           id?: string
           pet_name: string
@@ -66,6 +68,7 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           design_image_url?: string | null
+          exported_at?: string | null
           fulfillment_status?: string
           id?: string
           pet_name?: string
