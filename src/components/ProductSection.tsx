@@ -7,7 +7,6 @@ import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ShopifyProduct } from "@/lib/shopify";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,12 +14,33 @@ import QRCode from "qrcode";
 import { buildSoulPageUrl } from "@/lib/soulPage";
 import { PRODUCT_CONFIG } from "@/config/product";
 
-// Build ShopifyProduct shape from central config
-const HARDCODED_PRODUCT: ShopifyProduct["node"] = {
-  id: PRODUCT_CONFIG.shopifyGid,
+// Local product shape (no external commerce platform)
+interface LocalProduct {
+  id: string;
+  title: string;
+  description: string;
+  handle: string;
+  priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+  images: { edges: Array<{ node: { url: string; altText: string | null } }> };
+  variants: {
+    edges: Array<{
+      node: {
+        id: string;
+        title: string;
+        price: { amount: string; currencyCode: string };
+        availableForSale: boolean;
+        selectedOptions: Array<{ name: string; value: string }>;
+      };
+    }>;
+  };
+  options: Array<{ name: string; values: string[] }>;
+}
+
+const HARDCODED_PRODUCT: LocalProduct = {
+  id: "animus-pendant",
   title: PRODUCT_CONFIG.title,
   description: PRODUCT_CONFIG.description,
-  handle: PRODUCT_CONFIG.shopifyHandle,
+  handle: "animus-pendant",
   priceRange: { minVariantPrice: { amount: PRODUCT_CONFIG.foundersPrice.toFixed(2), currencyCode: PRODUCT_CONFIG.currency } },
   images: { edges: [] },
   variants: {
@@ -48,7 +68,7 @@ const ProductSection = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [dedicatedText, setDedicatedText] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
+  const [product, setProduct] = useState<LocalProduct | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(resumeVariantIdx || 0);
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -67,7 +87,7 @@ const ProductSection = () => {
   // Draft persistence flag (declared early so resume effect can short-circuit it)
   const [draftSaved, setDraftSaved] = useState(false);
 
-  // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
+  // Use hardcoded ShineOn PT-2151 product data directly
   useEffect(() => {
     setProduct(HARDCODED_PRODUCT);
     setLoading(false);

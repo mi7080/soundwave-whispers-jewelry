@@ -7,7 +7,6 @@ import { toast } from "sonner";
 
 interface AnimusOrder {
   id: string;
-  shopify_order_id: string | null;
   pet_name: string;
   audio_url: string;
   pet_photo_url: string | null;
@@ -155,9 +154,6 @@ const AdminDashboard = () => {
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
-                      {order.shopify_order_id && (
-                        <p className="text-xs text-muted-foreground/70 mt-0.5">Shopify ID: {order.shopify_order_id}</p>
-                      )}
                       {order.right_side_engraving && (
                         <p className="text-xs text-muted-foreground/70 mt-0.5">Side Engraving: "{order.right_side_engraving}"</p>
                       )}

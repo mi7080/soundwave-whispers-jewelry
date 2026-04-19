@@ -1,5 +1,4 @@
 import logo from "@/assets/logo.png";
-import CartDrawer from "@/components/CartDrawer";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
@@ -20,7 +19,6 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3 md:gap-5">
-          <CartDrawer />
           <a
             href="/#customize"
             className="hidden md:inline-block bg-gold text-background px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-gold-light transition-colors"
