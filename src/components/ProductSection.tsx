@@ -87,7 +87,7 @@ const ProductSection = () => {
   // Draft persistence flag (declared early so resume effect can short-circuit it)
   const [draftSaved, setDraftSaved] = useState(false);
 
-  // Use hardcoded ShineOn PT-2151 product data directly — no Shopify API fetch
+  // Use hardcoded ShineOn PT-2151 product data directly
   useEffect(() => {
     setProduct(HARDCODED_PRODUCT);
     setLoading(false);
