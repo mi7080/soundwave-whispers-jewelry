@@ -171,7 +171,9 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         Authorization: `Bearer ${shineonApiKey}`,
+        "X-API-KEY": shineonApiKey,
       },
       body: JSON.stringify(shineonPayload),
     });
