@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SHINEON_API_URL = "https://api.shineon.com/v2/orders";
-const SHINEON_PRODUCT_ID = "PROD-5115334";
+const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
+const SHINEON_VARIANT_ID = "5115334";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -99,7 +99,7 @@ serve(async (req) => {
     // Retrieve order details for ShineOn fulfillment
     const { data: order, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, pet_name")
+      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -117,7 +117,7 @@ serve(async (req) => {
       });
     }
 
-    // Send order to ShineOn
+    // Send order to ShineOn (Direct API v1)
     const shineonApiKey = Deno.env.get("SHINEON_API_KEY");
     if (!shineonApiKey) {
       console.error("[iCount Webhook] SHINEON_API_KEY not configured");
@@ -126,44 +126,46 @@ serve(async (req) => {
       });
     }
 
-    // Extract shipping info from the webhook or from the stored order
+    // iCount docnum → ShineOn order_number
+    const docnum = body.docnum || body.doc_number || body.invoice_number || `icount-${orderId}`;
+
+    // Map iCount customer fields → ShineOn shipping_address
+    const fullName = body.client_name || order.customer_name || "";
+    const customerEmailForShipping = body.client_email || body.email || order.customer_email || "";
     const shippingAddress = {
-      first_name: body.client_name?.split(" ")[0] || body.first_name || "",
-      last_name: body.client_name?.split(" ").slice(1).join(" ") || body.last_name || "",
+      first_name: fullName.split(" ")[0] || body.first_name || "",
+      last_name: fullName.split(" ").slice(1).join(" ") || body.last_name || "",
       address1: body.address || body.street || "",
-      address2: "",
+      address2: body.address2 || "",
       city: body.city || "",
-      province: body.state || "",
-      province_code: "",
+      province: body.state || body.province || "",
+      province_code: body.province_code || "",
       country: body.country || "",
       country_code: body.country_code || "",
-      zip: body.zip || "",
+      zip: body.zip || body.postal_code || "",
       phone: body.phone || "",
+      email: customerEmailForShipping,
     };
 
-    const notificationUrl = `${supabaseUrl}/functions/v1/icount-payment-webhook`;
+    // engraving_text = soul page URL (the generated image/recording page)
+    const engravingText = order.soul_page_url || order.design_image_url;
 
     const shineonPayload = {
-      order: {
-        source_id: `icount-${orderId}`,
-        shipment_notification_url: notificationUrl,
-        shipping_address: shippingAddress,
-        line_items: [
-          {
-            product_id: SHINEON_PRODUCT_ID,
-            quantity: 1,
-            personalizations: {
-              front: order.design_image_url,
-            },
-            properties: {
-              "Engraving Line 1": order.pet_name || "",
-            },
+      order_number: String(docnum),
+      shipping_address: shippingAddress,
+      line_items: [
+        {
+          variant_id: SHINEON_VARIANT_ID,
+          quantity: 1,
+          engraving_text: engravingText,
+          personalizations: {
+            front: order.design_image_url,
           },
-        ],
-      },
+        },
+      ],
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn — Design: ${order.design_image_url}, Name: ${order.pet_name}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, variant: ${SHINEON_VARIANT_ID}, engraving: ${engravingText}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -178,13 +180,30 @@ serve(async (req) => {
     console.log(`[iCount Webhook] ShineOn response: ${shineonResponse.status} — ${shineonResult}`);
 
     if (!shineonResponse.ok) {
-      console.error(`[iCount Webhook] ShineOn API error: ${shineonResponse.status}`);
+      console.error(`[iCount Webhook] ShineOn API error ${shineonResponse.status}: ${shineonResult}`);
+      // Persist full error response body for debugging
+      await supabase
+        .from("email_send_log")
+        .insert({
+          template_name: "shineon-error",
+          recipient_email: customerEmailForShipping || "unknown@animuswave.com",
+          status: "error",
+          error_message: `ShineOn ${shineonResponse.status}: ${shineonResult}`.slice(0, 4000),
+          metadata: {
+            orderId,
+            docnum,
+            request_payload: shineonPayload,
+            response_status: shineonResponse.status,
+            response_body: shineonResult,
+          },
+        });
+
       await supabase
         .from("animus_orders")
         .update({ status: "shineon_error" })
         .eq("id", orderId);
 
-      return new Response(JSON.stringify({ success: true, shineon_error: true, status: shineonResponse.status }), {
+      return new Response(JSON.stringify({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
