@@ -43,7 +43,14 @@ const Checkout = () => {
   }, [orderId, navigate]);
 
   const handleProceed = () => {
-    const paymentUrl = `${ICOUNT_BASE_URL}&info=${encodeURIComponent(orderId!)}`;
+    // Pass order id (info), amount (cs1), and pet name (cs2) so iCount can
+    // forward them back to /thank-you via the success URL configured in iCount.
+    const params = new URLSearchParams({
+      info: orderId!,
+      cs1: variant.foundersPrice.toFixed(2),
+      cs2: order?.pet_name || "",
+    });
+    const paymentUrl = `${ICOUNT_BASE_URL}&${params.toString()}`;
     window.location.href = paymentUrl;
   };
 
