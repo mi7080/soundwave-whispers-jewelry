@@ -48,13 +48,13 @@ const ThankYou = () => {
       : resolvedAmount;
 
   const explicitFailure = status === "failed" || status === "failure";
-  const isValid =
-    !explicitFailure &&
-    !!orderId &&
-    orderId.trim().length > 0 &&
-    !!effectiveAmount &&
-    effectiveAmount > 0 &&
-    effectiveName.length > 0;
+  // Show the thank-you screen as long as we have *something* identifying the order.
+  // Missing name/amount fall back to graceful defaults instead of an error screen.
+  const hasAnyOrderData =
+    (!!orderId && orderId.trim().length > 0) ||
+    effectiveName.length > 0 ||
+    (!!effectiveAmount && effectiveAmount > 0);
+  const isValid = !explicitFailure && hasAnyOrderData;
 
   // DB fallback for missing name/amount
   useEffect(() => {
