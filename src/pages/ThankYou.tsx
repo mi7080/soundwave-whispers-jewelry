@@ -123,9 +123,15 @@ const ThankYou = () => {
     return () => clearInterval(interval);
   }, [particles.length]);
 
-  const displayName = decodedName;
+  const displayName = effectiveName;
   const displayOrderId = orderId ?? "";
-  const displayAmount = parsedAmount.toFixed(2);
+  const displayAmount = effectiveAmount ? effectiveAmount.toFixed(2) : "";
+
+  // While DB fallback is resolving, render a blank background to avoid a
+  // brief "Payment Error" flash on real successful redirects.
+  if (!lookupDone && !explicitFailure) {
+    return <main className="min-h-screen bg-background" aria-busy="true" />;
+  }
 
   if (!isValid) {
     return (
