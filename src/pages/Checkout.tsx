@@ -72,11 +72,11 @@ const Checkout = () => {
         </div>
       </nav>
 
-      <div className="flex-1 max-w-lg mx-auto w-full px-6 py-10 md:py-16 flex flex-col items-center">
-        <h1 className="font-serif text-3xl md:text-4xl text-foreground text-center mb-2">
+      <div className="flex-1 w-full max-w-lg mx-auto px-4 sm:px-6 py-8 md:py-16 flex flex-col items-center">
+        <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white text-center mb-2">
           Order Summary
         </h1>
-        <p className="text-center text-muted-foreground text-sm mb-8">
+        <p className="text-center text-white/60 text-sm mb-6">
           Review your pendant details before proceeding to payment.
         </p>
 
@@ -86,51 +86,51 @@ const Checkout = () => {
           </div>
         )}
 
-        <div className="w-full border border-border/50 rounded-lg p-6 bg-card">
+        <div className="w-full border border-gold/20 rounded-lg p-5 sm:p-6 bg-[#1A1A1A] shadow-xl">
           <p className="text-xs tracking-[0.3em] uppercase text-gold font-sans mb-4">
             Your Pendant
           </p>
 
           {order?.design_image_url && (
-            <div className="mb-5 rounded-md overflow-hidden border border-border/30">
+            <div className="mb-5 rounded-md overflow-hidden border border-gold/20 bg-black flex items-center justify-center">
               <img
                 src={order.design_image_url}
-                alt="Your soundwave design"
-                className="w-full h-auto"
+                alt="Your soundwave pendant with QR engraving"
+                className="w-full h-auto max-h-[320px] object-contain"
               />
             </div>
           )}
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Product</span>
-              <span className="text-foreground font-medium text-right text-xs">
+          <div className="space-y-2.5 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-white/60">Product</span>
+              <span className="text-white font-medium text-right">
                 Memorial Pendant
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Finish</span>
-              <span className="text-foreground">{variant.title}</span>
+            <div className="flex justify-between gap-4">
+              <span className="text-white/60">Finish</span>
+              <span className="text-white text-right">{variant.title}</span>
             </div>
             {order?.pet_name && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Engraving</span>
-                <span className="text-foreground">{order.pet_name}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-white/60">Engraving</span>
+                <span className="text-white text-right truncate max-w-[60%]">{order.pet_name}</span>
               </div>
             )}
-            <div className="border-t border-border/30 pt-2 mt-2 flex justify-between">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="text-foreground">
+            <div className="border-t border-white/10 pt-2.5 mt-2 flex justify-between">
+              <span className="text-white/60">Subtotal</span>
+              <span className="text-white">
                 ${variant.foundersPrice.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Shipping</span>
-              <span className="text-gold text-xs">FREE</span>
+              <span className="text-white/60">Shipping</span>
+              <span className="text-gold text-xs tracking-widest uppercase">FREE</span>
             </div>
-            <div className="border-t border-border/30 pt-2 flex justify-between text-lg">
-              <span className="text-foreground font-serif">Total</span>
-              <span className="text-gold font-serif">
+            <div className="border-t border-white/10 pt-3 mt-1 flex justify-between items-baseline">
+              <span className="text-white font-serif text-lg">Total</span>
+              <span className="text-gold font-serif text-2xl">
                 ${variant.foundersPrice.toFixed(2)}
               </span>
             </div>
@@ -139,14 +139,14 @@ const Checkout = () => {
 
         <button
           onClick={handleProceed}
-          className="w-full h-13 py-3.5 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors rounded-md flex items-center justify-center gap-2 mt-6"
+          className="w-full min-h-[52px] py-3.5 px-4 bg-gold text-background text-xs sm:text-sm tracking-[0.2em] uppercase font-semibold hover:bg-gold-light transition-colors rounded-md flex items-center justify-center gap-2 mt-6 shadow-lg shadow-gold/10"
         >
           Proceed to Shipping & Payment
         </button>
 
-        <div className="flex items-center justify-center gap-4 text-muted-foreground/50 text-[10px] tracking-widest uppercase pt-4">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-white/40 text-[10px] tracking-widest uppercase pt-4 text-center">
           <span>🔒 Secure Payment</span>
-          <span>·</span>
+          <span className="hidden sm:inline">·</span>
           <span>Free Shipping</span>
         </div>
       </div>
