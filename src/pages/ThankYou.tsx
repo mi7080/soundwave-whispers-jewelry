@@ -48,13 +48,13 @@ const ThankYou = () => {
       : resolvedAmount;
 
   const explicitFailure = status === "failed" || status === "failure";
-  const isValid =
-    !explicitFailure &&
-    !!orderId &&
-    orderId.trim().length > 0 &&
-    !!effectiveAmount &&
-    effectiveAmount > 0 &&
-    effectiveName.length > 0;
+  // Show the thank-you screen as long as we have *something* identifying the order.
+  // Missing name/amount fall back to graceful defaults instead of an error screen.
+  const hasAnyOrderData =
+    (!!orderId && orderId.trim().length > 0) ||
+    effectiveName.length > 0 ||
+    (!!effectiveAmount && effectiveAmount > 0);
+  const isValid = !explicitFailure && hasAnyOrderData;
 
   // DB fallback for missing name/amount
   useEffect(() => {
@@ -196,7 +196,7 @@ const ThankYou = () => {
             <span className="text-gold text-3xl">✓</span>
           </div>
           <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">
-            Thank you, {displayName}!
+            {displayName ? `Thank you, ${displayName}!` : "Thank you for your order!"}
           </h1>
           <p className="text-gold text-sm tracking-[0.3em] uppercase font-sans">
             Your Order Is Confirmed
@@ -209,14 +209,18 @@ const ThankYou = () => {
             Order Summary
           </p>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center gap-4">
-              <span className="text-white/60">Order Number</span>
-              <span className="text-white font-mono tracking-wide break-all text-right">#{displayOrderId}</span>
-            </div>
-            <div className="flex justify-between items-center gap-4">
-              <span className="text-white/60">Total Amount</span>
-              <span className="text-gold font-serif text-lg">${displayAmount}</span>
-            </div>
+            {displayOrderId && (
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-white/60">Order Number</span>
+                <span className="text-white font-mono tracking-wide break-all text-right">#{displayOrderId}</span>
+              </div>
+            )}
+            {displayAmount && (
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-white/60">Total Amount</span>
+                <span className="text-gold font-serif text-lg">${displayAmount}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center gap-4">
               <span className="text-white/60">Status</span>
               <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs tracking-widest uppercase">
