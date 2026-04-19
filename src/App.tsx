@@ -9,6 +9,8 @@ import Index from "./pages/Index.tsx";
 import FAQ from "./pages/FAQ.tsx";
 import PreOrderLanding from "./pages/PreOrderLanding.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import AdminCRM from "./pages/AdminCRM.tsx";
+import AdminAuth from "./pages/AdminAuth.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -39,6 +41,8 @@ function AppContent() {
         <Route path="/early-access-store" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin-login" element={<AdminAuth />} />
+        <Route path="/admin-dashboard" element={<AdminCRM />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/thank-you" element={<ThankYou />} />
         <Route path="/soul/:id" element={<SoulPageErrorBoundary><SoulPage /></SoulPageErrorBoundary>} />
