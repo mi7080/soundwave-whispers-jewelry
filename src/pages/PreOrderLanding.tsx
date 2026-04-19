@@ -80,12 +80,7 @@ const PreOrderLanding = () => {
       console.log('Email automation response:', res);
     }).catch((err) => console.warn("[Waitlist] Welcome email failed:", err));
 
-    const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    fetch(`https://${projId}.supabase.co/functions/v1/sync-waitlist-to-shopify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    }).catch((err) => console.warn("[Waitlist] Shopify sync failed:", err));
+
 
     if (typeof window !== "undefined" && (window as any).firePixelRegistration) {
       (window as any).firePixelRegistration();

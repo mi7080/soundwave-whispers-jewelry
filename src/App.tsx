@@ -4,7 +4,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useCartSync } from "@/hooks/useCartSync";
+
 import Index from "./pages/Index.tsx";
 import FAQ from "./pages/FAQ.tsx";
 import PreOrderLanding from "./pages/PreOrderLanding.tsx";
@@ -33,7 +33,6 @@ function LegacySoulPageRedirect() {
 }
 
 function AppContent() {
-  useCartSync();
   return (
     <BrowserRouter>
       <Routes>

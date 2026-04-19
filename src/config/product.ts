@@ -11,9 +11,7 @@ export const PRODUCT_CONFIG = {
   shineonProductId: 30338,
   shineonTemplate: "PT-2151",
 
-  // Shopify identifiers (for cart creation)
-  shopifyGid: "gid://shopify/Product/10550449602872",
-  shopifyHandle: "animus-personalized-soundwave-jewelry-with-scannable-memory-page",
+  // Product identifiers (legacy variant ids retained for stable referencing in DB)
 
   // Product info
   title: "The Universal Memorial Pendant",
@@ -37,7 +35,7 @@ export const PRODUCT_CONFIG = {
   // Variants
   variants: [
     {
-      id: "gid://shopify/ProductVariant/52167512162616",
+      id: "variant-steel",
       title: "Polished Stainless Steel",
       fullPrice: 89.90,
       foundersPrice: 49.90,
@@ -45,7 +43,7 @@ export const PRODUCT_CONFIG = {
       imageAlt: "ANIMUS Memorial Pendant — Polished Stainless Steel Dog Tag",
     },
     {
-      id: "gid://shopify/ProductVariant/52167512129848",
+      id: "variant-gold",
       title: "18K Yellow Gold Finish",
       fullPrice: 109.90,
       foundersPrice: 59.90,
