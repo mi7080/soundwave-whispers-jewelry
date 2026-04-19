@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Waves, QrCode } from "lucide-react";
 import logo from "@/assets/logo.png";
 import pendantHero from "@/assets/pendant-hero.jpg";
+
+const DISCOUNT_LIMIT = 300;
 
 const steps = [
   {
@@ -29,6 +31,20 @@ const PreOrderLanding = () => {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [leadCount, setLeadCount] = useState<number | null>(null);
+
+  const fetchCount = async () => {
+    const { count } = await supabase
+      .from("waitlist_leads")
+      .select("*", { count: "exact", head: true });
+    if (typeof count === "number") setLeadCount(count);
+  };
+
+  useEffect(() => {
+    fetchCount();
+  }, []);
+
+  const discountAvailable = leadCount === null ? true : leadCount < DISCOUNT_LIMIT;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +60,7 @@ const PreOrderLanding = () => {
     if (error) {
       if (error.code === "23505") {
         setStatus("success");
+        fetchCount();
         return;
       }
       setErrorMsg("Something went wrong. Please try again.");
@@ -51,7 +68,6 @@ const PreOrderLanding = () => {
       return;
     }
 
-    // Send welcome email immediately after successful DB insert (fire and forget)
     const normalizedEmail = email.trim().toLowerCase();
     console.log('Email automation triggered for:', normalizedEmail);
     supabase.functions.invoke('send-transactional-email', {
@@ -64,21 +80,23 @@ const PreOrderLanding = () => {
       console.log('Email automation response:', res);
     }).catch((err) => console.warn("[Waitlist] Welcome email failed:", err));
 
-    // Sync to Shopify as customer with Waitlist_Founders tag (fire and forget)
     const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     fetch(`https://${projId}.supabase.co/functions/v1/sync-waitlist-to-shopify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }).catch((err) => console.warn("[Waitlist] Shopify sync failed:", err));
-    // Fire pixel only after successful DB insert
+
     if (typeof window !== "undefined" && (window as any).firePixelRegistration) {
       (window as any).firePixelRegistration();
       console.log("PIXEL: CompleteRegistration fired after successful insert");
     }
 
     setStatus("success");
+    fetchCount();
   };
+
+  const displayCount = leadCount !== null ? Math.max(leadCount, 0) : null;
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -92,26 +110,48 @@ const PreOrderLanding = () => {
       {/* Hero */}
       <section className="flex items-center justify-center px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center space-y-8">
-          <div className="inline-block">
-            <span className="text-gold text-xs tracking-[0.3em] uppercase font-medium border border-gold/30 px-4 py-2 rounded-full">
-              Founders Edition — Limited to 250
-            </span>
-          </div>
+          {discountAvailable ? (
+            <div className="inline-block">
+              <span className="text-gold text-xs tracking-[0.3em] uppercase font-medium border border-gold/30 px-4 py-2 rounded-full">
+                Founders Edition — Limited to {DISCOUNT_LIMIT}
+              </span>
+            </div>
+          ) : (
+            <div className="inline-block">
+              <span className="text-muted-foreground text-xs tracking-[0.3em] uppercase font-medium border border-border px-4 py-2 rounded-full">
+                Early Access — Now Closed
+              </span>
+            </div>
+          )}
 
-          <h1 className="font-serif text-4xl md:text-6xl leading-tight text-foreground">
-            40% Off &<br />
-            <span className="text-gold">Lifetime Access</span>
-          </h1>
+          {discountAvailable ? (
+            <h1 className="font-serif text-4xl md:text-6xl leading-tight text-foreground">
+              40% Off &<br />
+              <span className="text-gold">Lifetime Access</span>
+            </h1>
+          ) : (
+            <h1 className="font-serif text-4xl md:text-6xl leading-tight text-foreground">
+              The Early Access<br />
+              <span className="text-gold">Discount is Full</span>
+            </h1>
+          )}
 
-          <p className="text-muted-foreground text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
-            Be one of the first 250 founding members to eternalize your memories
-            with an exclusive launch discount on the{" "}
-            <span className="text-foreground font-medium">ANIMUS Memory Pendant</span>.
-          </p>
+          {discountAvailable ? (
+            <p className="text-muted-foreground text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
+              Join the Early Access Waiting List and get{" "}
+              <span className="text-foreground font-medium">40% OFF</span> your first{" "}
+              <span className="text-foreground font-medium">ANIMUS Pendant</span>.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
+              Join the waiting list to be notified of our next drop of the{" "}
+              <span className="text-foreground font-medium">ANIMUS Memory Pendant</span>.
+            </p>
+          )}
         </div>
       </section>
 
-      {/* Visual Anchor — Product Placeholder */}
+      {/* Visual Anchor */}
       <section className="px-6 py-12 md:py-20">
         <div className="max-w-3xl mx-auto">
           <div className="rounded-lg overflow-hidden border border-border">
@@ -174,25 +214,40 @@ const PreOrderLanding = () => {
         </div>
       </section>
 
-      {/* Founder's Offer CTA */}
+      {/* CTA */}
       <section className="px-6 py-16 md:py-24 bg-card">
         <div className="max-w-lg mx-auto text-center space-y-8">
           <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-            Exclusive Invitation
+            {discountAvailable ? "Exclusive Invitation" : "Stay In The Loop"}
           </p>
           <h2 className="font-serif text-3xl md:text-4xl text-foreground">
-            Join the Founders Circle
+            {discountAvailable ? "Join the Founders Circle" : "Join the Waiting List"}
           </h2>
-          <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
-            Only <span className="text-gold font-medium">250 spots</span> available for this exclusive launch offer. Reserve yours and receive{" "}
-            <span className="text-gold font-medium">40% off</span> the ANIMUS Memory Pendant.
-          </p>
+
+          {discountAvailable ? (
+            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+              Only <span className="text-gold font-medium">{DISCOUNT_LIMIT} spots</span> available for this exclusive launch offer. Reserve yours and receive{" "}
+              <span className="text-gold font-medium">40% off</span> the ANIMUS Memory Pendant.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+              The Early Access discount is now full. Sign up to be the first to know when our next drop goes live.
+            </p>
+          )}
+
+          {displayCount !== null && (
+            <p className="text-xs tracking-[0.3em] uppercase text-muted-foreground/80">
+              Join <span className="text-gold font-medium">{displayCount}+</span> others on the list
+            </p>
+          )}
 
           {status === "success" ? (
             <div className="bg-gold/10 border border-gold/30 rounded-lg p-8">
               <p className="text-gold font-serif text-2xl mb-2">You're In.</p>
               <p className="text-muted-foreground text-sm">
-                We'll notify you the moment the Founders Edition goes live.
+                {discountAvailable
+                  ? "We'll notify you the moment the Founders Edition goes live."
+                  : "We'll notify you the moment our next drop is live."}
               </p>
             </div>
           ) : (
@@ -213,7 +268,11 @@ const PreOrderLanding = () => {
                 disabled={status === "loading"}
                 className="h-12 px-8 bg-gold text-background text-xs tracking-[0.2em] uppercase font-medium hover:bg-gold-light transition-colors disabled:opacity-50 rounded-md whitespace-nowrap"
               >
-                {status === "loading" ? "Joining…" : "Reserve My Spot"}
+                {status === "loading"
+                  ? "Joining…"
+                  : discountAvailable
+                  ? "Reserve My Spot"
+                  : "Notify Me"}
               </button>
             </form>
           )}
