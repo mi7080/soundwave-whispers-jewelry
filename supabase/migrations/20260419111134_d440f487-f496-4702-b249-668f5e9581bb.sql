@@ -1,0 +1,1 @@
+ALTER TABLE public.animus_orders DROP COLUMN IF EXISTS shopify_order_id;
