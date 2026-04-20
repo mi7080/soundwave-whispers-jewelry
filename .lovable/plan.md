@@ -1,24 +1,50 @@
 
+## The bug
 
-## Add Product Specifications Section
+The "Export Daily Batch for ShineOn" button is **disabled and does nothing** because the filter doesn't match any orders.
 
-Create a new `ProductSpecs` component that displays the dog tag's technical details in an elegant, text-only layout (no product image), and insert it after `ProductGallery` in the page.
+**Current filter** (`AdminOrders.tsx` line 193 + 284):
+```ts
+orders.filter(o => o.workflow_status === "paid" && ...)
+```
 
-### New file: `src/components/ProductSpecs.tsx`
+**Reality from your DB** (both existing orders):
+- `workflow_status: "new"`
+- `fulfillment_status: "paid"`
 
-A styled section with `bg-background` background containing:
-- Section header: "Product Details" with gold accent label
-- A centered grid (2×3 on desktop, 1 column on mobile) of spec cards, each with a Lucide icon in gold and the detail text:
-  - **Pendant Size**: 1.1" × 2" (28.5mm × 51mm)
-  - **Chain**: 24" Military-Style Ball Chain (61cm)
-  - **Clasp**: Lobster Clasp Attachment
-  - **Material**: Polished Stainless Steel / 18K Yellow Gold
-  - **Engraving**: Laser-Etched Soundwave & QR Code
-  - **Packaging**: Complimentary Luxury Gift Box
+So `paidPending` is always `0` → button shows "(0)", is disabled, click does nothing.
 
-Style matches existing sections (gold accents, serif heading, muted body text).
+There are two separate fields that got conflated:
+- `fulfillment_status` — set to `"paid"` by the iCount webhook when payment succeeds
+- `workflow_status` — internal pipeline (`new` → `sent_to_production` → `shipped`)
 
-### Modified file: `src/pages/Index.tsx`
+The export was wired to the wrong one.
 
-Import `ProductSpecs` and place it directly after `<ProductGallery />` (line 24).
+## Fix
 
+**File: `src/pages/AdminOrders.tsx`** — two small changes:
+
+1. **Eligibility filter** (used for both `paidPending` count and `exportShineOnBatch`):
+   Replace `o.workflow_status === "paid"` with the real "Art Ready" definition:
+   ```ts
+   const isArtReady = (o: Order) =>
+     o.fulfillment_status === "paid" &&
+     o.workflow_status !== "sent_to_production" &&
+     o.workflow_status !== "shipped" &&
+     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
+   ```
+   Apply in `paidPending` (line 284) and `exportShineOnBatch`'s `batch` (line 193).
+
+2. **Add `fulfillment_status` to the `Order` interface** (line 16-39) so TS allows the check.
+
+3. **Empty-SVG guard before render loop** (line 206-213): skip orders whose `svg_content` is the `<svg></svg>` placeholder — they'll 500 the renderer (already happened to "Memorial"). Surface them as an inline warning instead of blocking the whole export.
+
+4. **Button label**: rename "Export Daily Batch for ShineOn (N)" — N now reflects Art Ready orders within the date range.
+
+## Why the data looks this way
+
+The iCount webhook writes `fulfillment_status='paid'` but leaves `workflow_status` at its default `'new'`. Nothing in the app promotes `new → paid`, so the old check could never be true.
+
+After the fix, the JUDI order (valid SVG, `fulfillment_status='paid'`) will show up in the count and export cleanly. Memorial will be flagged as "missing design" until the customer completes the flow.
+
+## No DB / migration changes needed.
