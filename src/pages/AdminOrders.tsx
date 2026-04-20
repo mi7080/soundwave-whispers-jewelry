@@ -202,6 +202,9 @@ const AdminOrders = () => {
     setSelected(s => s && s.id === orderId ? { ...s, ...updates } as Order : s);
     const fields = (data.synced_fields || []).length;
     toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
+  };
+
+  const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
     if (parts.length === 1) return [parts[0], ""];
