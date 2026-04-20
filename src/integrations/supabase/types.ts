@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_settings: {
+        Row: {
+          currency: string
+          id: number
+          monthly_ad_spend: number
+          shineon_unit_cost: number
+          transaction_fee_fixed: number
+          transaction_fee_percent: number
+          updated_at: string
+        }
+        Insert: {
+          currency?: string
+          id?: number
+          monthly_ad_spend?: number
+          shineon_unit_cost?: number
+          transaction_fee_fixed?: number
+          transaction_fee_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          currency?: string
+          id?: number
+          monthly_ad_spend?: number
+          shineon_unit_cost?: number
+          transaction_fee_fixed?: number
+          transaction_fee_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string

@@ -64,8 +64,9 @@ serve(async (req) => {
     if (!order.svg_content) throw new Error("Order has no SVG content");
 
     await ensureWasm();
+    // Native 1000x1788 — no distortion, matches SVG canvas exactly
     const resvg = new Resvg(order.svg_content, {
-      fitTo: { mode: "width", value: 1500 },
+      fitTo: { mode: "width", value: 1000 },
       background: "rgba(0,0,0,0)",
     });
     const png = resvg.render().asPng();
