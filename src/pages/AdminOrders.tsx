@@ -281,7 +281,7 @@ const AdminOrders = () => {
   }
   if (!authorized) return null;
 
-  const paidPending = orders.filter(o => o.workflow_status === "paid").length;
+  const paidPending = orders.filter(o => o.workflow_status === "paid" && (!range || inRange(o.created_at, range))).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
