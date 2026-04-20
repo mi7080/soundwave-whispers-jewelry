@@ -160,7 +160,7 @@ const Checkout = () => {
 
       const { error: updErr } = await supabase
         .from("animus_orders")
-        .update(update)
+        .update(update as never)
         .eq("id", orderId);
       if (updErr) throw new Error(updErr.message);
 

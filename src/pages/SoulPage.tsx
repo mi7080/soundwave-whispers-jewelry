@@ -371,7 +371,7 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
         for (let attempt = 0; attempt < QUERY_RETRY_LIMIT; attempt++) {
           const { data: order, error } = await supabase
             .from(SOUL_PAGE_TABLE)
-            .select("id, pet_name, pet_photo_url, audio_url, text_message")
+            .select("id, pet_name, pet_photo_url, audio_url, text_message, soul_video_url")
             .eq("id", normalizedId)
             .maybeSingle();
 
