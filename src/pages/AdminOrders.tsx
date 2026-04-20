@@ -190,7 +190,7 @@ const AdminOrders = () => {
   };
 
   const exportShineOnBatch = async () => {
-    const batch = orders.filter(o => o.workflow_status === "paid");
+    const batch = orders.filter(o => o.workflow_status === "paid" && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No paid orders awaiting production"); return; }
 
     const incomplete = batch.filter(o =>
