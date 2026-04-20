@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles
 } from "lucide-react";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
