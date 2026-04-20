@@ -204,6 +204,34 @@ const AdminOrders = () => {
     toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
   };
 
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+
+  const syncAllIncomplete = async () => {
+    const targets = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range)));
+    if (targets.length === 0) {
+      toast.info("No incomplete orders with an iCount docnum to sync");
+      return;
+    }
+    setBulkSyncing(true);
+    toast.info(`Syncing ${targets.length} order(s) from iCount…`);
+    let okCount = 0;
+    let failCount = 0;
+    for (const o of targets) {
+      const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
+      if (error || !data?.success) {
+        failCount++;
+        console.error(`Sync failed for ${o.icount_docnum}:`, data?.error || error?.message);
+      } else {
+        okCount++;
+        const updates = data.updates || {};
+        setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+      }
+    }
+    setBulkSyncing(false);
+    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount`);
+    else toast.warning(`Synced ${okCount} • Failed ${failCount} — check console for details`, { duration: 6000 });
+  };
+
   const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
@@ -328,6 +356,7 @@ const AdminOrders = () => {
   if (!authorized) return null;
 
   const paidPending = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
+  const incompleteCount = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range))).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -388,14 +417,25 @@ const AdminOrders = () => {
             />
           </div>
           {tab === "orders" && (
-            <button
-              onClick={exportShineOnBatch}
-              disabled={paidPending === 0}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Export ShineOn Batch — Art Ready ({paidPending})
-            </button>
+            <>
+              <button
+                onClick={syncAllIncomplete}
+                disabled={bulkSyncing || incompleteCount === 0}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-500/40 text-amber-400 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Re-fetch shipping & customer data from iCount for all flagged orders"
+              >
+                {bulkSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
+                Sync All Incomplete ({incompleteCount})
+              </button>
+              <button
+                onClick={exportShineOnBatch}
+                disabled={paidPending === 0}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Export ShineOn Batch — Art Ready ({paidPending})
+              </button>
+            </>
           )}
         </div>
 
