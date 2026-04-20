@@ -351,11 +351,15 @@ const CostAlert = ({ level, title, message }: { level: "warn" | "info"; title: s
 
 // ─── CRM Tab ────────────────────────────────────────────────────────
 const CrmTab = () => {
+  const { range } = useDateRange();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [view, setView] = useState<"leads" | "customers">("leads");
+
+  const filteredLeads = useMemo(() => leads.filter(l => inRange(l.created_at, range)), [leads, range]);
+  const filteredOrders = useMemo(() => orders.filter(o => inRange(o.created_at, range)), [orders, range]);
 
   useEffect(() => {
     const load = async () => {
