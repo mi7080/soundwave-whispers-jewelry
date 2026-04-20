@@ -62,13 +62,42 @@ serve(async (req) => {
       });
     }
 
-    // Update order status to paid
+    // Extract shipping + customer fields from iCount payload
+    const docnumEarly = body.docnum || body.doc_number || body.invoice_number || null;
+    const customerEmailEarly = body.client_email || body.email || null;
+    const customerNameEarly = body.client_name || [body.first_name, body.last_name].filter(Boolean).join(" ").trim() || null;
+    const paymentAmountEarly = body.amount ?? body.total ?? null;
+
+    const orderUpdate: Record<string, unknown> = {
+      status: "paid",
+      workflow_status: "paid",
+      icount_docnum: docnumEarly ? String(docnumEarly) : null,
+      shipping_address1: body.address || body.street || null,
+      shipping_city: body.city || null,
+      shipping_zip: body.zip || body.postal_code || null,
+      shipping_country_code: body.country_code || body.country || null,
+    };
+    if (customerEmailEarly) orderUpdate.customer_email = customerEmailEarly;
+    if (customerNameEarly) orderUpdate.customer_name = customerNameEarly;
+    if (paymentAmountEarly !== null && paymentAmountEarly !== "") {
+      const amt = Number(paymentAmountEarly);
+      if (!Number.isNaN(amt)) orderUpdate.amount = amt;
+    }
+
+    // Strip nulls so we don't overwrite existing values with empty data
+    Object.keys(orderUpdate).forEach(k => {
+      if (orderUpdate[k] === null || orderUpdate[k] === undefined || orderUpdate[k] === "") delete orderUpdate[k];
+    });
+    // Always set status fields
+    orderUpdate.status = "paid";
+    orderUpdate.workflow_status = "paid";
+
     await supabase
       .from("animus_orders")
-      .update({ status: "paid" })
+      .update(orderUpdate)
       .eq("id", orderId);
 
-    console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid`);
+    console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly})`);
 
     // Send order confirmation email
     const customerEmail = body.client_email || body.email;
