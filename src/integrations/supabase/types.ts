@@ -26,16 +26,25 @@ export type Database = {
           design_image_url: string | null
           exported_at: string | null
           fulfillment_status: string
+          icount_docnum: string | null
           id: string
           pet_name: string
           pet_photo_url: string | null
+          print_image_url: string | null
           right_side_engraving: string | null
+          shipping_address1: string | null
+          shipping_city: string | null
+          shipping_country_code: string | null
+          shipping_zip: string | null
           soul_page_url: string
           status: string
           svg_content: string
           text_message: string | null
+          tracking_number: string | null
+          tracking_updated_at: string | null
           updated_at: string
           waveform_data: Json | null
+          workflow_status: string
         }
         Insert: {
           add_name_to_back?: boolean
@@ -48,16 +57,25 @@ export type Database = {
           design_image_url?: string | null
           exported_at?: string | null
           fulfillment_status?: string
+          icount_docnum?: string | null
           id?: string
           pet_name: string
           pet_photo_url?: string | null
+          print_image_url?: string | null
           right_side_engraving?: string | null
+          shipping_address1?: string | null
+          shipping_city?: string | null
+          shipping_country_code?: string | null
+          shipping_zip?: string | null
           soul_page_url: string
           status?: string
           svg_content: string
           text_message?: string | null
+          tracking_number?: string | null
+          tracking_updated_at?: string | null
           updated_at?: string
           waveform_data?: Json | null
+          workflow_status?: string
         }
         Update: {
           add_name_to_back?: boolean
@@ -70,16 +88,25 @@ export type Database = {
           design_image_url?: string | null
           exported_at?: string | null
           fulfillment_status?: string
+          icount_docnum?: string | null
           id?: string
           pet_name?: string
           pet_photo_url?: string | null
+          print_image_url?: string | null
           right_side_engraving?: string | null
+          shipping_address1?: string | null
+          shipping_city?: string | null
+          shipping_country_code?: string | null
+          shipping_zip?: string | null
           soul_page_url?: string
           status?: string
           svg_content?: string
           text_message?: string | null
+          tracking_number?: string | null
+          tracking_updated_at?: string | null
           updated_at?: string
           waveform_data?: Json | null
+          workflow_status?: string
         }
         Relationships: []
       }
