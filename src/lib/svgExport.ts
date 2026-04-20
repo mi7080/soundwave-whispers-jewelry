@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import opentype, { Font } from "opentype.js";
 
 interface SvgExportOptions {
   waveformData: number[];
@@ -8,15 +9,75 @@ interface SvgExportOptions {
 }
 
 /**
- * Generate a production-ready SVG for Acrylic Heart pendant (ID 279):
- * Canvas: 1000×1788px
- * - FRONT: Centered waveform (upper) + centered QR code (below)
- * - All pure black (#000000) on transparent background
- * - Waveform = vertical bars, chronological L→R
- * - QR = vector <rect> elements
+ * PURE-VECTOR SVG generator for ShineOn Acrylic Heart pendant (1000×1788).
+ *
+ * Guarantees:
+ * - NO <image> tags
+ * - NO Base64 / data: URIs
+ * - NO <text> elements (all text outlined to <path>)
+ * - Waveform: <rect>, QR code: <rect>, Text: <path d="…">
  */
+
+// ── Font loading (cached) ────────────────────────────────────────────
+// Self-hosted via Google Fonts CDN — converted to paths at export time,
+// so no font dependency in the final SVG.
+const FONT_URLS = {
+  inter: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50ojIa1ZL7.ttf",
+  playfair: "https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvUDQ.ttf",
+};
+
+const fontCache: Record<string, Promise<Font>> = {};
+
+function loadFont(key: keyof typeof FONT_URLS): Promise<Font> {
+  if (!fontCache[key]) {
+    fontCache[key] = fetch(FONT_URLS[key])
+      .then((r) => {
+        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then((buf) => opentype.parse(buf));
+  }
+  return fontCache[key];
+}
+
+/**
+ * Render a string as one or more <path> elements, centered on (cx, baselineY).
+ * Returns SVG markup with NO <text> tags.
+ */
+function textToPath(
+  font: Font,
+  text: string,
+  cx: number,
+  baselineY: number,
+  fontSize: number,
+  letterSpacing = 0,
+): string {
+  if (!text) return "";
+
+  // Measure with letter-spacing
+  const advances: number[] = [];
+  let totalWidth = 0;
+  const glyphs = font.stringToGlyphs(text);
+  for (let i = 0; i < glyphs.length; i++) {
+    const adv = (glyphs[i].advanceWidth / font.unitsPerEm) * fontSize;
+    advances.push(adv);
+    totalWidth += adv + (i < glyphs.length - 1 ? letterSpacing : 0);
+  }
+
+  let x = cx - totalWidth / 2;
+  let pathData = "";
+  for (let i = 0; i < glyphs.length; i++) {
+    const path = glyphs[i].getPath(x, baselineY, fontSize);
+    pathData += path.toPathData(2) + " ";
+    x += advances[i] + letterSpacing;
+  }
+
+  return `<path d="${pathData.trim()}" fill="#000000"/>`;
+}
+
+// ── Main export ──────────────────────────────────────────────────────
 export async function generateProductionSvg(options: SvgExportOptions): Promise<string> {
-  const { waveformData, petName, soulPageUrl, includeBackEngraving = false } = options;
+  const { waveformData, soulPageUrl } = options;
   const width = 1000;
   const height = 1788;
   const cx = width / 2;
@@ -59,51 +120,46 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
     }
   }
 
-  // --- Build Front SVG ---
-  const frontSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- FRONT SIDE: Waveform + QR for ANIMUS Acrylic Heart (1000x1788) -->
-
-  <!-- Waveform (vertical bars, chronological L→R) -->
-  <g id="waveform">
-    ${waveRects}
-  </g>
-
-  <!-- QR Code (vector rectangles) -->
-  <g id="qr-code">
-    ${qrRects}
-  </g>
-
-  <!-- Scan label -->
-  <text x="${cx}" y="1160" text-anchor="middle" font-family="'Inter', sans-serif" font-size="20" fill="#000000" letter-spacing="4">SCAN TO HEAR</text>
-</svg>`;
-
-  if (!includeBackEngraving || !petName.trim()) {
-    return frontSvg;
+  // --- "SCAN TO HEAR" label as outlined paths ---
+  let scanLabelPath = "";
+  try {
+    const inter = await loadFont("inter");
+    scanLabelPath = textToPath(inter, "SCAN TO HEAR", cx, 1160, 20, 4);
+  } catch (e) {
+    console.warn("Font load failed for scan label — omitting text from SVG:", e);
   }
 
-  return frontSvg;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  <!-- FRONT SIDE: Pure-vector waveform + QR + outlined text (1000x1788) -->
+  <g id="waveform">${waveRects}</g>
+  <g id="qr-code">${qrRects}</g>
+  <g id="scan-label">${scanLabelPath}</g>
+</svg>`;
 }
 
 /**
- * Generate back-engraving SVG with name centered in luxury serif
- * Also 1000x1788 to match front dimensions
+ * Back-engraving: name in luxury serif, converted to <path>.
  */
-export function generateBackEngravingSvg(petName: string): string {
+export async function generateBackEngravingSvg(petName: string): Promise<string> {
   const width = 1000;
   const height = 1788;
   const cx = width / 2;
   const cy = height / 2;
 
+  let namePath = "";
+  try {
+    const playfair = await loadFont("playfair");
+    namePath = textToPath(playfair, petName, cx, cy + 28, 80);
+  } catch (e) {
+    console.warn("Font load failed for back engraving:", e);
+  }
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- BACK SIDE: Name Engraving for ANIMUS Acrylic Heart -->
-  <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', Georgia, serif" font-size="80" fill="#000000" font-weight="600">${escapeXml(petName)}</text>
+  <!-- BACK SIDE: Name outlined as path -->
+  <g id="name-engraving">${namePath}</g>
 </svg>`;
-}
-
-function escapeXml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export function downloadSvg(svgContent: string, filename: string) {
