@@ -69,10 +69,12 @@ serve(async (req) => {
 
     if (!icountRes.ok || icountData?.status === false) {
       console.error("[sync-icount] iCount error:", icountData);
-      return json(
-        { success: false, error: icountData?.reason || `iCount API error ${icountRes.status}` },
-        502
-      );
+      // Return 200 + fallback so bulk loops don't break on a single bad order
+      return json({
+        success: false,
+        fallback: true,
+        error: icountData?.reason || `iCount API error ${icountRes.status}`,
+      });
     }
 
     // iCount typically returns { status: true, doc_info: {...} } or the doc fields at top-level
