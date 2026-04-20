@@ -65,8 +65,10 @@ export async function extractAudioSegment(
   await ff.deleteFile(inputName).catch(() => {});
   await ff.deleteFile(outputName).catch(() => {});
 
-  const arr = data instanceof Uint8Array ? data : new Uint8Array(data as unknown as ArrayBuffer);
-  return new Blob([arr], { type: "audio/mpeg" });
+  const src = data instanceof Uint8Array ? data : new Uint8Array(data as unknown as ArrayBufferLike);
+  const copy = new Uint8Array(src.byteLength);
+  copy.set(src);
+  return new Blob([copy.buffer], { type: "audio/mpeg" });
 }
 
 /**
