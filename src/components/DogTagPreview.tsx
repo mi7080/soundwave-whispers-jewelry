@@ -71,17 +71,16 @@ const DogTagPreview = ({
     const th = tag.height * displayH;
 
     if (showBack) {
-      // --- BACK VIEW: show engraved text ---
+      // --- BACK VIEW: dark ink for high contrast on metal mockup ---
       if (backText.trim()) {
         ctx.save();
-        ctx.globalCompositeOperation = "overlay";
+        ctx.globalCompositeOperation = "source-over";
         const fontSize = Math.max(12, tw * 0.08);
         ctx.font = `600 ${fontSize}px 'Playfair Display', Georgia, serif`;
-        ctx.fillStyle = "rgba(200, 200, 200, 0.7)";
+        ctx.fillStyle = "rgba(20, 20, 20, 0.9)";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Word wrap
         const maxWidth = tw * 0.8;
         const words = backText.split(" ");
         const lines: string[] = [];
@@ -109,11 +108,10 @@ const DogTagPreview = ({
       return;
     }
 
-    // --- FRONT VIEW ---
-    // Draw waveform with multiply blend
+    // --- FRONT VIEW: dark ink for high contrast on metal mockup ---
     if (waveformData.length > 0) {
       ctx.save();
-      ctx.globalCompositeOperation = "overlay";
+      ctx.globalCompositeOperation = "source-over";
 
       const waveArea = {
         x: tx + tw * 0.1,
@@ -121,15 +119,13 @@ const DogTagPreview = ({
         w: tw * 0.8,
         h: th * 0.22,
       };
-
       const centerY = waveArea.y + waveArea.h / 2;
 
-      ctx.strokeStyle = "rgba(220, 220, 220, 0.85)";
+      ctx.strokeStyle = "rgba(15, 15, 15, 0.92)";
       ctx.lineWidth = 1.8;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      // Draw continuous oscillating waveform (smooth curve)
       ctx.beginPath();
       for (let i = 0; i < waveformData.length; i++) {
         const x = waveArea.x + (i / (waveformData.length - 1)) * waveArea.w;
@@ -150,7 +146,6 @@ const DogTagPreview = ({
       ctx.quadraticCurveTo(lastX, centerY - lastAmp, lastX, centerY - lastAmp);
       ctx.stroke();
 
-      // Mirror waveform below center line
       ctx.beginPath();
       for (let i = 0; i < waveformData.length; i++) {
         const x = waveArea.x + (i / (waveformData.length - 1)) * waveArea.w;
@@ -173,37 +168,36 @@ const DogTagPreview = ({
       ctx.restore();
     }
 
-    // Draw QR code directly below waveform
+    // QR with white plate for legibility on the metal
     if (qrImage) {
       ctx.save();
-      ctx.globalCompositeOperation = "overlay";
+      ctx.globalCompositeOperation = "source-over";
       const qrSize = tw * 0.45;
       const qrX = tx + (tw - qrSize) / 2;
       const qrY = ty + th * 0.38;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
       ctx.restore();
     }
 
-    // "SCAN TO HEAR" label below QR
     if (qrDataUrl) {
       ctx.save();
-      ctx.globalCompositeOperation = "overlay";
+      ctx.globalCompositeOperation = "source-over";
       const labelSize = Math.max(6, tw * 0.03);
       ctx.font = `400 ${labelSize}px 'Inter', sans-serif`;
-      ctx.fillStyle = "rgba(180, 180, 180, 0.6)";
+      ctx.fillStyle = "rgba(30, 30, 30, 0.85)";
       ctx.textAlign = "center";
-      ctx.letterSpacing = "3px";
       ctx.fillText("SCAN TO HEAR", tx + tw / 2, ty + th * 0.72);
       ctx.restore();
     }
 
-    // Draw name below QR area
     if (petName.trim()) {
       ctx.save();
-      ctx.globalCompositeOperation = "overlay";
+      ctx.globalCompositeOperation = "source-over";
       const nameSize = Math.max(10, tw * 0.07);
       ctx.font = `600 ${nameSize}px 'Playfair Display', Georgia, serif`;
-      ctx.fillStyle = "rgba(210, 210, 210, 0.8)";
+      ctx.fillStyle = "rgba(20, 20, 20, 0.9)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(petName, tx + tw / 2, ty + th * 0.82);
@@ -212,7 +206,13 @@ const DogTagPreview = ({
   }, [baseImage, waveformData, petName, qrImage, qrDataUrl, showBack, backText, tag]);
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div
+      className="relative flex items-center justify-center rounded-md p-3 shadow-inner"
+      style={{
+        backgroundImage:
+          "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0 1px, transparent 1px 2px), linear-gradient(135deg, hsl(0 0% 96%) 0%, hsl(30 8% 88%) 50%, hsl(0 0% 92%) 100%)",
+      }}
+    >
       <canvas
         ref={canvasRef}
         className="w-full max-w-[300px] aspect-square"

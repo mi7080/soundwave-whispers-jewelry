@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ICOUNT_API_BASE = "https://api.icount.co.il/api/v3";
+const ICOUNT_API_BASE = "https://api.icount.co.il/api/v3.php";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -23,7 +23,10 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { orderId, fullName, email, address, city, state, zip, country, amount, currency } = body;
+    const {
+      orderId, fullName, email, phone, address, city, state, zip, country,
+      amount, currency, siteUrl, successUrl, failureUrl,
+    } = body;
 
     if (!orderId || !email || !amount) {
       return new Response(
@@ -36,7 +39,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify the order exists in our database
+    // Verify the order exists
     const { data: order, error: dbError } = await supabase
       .from("animus_orders")
       .select("id, pet_name, design_image_url")
@@ -51,31 +54,42 @@ serve(async (req) => {
       );
     }
 
-    // Build the callback URL for iCount webhooks
     const webhookUrl = `${supabaseUrl}/functions/v1/icount-payment-webhook`;
     const encodedName = encodeURIComponent(fullName || "");
-    const successUrl = body.successUrl || `${body.siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
-    const failureUrl = body.failureUrl || `${body.siteUrl || ""}/checkout?order=${orderId}&status=failed`;
+    const finalSuccess = successUrl || `${siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
+    const finalFailure = failureUrl || `${siteUrl || ""}/checkout?order=${orderId}&status=failed`;
 
-    // Create payment via iCount API
-    // iCount cc_page/sale endpoint to create a payment URL
-    const paymentPayload = {
-      api_token: icountToken,
-      doc_type: "invrec", // Invoice Receipt
-      client_name: fullName || "",
-      client_email: email,
-      items: [
-        {
-          description: `ANIMUS Memorial Pendant — ${order.pet_name || "Custom"}`,
-          unitprice: amount,
-          quantity: 1,
-        },
-      ],
+    // iCount payment-page payload — shipping pre-filled, customer only sees CC entry
+    const paymentPayload: Record<string, any> = {
+      sid: icountToken, // iCount uses sid for v3.php
+      cid: "credit",
+      doctype: "invrec",
       currency_code: currency || "USD",
-      success_url: successUrl,
-      failure_url: failureUrl,
+      lang: "en",
+      sum: Number(amount),
+      description: `ANIMUS Memorial Pendant — ${order.pet_name || "Custom"}`,
+      // Customer details (pre-filled)
+      client_name: fullName || "",
+      email: email,
+      mobile: phone || "",
+      cc_address: address || "",
+      cc_city: city || "",
+      cc_zip: zip || "",
+      cc_country: country || "",
+      cc_state: state || "",
+      // Hide shipping fields on iCount page (already collected)
+      hide_address: 1,
+      hide_email: 1,
+      hide_name: 1,
+      // Reference / callbacks
+      custom: orderId,
+      info: orderId,
+      cs1: orderId,
+      cs2: fullName || "",
+      cs3: amount,
+      success_url: finalSuccess,
+      fail_url: finalFailure,
       ipn_url: webhookUrl,
-      custom: orderId, // Pass order ID for webhook identification
     };
 
     console.log("[iCount] Creating payment for order:", orderId);
@@ -86,29 +100,48 @@ serve(async (req) => {
       body: JSON.stringify(paymentPayload),
     });
 
-    const icountResult = await icountResp.json();
+    const icountText = await icountResp.text();
+    let icountResult: any;
+    try { icountResult = JSON.parse(icountText); } catch { icountResult = { raw: icountText }; }
     console.log("[iCount] API response:", JSON.stringify(icountResult));
 
-    if (!icountResp.ok || icountResult.status === false) {
-      console.error("[iCount] Payment creation failed:", icountResult);
+    const paymentUrl =
+      icountResult?.url ||
+      icountResult?.payment_url ||
+      icountResult?.redirect_url ||
+      icountResult?.cc_page_url ||
+      icountResult?.data?.url;
+
+    if (!icountResp.ok || icountResult?.status === false || !paymentUrl) {
+      console.error("[iCount] Payment creation failed — falling back to legacy URL");
+
+      // Fallback: legacy static iCount payment URL with order params
+      const FALLBACK_BASE = "https://app.icount.co.il/m/f9f6f/c693586ep3u69dfd9dd?utm_source=iCount&utm_medium=paypage&utm_campaign=3";
+      const params = new URLSearchParams({
+        info: orderId,
+        cs1: String(amount),
+        cs2: fullName || "",
+        cs3: email,
+      });
+      const fallbackUrl = `${FALLBACK_BASE}&${params.toString()}`;
+
+      await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", orderId);
+
       return new Response(
-        JSON.stringify({ error: "Payment creation failed", details: icountResult.reason || icountResult.error_description || "Unknown error" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          paymentUrl: fallbackUrl,
+          orderId,
+          fallback: true,
+          icountError: icountResult?.reason || icountResult?.error_description || "Static link used",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // iCount returns a payment URL that the user can be redirected to
-    const paymentUrl = icountResult.url || icountResult.payment_url || icountResult.redirect_url;
-
-    if (!paymentUrl) {
-      console.error("[iCount] No payment URL in response:", icountResult);
-      return new Response(
-        JSON.stringify({ error: "No payment URL returned from iCount" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Update order status
     await supabase
       .from("animus_orders")
       .update({ status: "payment_pending" })
@@ -118,7 +151,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, paymentUrl, orderId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("[iCount] Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
