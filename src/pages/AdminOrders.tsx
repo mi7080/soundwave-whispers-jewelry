@@ -263,7 +263,7 @@ const AdminOrders = () => {
       const cc = o.shipping_country_code || "";
 
       return [
-        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Acrylic Heart Pendant", o.amount ?? "",
+        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
         engraving1, printUrl, engraving1, "", "",
         firstName, lastName, fullName, addr1, "", "",
         city, zip, "", cc, "", "",
@@ -272,7 +272,7 @@ const AdminOrders = () => {
         city, zip, "", cc, "", "",
         "", "", "",
         "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
-        o.customer_email || "", "", "USD", "", "", "", "", "",
+        o.customer_email || "", "", "ILS", "", "", "", "", "",
         "", "", "en", "", "ANIMUS",
       ];
     });
