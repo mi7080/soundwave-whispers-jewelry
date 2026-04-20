@@ -648,12 +648,13 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
   onSyncIcount: (id: string) => Promise<void>;
+  onSetDocnum: (id: string, docnum: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
