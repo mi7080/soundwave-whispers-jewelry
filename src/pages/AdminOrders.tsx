@@ -175,13 +175,30 @@ const AdminOrders = () => {
     toast.success("PNG generated and stored");
   };
 
+  const splitName = (full: string | null): [string, string] => {
+    if (!full) return ["", ""];
+    const parts = full.trim().split(/\s+/);
+    if (parts.length === 1) return [parts[0], ""];
+    return [parts[0], parts.slice(1).join(" ")];
+  };
+
   const exportShineOnBatch = async () => {
     const batch = orders.filter(o => o.workflow_status === "paid");
     if (batch.length === 0) { toast.error("No paid orders awaiting production"); return; }
 
+    const incomplete = batch.filter(o =>
+      !o.shipping_address1 || !o.shipping_city || !o.shipping_zip || !o.shipping_country_code || !o.customer_email
+    );
+    if (incomplete.length > 0) {
+      const names = incomplete.slice(0, 3).map(o => o.customer_name || o.pet_name || o.id.slice(0, 6)).join(", ");
+      const more = incomplete.length > 3 ? ` + ${incomplete.length - 3} more` : "";
+      toast.error(`${incomplete.length} order(s) missing shipping/email — fix before export: ${names}${more}`, { duration: 8000 });
+      return;
+    }
+
     const missingPng = batch.filter(o => !o.print_image_url);
     if (missingPng.length > 0) {
-      toast.info(`Generating ${missingPng.length} missing engraving PNG${missingPng.length > 1 ? "s" : ""}…`);
+      toast.info(`Generating ${missingPng.length} missing engraving PNG${missingPng.length > 1 ? "s" : ""} (1000×1788)…`);
       for (const o of missingPng) {
         const { data } = await supabase.functions.invoke("render-engraving-png", { body: { orderId: o.id } });
         if (data?.print_image_url) o.print_image_url = data.print_image_url;
@@ -189,27 +206,51 @@ const AdminOrders = () => {
     }
 
     const headers = [
-      "order_number","email","shipping_name","shipping_address1","shipping_city",
-      "shipping_zip","shipping_country_code","sku","quantity","line_item_print_url",
+      "source_id","line_item_id","line_item_sku","line_item_quantity","line_item_title","line_item_price",
+      "line_item_name","line_item_print_url","line_item_engraving_line1","line_item_engraving_line2","line_item_grams",
+      "billing_first_name","billing_last_name","billing_name","billing_address1","billing_address2","billing_phone",
+      "billing_city","billing_zip","billing_country","billing_country_code","billing_province","billing_state",
+      "billing_company","billing_latitude","billing_longitude",
+      "shipping_first_name","shipping_last_name","shipping_name","shipping_address1","shipping_address2","shipping_phone",
+      "shipping_city","shipping_zip","shipping_country","shipping_country_code","shipping_province","shipping_state",
+      "shipping_company","shipping_latitude","shipping_longitude",
+      "shipping_method","source_name","source_url","source_po_number","packing_slip_url","shipment_notification_url",
+      "email","note","currency","referring_site","landing_site","checkout_id","checkout_token","reference",
+      "device_id","phone","customer_locale","landing_site_ref","tags",
     ];
-    const rows = batch.map(o => [
-      o.icount_docnum || o.id.slice(0, 8),
-      o.customer_email || "",
-      o.customer_name || o.pet_name,
-      o.shipping_address1 || "",
-      o.shipping_city || "",
-      o.shipping_zip || "",
-      o.shipping_country_code || "",
-      DEFAULT_SKU,
-      1,
-      o.print_image_url || o.design_image_url || "",
-    ]);
+
+    const rows = batch.map(o => {
+      const sourceId = o.icount_docnum || o.id.slice(0, 8);
+      const [firstName, lastName] = splitName(o.customer_name);
+      const fullName = o.customer_name || `${firstName} ${lastName}`.trim();
+      const printUrl = o.print_image_url || o.design_image_url || "";
+      const engraving1 = o.pet_name || "";
+      const addr1 = o.shipping_address1 || "";
+      const city = o.shipping_city || "";
+      const zip = o.shipping_zip || "";
+      const cc = o.shipping_country_code || "";
+
+      return [
+        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Acrylic Heart Pendant", o.amount ?? "",
+        engraving1, printUrl, engraving1, "", "",
+        firstName, lastName, fullName, addr1, "", "",
+        city, zip, "", cc, "", "",
+        "", "", "",
+        firstName, lastName, fullName, addr1, "", "",
+        city, zip, "", cc, "", "",
+        "", "", "",
+        "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
+        o.customer_email || "", "", "ILS", "", "", "", "", "",
+        "", "", "en", "", "ANIMUS",
+      ];
+    });
+
     const csv = [headers, ...rows].map(r => r.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ShineOn_batch_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `ShineOn_ANIMUS_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -221,7 +262,7 @@ const AdminOrders = () => {
       .in("id", ids);
     if (error) { toast.error("CSV downloaded but DB update failed"); return; }
     setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, workflow_status: "sent_to_production", exported_at: now } : o));
-    toast.success(`Exported ${batch.length} orders to ShineOn batch`);
+    toast.success(`Exported ${batch.length} orders — ShineOn production file ready`);
   };
 
   if (authChecking) {
