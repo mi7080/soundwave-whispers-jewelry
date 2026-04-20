@@ -99,33 +99,7 @@ serve(async (req) => {
 
     console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly})`);
 
-    // Send order confirmation email
-    const customerEmail = body.client_email || body.email;
-    const customerName = body.client_name || body.first_name || "";
-    const paymentAmount = body.amount || body.total || "";
-    if (customerEmail) {
-      try {
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "order-confirmation",
-            recipientEmail: customerEmail,
-            idempotencyKey: `order-confirm-${orderId}`,
-            templateData: {
-              name: customerName,
-              orderId,
-              amount: String(paymentAmount),
-              petName: order?.pet_name || "",
-            },
-          },
-        });
-        console.log(`[iCount Webhook] ✓ Confirmation email queued for ${customerEmail}`);
-      } catch (emailErr) {
-        console.error("[iCount Webhook] Email send failed (non-blocking):", emailErr);
-      }
-    }
-
-
-    // Retrieve order details for ShineOn fulfillment
+    // Retrieve order details for ShineOn fulfillment (also used by email below)
     const { data: order, error: dbError } = await supabase
       .from("animus_orders")
       .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name")
