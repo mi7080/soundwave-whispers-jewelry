@@ -574,15 +574,17 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
+  onSyncIcount: (id: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -594,6 +596,11 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
     setRendering(true);
     await onRenderPng(order.id);
     setRendering(false);
+  };
+  const handleSync = async () => {
+    setSyncing(true);
+    await onSyncIcount(order.id);
+    setSyncing(false);
   };
 
   return (
@@ -643,7 +650,20 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
 
           {/* Shipping */}
           <section>
-            <h3 className="text-[10px] tracking-[0.25em] uppercase text-gold mb-3 flex items-center gap-2"><MapPin className="w-3 h-3" /> Shipping Address</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] tracking-[0.25em] uppercase text-gold flex items-center gap-2"><MapPin className="w-3 h-3" /> Shipping Address</h3>
+              {order.icount_docnum && (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/5 transition-colors disabled:opacity-50"
+                  title={`Re-fetch from iCount docnum ${order.icount_docnum}`}
+                >
+                  {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+                  Sync iCount
+                </button>
+              )}
+            </div>
             <div className="border border-border/30 rounded-sm p-4 bg-background/30 text-sm space-y-1">
               <p className="text-foreground">{order.customer_name || "—"}</p>
               <p className="text-muted-foreground">{order.shipping_address1 || <span className="italic">No address on file</span>}</p>
