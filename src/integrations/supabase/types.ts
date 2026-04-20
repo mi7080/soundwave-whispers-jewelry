@@ -19,10 +19,19 @@ export type Database = {
           add_name_to_back: boolean
           amount: number | null
           audio_url: string
+          billing_address1: string | null
+          billing_address2: string | null
+          billing_city: string | null
+          billing_country_code: string | null
+          billing_name: string | null
+          billing_same_as_shipping: boolean
+          billing_state: string | null
+          billing_zip: string | null
           cloudinary_folder_url: string | null
           created_at: string
           customer_email: string | null
           customer_name: string | null
+          customer_phone: string | null
           design_image_url: string | null
           exported_at: string | null
           fulfillment_status: string
@@ -34,10 +43,13 @@ export type Database = {
           print_image_url: string | null
           right_side_engraving: string | null
           shipping_address1: string | null
+          shipping_address2: string | null
           shipping_city: string | null
           shipping_country_code: string | null
+          shipping_state: string | null
           shipping_zip: string | null
           soul_page_url: string
+          soul_video_url: string | null
           status: string
           svg_content: string
           text_message: string | null
@@ -51,10 +63,19 @@ export type Database = {
           add_name_to_back?: boolean
           amount?: number | null
           audio_url: string
+          billing_address1?: string | null
+          billing_address2?: string | null
+          billing_city?: string | null
+          billing_country_code?: string | null
+          billing_name?: string | null
+          billing_same_as_shipping?: boolean
+          billing_state?: string | null
+          billing_zip?: string | null
           cloudinary_folder_url?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           design_image_url?: string | null
           exported_at?: string | null
           fulfillment_status?: string
@@ -66,10 +87,13 @@ export type Database = {
           print_image_url?: string | null
           right_side_engraving?: string | null
           shipping_address1?: string | null
+          shipping_address2?: string | null
           shipping_city?: string | null
           shipping_country_code?: string | null
+          shipping_state?: string | null
           shipping_zip?: string | null
           soul_page_url: string
+          soul_video_url?: string | null
           status?: string
           svg_content: string
           text_message?: string | null
@@ -83,10 +107,19 @@ export type Database = {
           add_name_to_back?: boolean
           amount?: number | null
           audio_url?: string
+          billing_address1?: string | null
+          billing_address2?: string | null
+          billing_city?: string | null
+          billing_country_code?: string | null
+          billing_name?: string | null
+          billing_same_as_shipping?: boolean
+          billing_state?: string | null
+          billing_zip?: string | null
           cloudinary_folder_url?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           design_image_url?: string | null
           exported_at?: string | null
           fulfillment_status?: string
@@ -98,10 +131,13 @@ export type Database = {
           print_image_url?: string | null
           right_side_engraving?: string | null
           shipping_address1?: string | null
+          shipping_address2?: string | null
           shipping_city?: string | null
           shipping_country_code?: string | null
+          shipping_state?: string | null
           shipping_zip?: string | null
           soul_page_url?: string
+          soul_video_url?: string | null
           status?: string
           svg_content?: string
           text_message?: string | null
