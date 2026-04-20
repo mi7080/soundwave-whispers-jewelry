@@ -6,6 +6,7 @@ import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
   Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet
 } from "lucide-react";
+import { useDateRange, inRange } from "@/components/admin/DateRangeContext";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 const DEFAULT_SKU = "SO-15845645";
