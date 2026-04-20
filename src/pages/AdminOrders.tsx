@@ -845,16 +845,28 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
             </div>
 
             {!order.icount_docnum && (
-              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Set iCount Docnum</p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  This order has no iCount docnum, so it cannot be synced. Paste the docnum from your iCount dashboard to enable sync.
-                </p>
-                <div className="flex gap-2">
+              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5 space-y-3">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Find iCount Docnum</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Auto-detect searches iCount by customer email for the most recent invoice/receipt. If nothing matches, paste the docnum manually.
+                  </p>
+                  {order.customer_email && (
+                    <button
+                      onClick={handleAutoDetect}
+                      disabled={autoDetecting}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-[10px] tracking-[0.2em] uppercase border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                    >
+                      {autoDetecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Auto-detect from iCount
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-amber-500/20">
                   <input
                     value={docnumInput}
                     onChange={(e) => setDocnumInput(e.target.value)}
-                    placeholder="e.g. 12345"
+                    placeholder="Or paste docnum manually e.g. 12345"
                     className="flex-1 px-3 py-2 bg-background border border-border/40 rounded-sm text-sm focus:border-amber-400 outline-none font-mono"
                   />
                   <button
