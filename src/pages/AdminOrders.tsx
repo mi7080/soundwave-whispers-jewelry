@@ -750,6 +750,31 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
               </p>
               {order.customer_email && <p className="text-xs text-muted-foreground/80 mt-2">{order.customer_email}</p>}
             </div>
+
+            {!order.icount_docnum && (
+              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Set iCount Docnum</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  This order has no iCount docnum, so it cannot be synced. Paste the docnum from your iCount dashboard to enable sync.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={docnumInput}
+                    onChange={(e) => setDocnumInput(e.target.value)}
+                    placeholder="e.g. 12345"
+                    className="flex-1 px-3 py-2 bg-background border border-border/40 rounded-sm text-sm focus:border-amber-400 outline-none font-mono"
+                  />
+                  <button
+                    onClick={async () => { setSavingDocnum(true); await onSetDocnum(order.id, docnumInput); setSavingDocnum(false); setDocnumInput(""); }}
+                    disabled={savingDocnum || !docnumInput.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                  >
+                    {savingDocnum ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    Save Docnum
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Tracking */}
