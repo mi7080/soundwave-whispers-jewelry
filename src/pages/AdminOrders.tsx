@@ -483,6 +483,7 @@ const AdminOrders = () => {
           onSaveTracking={saveTrackingAndNotify}
           onRenderPng={renderPng}
           onSyncIcount={syncWithIcount}
+          onSetDocnum={setIcountDocnum}
         />
       )}
     </div>
