@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw
 } from "lucide-react";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
@@ -183,7 +183,25 @@ const AdminOrders = () => {
     toast.success("PNG generated and stored");
   };
 
-  const splitName = (full: string | null): [string, string] => {
+  const syncWithIcount = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order?.icount_docnum) {
+      toast.error("No iCount docnum on this order — cannot sync. Order may not have completed payment.");
+      return;
+    }
+    toast.info(`Syncing order ${order.icount_docnum} from iCount…`);
+    const { data, error } = await supabase.functions.invoke("sync-icount-order", {
+      body: { orderId },
+    });
+    if (error || !data?.success) {
+      toast.error(`Sync failed: ${data?.error || error?.message || "unknown"}`);
+      return;
+    }
+    const updates = data.updates || {};
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, ...updates } as Order : o));
+    setSelected(s => s && s.id === orderId ? { ...s, ...updates } as Order : s);
+    const fields = (data.synced_fields || []).length;
+    toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
     if (parts.length === 1) return [parts[0], ""];
