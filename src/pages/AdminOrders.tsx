@@ -356,6 +356,7 @@ const AdminOrders = () => {
   if (!authorized) return null;
 
   const paidPending = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
+  const incompleteCount = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range))).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
