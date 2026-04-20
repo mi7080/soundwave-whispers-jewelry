@@ -190,9 +190,15 @@ const AdminOrders = () => {
     return [parts[0], parts.slice(1).join(" ")];
   };
 
+  const isArtReady = (o: Order) =>
+    o.fulfillment_status === "paid" &&
+    o.workflow_status !== "sent_to_production" &&
+    o.workflow_status !== "shipped" &&
+    !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
+
   const exportShineOnBatch = async () => {
-    const batch = orders.filter(o => o.workflow_status === "paid" && (!range || inRange(o.created_at, range)));
-    if (batch.length === 0) { toast.error("No paid orders awaiting production"); return; }
+    const batch = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range)));
+    if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
     const incomplete = batch.filter(o =>
       !o.shipping_address1 || !o.shipping_city || !o.shipping_zip || !o.shipping_country_code || !o.customer_email
@@ -205,11 +211,22 @@ const AdminOrders = () => {
     }
 
     const missingPng = batch.filter(o => !o.print_image_url);
+    const renderFailed: Order[] = [];
     if (missingPng.length > 0) {
       toast.info(`Generating ${missingPng.length} missing engraving PNG${missingPng.length > 1 ? "s" : ""} (1000×1788)…`);
       for (const o of missingPng) {
-        const { data } = await supabase.functions.invoke("render-engraving-png", { body: { orderId: o.id } });
-        if (data?.print_image_url) o.print_image_url = data.print_image_url;
+        const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId: o.id } });
+        if (data?.print_image_url) {
+          o.print_image_url = data.print_image_url;
+        } else {
+          renderFailed.push(o);
+          console.error(`Render failed for ${o.id}:`, error || data);
+        }
+      }
+      if (renderFailed.length > 0) {
+        const names = renderFailed.slice(0, 3).map(o => o.customer_name || o.pet_name || o.id.slice(0, 6)).join(", ");
+        toast.error(`${renderFailed.length} order(s) failed to render — design incomplete: ${names}`, { duration: 8000 });
+        return;
       }
     }
 
