@@ -4,6 +4,7 @@ export interface SoulPageData {
   petName: string;
   photoUrl: string;
   audioUrl: string;
+  videoUrl?: string;
   textMessage?: string;
 }
 
@@ -12,6 +13,7 @@ export interface SoulPageOrderRecord {
   pet_photo_url: string | null;
   audio_url: string | null;
   text_message?: string | null;
+  soul_video_url?: string | null;
 }
 
 export function buildSoulPageUrl(orderId: string): string {
@@ -19,11 +21,11 @@ export function buildSoulPageUrl(orderId: string): string {
 }
 
 export function mapOrderToSoulPageData(order: SoulPageOrderRecord): SoulPageData | null {
-  // As long as the record exists, render the page — don't require both photo and audio
   return {
     petName: order.pet_name?.trim() || "Memorial",
     photoUrl: order.pet_photo_url?.trim() || "",
     audioUrl: order.audio_url?.trim() || "",
+    videoUrl: order.soul_video_url?.trim() || "",
     textMessage: order.text_message?.trim() || "",
   };
 }
