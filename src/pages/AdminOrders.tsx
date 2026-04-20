@@ -24,6 +24,7 @@ interface Order {
   workflow_status: WorkflowStatus;
   fulfillment_status: string;
   icount_docnum: string | null;
+  icount_docnum_auto_detected?: boolean | null;
   tracking_number: string | null;
   tracking_updated_at: string | null;
   shipping_address1: string | null;
