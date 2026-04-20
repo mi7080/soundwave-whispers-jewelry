@@ -458,9 +458,10 @@ const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
   isIncomplete: (o: Order) => boolean;
+  onSyncIcount: (orderId: string) => Promise<void>;
 }) => {
   if (orders.length === 0) {
     return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No orders found</div>;
