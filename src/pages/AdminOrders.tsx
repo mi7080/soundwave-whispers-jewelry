@@ -427,8 +427,9 @@ const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
+  isIncomplete: (o: Order) => boolean;
 }) => {
   if (orders.length === 0) {
     return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No orders found</div>;
@@ -449,23 +450,35 @@ const OrdersTable = ({ orders, onSelect, onStatusChange }: {
             </tr>
           </thead>
           <tbody>
-            {orders.map(o => (
-              <tr key={o.id} className="border-b border-border/20 hover:bg-background/30 transition-colors">
-                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </td>
-                <td className="px-4 py-3 text-xs font-mono text-foreground">{o.icount_docnum || "—"}</td>
-                <td className="px-4 py-3 text-foreground">{o.customer_name || o.pet_name}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
-                <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `₪${o.amount}` : "—"}</td>
-                <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
-                    <Eye className="w-3 h-3" /> View
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {orders.map(o => {
+              const incomplete = isIncomplete(o);
+              return (
+                <tr key={o.id} className={`border-b border-border/20 hover:bg-background/30 transition-colors ${incomplete ? "border-l-2 border-l-destructive/70" : ""}`}>
+                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="px-4 py-3 text-xs font-mono text-foreground">{o.icount_docnum || "—"}</td>
+                  <td className="px-4 py-3 text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{o.customer_name || o.pet_name}</span>
+                      {incomplete && (
+                        <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 text-destructive bg-destructive/5">
+                          Data Incomplete
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
+                  <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `₪${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                      <Eye className="w-3 h-3" /> View
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
