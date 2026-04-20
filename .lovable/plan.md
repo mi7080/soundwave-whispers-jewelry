@@ -1,50 +1,49 @@
 
+
 ## The bug
 
-The "Export Daily Batch for ShineOn" button is **disabled and does nothing** because the filter doesn't match any orders.
+The "Sync All Incomplete (N)" button shows **N=0** so the button is disabled and clicks do nothing.
 
-**Current filter** (`AdminOrders.tsx` line 193 + 284):
-```ts
-orders.filter(o => o.workflow_status === "paid" && ...)
+**Why:** the bulk sync filter requires `o.icount_docnum` to be present, but both orders in your DB have `icount_docnum: null`. So there's nothing to sync — the iCount API needs a docnum to look up the order.
+
+```
+JUDI:     icount_docnum=null, shipping_address1=null  → skipped (no docnum)
+Memorial: icount_docnum=null, shipping_address1=null  → skipped (no docnum)
 ```
 
-**Reality from your DB** (both existing orders):
-- `workflow_status: "new"`
-- `fulfillment_status: "paid"`
+The single-row "Sync iCount" button has the same problem and also can't run.
 
-So `paidPending` is always `0` → button shows "(0)", is disabled, click does nothing.
+## Root cause
 
-There are two separate fields that got conflated:
-- `fulfillment_status` — set to `"paid"` by the iCount webhook when payment succeeds
-- `workflow_status` — internal pipeline (`new` → `sent_to_production` → `shipped`)
+`icount_docnum` is only written by the `icount-payment-webhook` when a real iCount payment completes. These two orders were created before payment finished (or the webhook never fired), so they have no docnum and **can never be synced from iCount** by the current edge function.
 
-The export was wired to the wrong one.
+## The fix
 
-## Fix
+Two parts — make the button actually work for orders that *do* have a docnum, and give you a path forward for orders that don't.
 
-**File: `src/pages/AdminOrders.tsx`** — two small changes:
+### 1. Manual docnum entry (unblocks the existing 2 orders)
 
-1. **Eligibility filter** (used for both `paidPending` count and `exportShineOnBatch`):
-   Replace `o.workflow_status === "paid"` with the real "Art Ready" definition:
-   ```ts
-   const isArtReady = (o: Order) =>
-     o.fulfillment_status === "paid" &&
-     o.workflow_status !== "sent_to_production" &&
-     o.workflow_status !== "shipped" &&
-     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
-   ```
-   Apply in `paidPending` (line 284) and `exportShineOnBatch`'s `batch` (line 193).
+Add a small "Set iCount docnum" input + button in the order detail modal's Shipping section, shown when `icount_docnum` is null. You paste the docnum from your iCount dashboard, it saves to the row, then the existing "Sync iCount" button works normally.
 
-2. **Add `fulfillment_status` to the `Order` interface** (line 16-39) so TS allows the check.
+### 2. Make the bulk button visible even when count is 0
 
-3. **Empty-SVG guard before render loop** (line 206-213): skip orders whose `svg_content` is the `<svg></svg>` placeholder — they'll 500 the renderer (already happened to "Memorial"). Surface them as an inline warning instead of blocking the whole export.
+Right now `incompleteCount=0` makes the button look broken (greyed out, no feedback). Change it to:
+- Always render the button when there are *any* incomplete orders in range (regardless of docnum)
+- If clicked and no orders have a docnum, show a clear toast: *"X orders are incomplete but have no iCount docnum. Open each order and paste the docnum from iCount, then sync."*
+- If some have docnums and some don't, sync the ones that can be synced and report the rest in the summary toast.
 
-4. **Button label**: rename "Export Daily Batch for ShineOn (N)" — N now reflects Art Ready orders within the date range.
+### 3. Improve sync edge function error handling
 
-## Why the data looks this way
+Wrap the iCount API failure paths to return `200 + { success:false, fallback:true, error }` instead of `502`, so one bad order doesn't break the bulk loop and the client gets a clean per-order error message in the summary toast.
 
-The iCount webhook writes `fulfillment_status='paid'` but leaves `workflow_status` at its default `'new'`. Nothing in the app promotes `new → paid`, so the old check could never be true.
+### 4. Visual hint on incomplete rows
 
-After the fix, the JUDI order (valid SVG, `fulfillment_status='paid'`) will show up in the count and export cleanly. Memorial will be flagged as "missing design" until the customer completes the flow.
+In the orders table, when a row is flagged "Data Incomplete" AND has no `icount_docnum`, show the badge as *"Needs Docnum"* (amber) instead of *"Data Incomplete"* (red), so it's obvious which orders need manual docnum entry vs. which just need a sync click.
 
-## No DB / migration changes needed.
+## Files changed
+
+- `src/pages/AdminOrders.tsx` — bulk button always-on logic, manual docnum input in modal, smarter incomplete badge, better toast messages
+- `supabase/functions/sync-icount-order/index.ts` — return `200 + fallback:true` on iCount API errors instead of `502`
+
+No DB migration needed — `icount_docnum` column already exists and is writable by admins via the existing UPDATE RLS policy.
+
