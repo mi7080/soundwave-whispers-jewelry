@@ -430,8 +430,8 @@ const CrmTab = () => {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Elite CRM</h2>
         <div className="flex items-center gap-1 border rounded-sm" style={{ borderColor: "rgba(212,175,55,0.2)" }}>
-          <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({leads.length})</CrmToggle>
-          <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({orders.length})</CrmToggle>
+          <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({filteredLeads.length})</CrmToggle>
+          <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({filteredOrders.length})</CrmToggle>
         </div>
       </div>
 
@@ -448,7 +448,7 @@ const CrmTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {leads.map(l => (
+                {filteredLeads.map(l => (
                   <tr key={l.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{l.email}</td>
                     <td className="px-5 py-3 text-xs capitalize" style={{ color: l.status === "invited" ? "#D4AF37" : "#888" }}>{l.status}</td>
@@ -466,8 +466,8 @@ const CrmTab = () => {
                     </td>
                   </tr>
                 ))}
-                {leads.length === 0 && (
-                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No leads yet</td></tr>
+                {filteredLeads.length === 0 && (
+                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No leads in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>
@@ -487,7 +487,7 @@ const CrmTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(o => (
+                {filteredOrders.map(o => (
                   <tr key={o.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || "—"}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#aaa" }}>{o.customer_email}</td>
@@ -506,8 +506,8 @@ const CrmTab = () => {
                     </td>
                   </tr>
                 ))}
-                {orders.length === 0 && (
-                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No customers yet</td></tr>
+                {filteredOrders.length === 0 && (
+                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No customers in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>
