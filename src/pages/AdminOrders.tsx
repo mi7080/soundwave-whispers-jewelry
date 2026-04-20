@@ -660,6 +660,8 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [docnumInput, setDocnumInput] = useState("");
+  const [savingDocnum, setSavingDocnum] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
