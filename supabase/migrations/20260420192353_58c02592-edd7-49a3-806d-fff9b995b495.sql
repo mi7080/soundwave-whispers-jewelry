@@ -1,0 +1,1 @@
+ALTER TABLE public.animus_orders ADD COLUMN IF NOT EXISTS icount_docnum_auto_detected boolean NOT NULL DEFAULT false;

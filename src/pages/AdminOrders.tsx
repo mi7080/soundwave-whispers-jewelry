@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles
 } from "lucide-react";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
@@ -24,6 +24,7 @@ interface Order {
   workflow_status: WorkflowStatus;
   fulfillment_status: string;
   icount_docnum: string | null;
+  icount_docnum_auto_detected?: boolean | null;
   tracking_number: string | null;
   tracking_updated_at: string | null;
   shipping_address1: string | null;
@@ -206,50 +207,108 @@ const AdminOrders = () => {
 
   const [bulkSyncing, setBulkSyncing] = useState(false);
 
+  const autoDetectDocnum = async (orderId: string): Promise<{ found: boolean; docnum?: string }> => {
+    const { data, error } = await supabase.functions.invoke("icount-find-docnum", { body: { orderId } });
+    if (error || !data) return { found: false };
+    if (data.success && data.found && data.docnum) {
+      setOrders(p => p.map(o => o.id === orderId
+        ? { ...o, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
+        : o));
+      setSelected(s => s && s.id === orderId
+        ? { ...s, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
+        : s);
+      return { found: true, docnum: data.docnum };
+    }
+    return { found: false };
+  };
+
+  const autoDetectSingle = async (orderId: string) => {
+    toast.info("Searching iCount by customer email…");
+    const r = await autoDetectDocnum(orderId);
+    if (r.found) {
+      toast.success(`Auto-detected docnum ${r.docnum} — syncing now…`);
+      await syncWithIcount(orderId);
+    } else {
+      toast.warning("No matching iCount document found. Set the docnum manually.");
+    }
+  };
+
   const syncAllIncomplete = async () => {
     const allIncomplete = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
-    const targets = allIncomplete.filter(o => !!o.icount_docnum);
-    const noDocnum = allIncomplete.length - targets.length;
-
     if (allIncomplete.length === 0) {
       toast.info("No incomplete orders in selected range");
       return;
     }
-    if (targets.length === 0) {
-      toast.warning(
-        `${noDocnum} order(s) are incomplete but have no iCount docnum. Open each order and paste the docnum from iCount, then sync.`,
-        { duration: 8000 }
-      );
-      return;
-    }
+
     setBulkSyncing(true);
-    toast.info(`Syncing ${targets.length} order(s) from iCount…`);
-    let okCount = 0;
-    let failCount = 0;
-    for (const o of targets) {
-      const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
-      if (error || !data?.success) {
-        failCount++;
-        console.error(`Sync failed for ${o.icount_docnum}:`, data?.error || error?.message);
-      } else {
-        okCount++;
-        const updates = data.updates || {};
-        setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+
+    // Phase 1 — auto-detect docnums for orders missing one (must have email)
+    const needsDetect = allIncomplete.filter(o => !o.icount_docnum && o.customer_email);
+    let detected = 0;
+    if (needsDetect.length > 0) {
+      toast.info(`Auto-detecting docnum for ${needsDetect.length} order(s) via iCount email lookup…`);
+      for (const o of needsDetect) {
+        const r = await autoDetectDocnum(o.id);
+        if (r.found) detected++;
       }
     }
+
+    // Phase 2 — re-read state by refetching from latest orders array via filter on `allIncomplete`
+    // We rely on the in-memory updates from autoDetectDocnum (state setter is queued — use detected list)
+    const targets = allIncomplete
+      .map(o => orders.find(x => x.id === o.id) || o)
+      .filter(o => !!o.icount_docnum || needsDetect.find(n => n.id === o.id));
+
+    // After auto-detect, we still need to know which ones now have docnum.
+    // Fetch fresh rows for the affected ids to be safe.
+    const ids = allIncomplete.map(o => o.id);
+    const { data: fresh } = await supabase
+      .from("animus_orders")
+      .select("id, icount_docnum")
+      .in("id", ids);
+    const docMap = new Map((fresh || []).map((r: any) => [r.id, r.icount_docnum]));
+    const syncTargets = allIncomplete.filter(o => !!docMap.get(o.id));
+    const stillNoDocnum = allIncomplete.length - syncTargets.length;
+
+    let okCount = 0;
+    let failCount = 0;
+    if (syncTargets.length > 0) {
+      toast.info(`Syncing ${syncTargets.length} order(s) from iCount…`);
+      for (const o of syncTargets) {
+        const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
+        if (error || !data?.success) {
+          failCount++;
+          console.error(`Sync failed for ${o.id}:`, data?.error || error?.message);
+        } else {
+          okCount++;
+          const updates = data.updates || {};
+          setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+        }
+      }
+    }
+
     setBulkSyncing(false);
-    const noDocnumNote = noDocnum > 0 ? ` • ${noDocnum} skipped (no docnum)` : "";
-    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount${noDocnumNote}`);
-    else toast.warning(`Synced ${okCount} • Failed ${failCount}${noDocnumNote} — check console`, { duration: 6000 });
+    const detectedNote = detected > 0 ? ` • ${detected} auto-detected` : "";
+    const skipNote = stillNoDocnum > 0 ? ` • ${stillNoDocnum} skipped (no docnum found)` : "";
+    if (failCount === 0 && (okCount > 0 || detected > 0)) {
+      toast.success(`Synced ${okCount}${detectedNote}${skipNote}`);
+    } else if (failCount > 0) {
+      toast.warning(`Synced ${okCount} • Failed ${failCount}${detectedNote}${skipNote}`, { duration: 7000 });
+    } else {
+      toast.info(`Nothing to sync${skipNote}`);
+    }
   };
 
   const setIcountDocnum = async (orderId: string, docnum: string) => {
     const trimmed = docnum.trim();
     if (!trimmed) { toast.error("Enter a docnum"); return; }
-    const { error } = await supabase.from("animus_orders").update({ icount_docnum: trimmed }).eq("id", orderId);
+    const { error } = await supabase
+      .from("animus_orders")
+      .update({ icount_docnum: trimmed, icount_docnum_auto_detected: false })
+      .eq("id", orderId);
     if (error) { toast.error("Failed to save docnum"); return; }
-    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed } : o));
-    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed } : s);
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed, icount_docnum_auto_detected: false } : o));
+    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed, icount_docnum_auto_detected: false } : s);
     toast.success("Docnum saved — you can now sync from iCount");
   };
 
@@ -470,7 +529,7 @@ const AdminOrders = () => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
-          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} />
+          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
         ) : (
           <LeadsTable leads={filteredLeads} />
         )}
@@ -484,6 +543,7 @@ const AdminOrders = () => {
           onRenderPng={renderPng}
           onSyncIcount={syncWithIcount}
           onSetDocnum={setIcountDocnum}
+          onAutoDetect={autoDetectSingle}
         />
       )}
     </div>
@@ -526,10 +586,11 @@ const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
   isIncomplete: (o: Order) => boolean;
   onSyncIcount: (orderId: string) => Promise<void>;
+  onAutoDetect: (orderId: string) => Promise<void>;
 }) => {
   if (orders.length === 0) {
     return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No orders found</div>;
@@ -557,7 +618,19 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono text-foreground">{o.icount_docnum || "—"}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-foreground">
+                    {o.icount_docnum ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {o.icount_docnum}
+                        {o.icount_docnum_auto_detected && (
+                          <CheckCircle2
+                            className="w-3.5 h-3.5 text-emerald-400"
+                            aria-label="Auto-detected from iCount"
+                          />
+                        )}
+                      </span>
+                    ) : "—"}
+                  </td>
                   <td className="px-4 py-3 text-foreground">
                     <div className="flex items-center gap-2">
                       <span>{o.customer_name || o.pet_name}</span>
@@ -579,6 +652,15 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
+                      {incomplete && !o.icount_docnum && o.customer_email && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-400 hover:text-emerald-300"
+                          title="Search iCount by customer email and auto-link the most recent invoice/receipt"
+                        >
+                          <Sparkles className="w-3 h-3" /> Auto-detect
+                        </button>
+                      )}
                       {incomplete && o.icount_docnum && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
@@ -648,13 +730,14 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum, onAutoDetect }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
   onSyncIcount: (id: string) => Promise<void>;
   onSetDocnum: (id: string, docnum: string) => Promise<void>;
+  onAutoDetect: (id: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
@@ -662,6 +745,7 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
   const [syncing, setSyncing] = useState(false);
   const [docnumInput, setDocnumInput] = useState("");
   const [savingDocnum, setSavingDocnum] = useState(false);
+  const [autoDetecting, setAutoDetecting] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -679,6 +763,11 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
     await onSyncIcount(order.id);
     setSyncing(false);
   };
+  const handleAutoDetect = async () => {
+    setAutoDetecting(true);
+    await onAutoDetect(order.id);
+    setAutoDetecting(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
@@ -686,8 +775,12 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
         <div className="sticky top-0 bg-card border-b border-border/30 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-serif text-foreground">{order.customer_name || order.pet_name}</h2>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5">
-              Order {order.icount_docnum || order.id.slice(0, 8)} • {new Date(order.created_at).toLocaleString()}
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5 inline-flex items-center gap-1.5">
+              Order {order.icount_docnum || order.id.slice(0, 8)}
+              {order.icount_docnum && order.icount_docnum_auto_detected && (
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" aria-label="Auto-detected from iCount" />
+              )}
+              <span>• {new Date(order.created_at).toLocaleString()}</span>
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1"><X className="w-5 h-5" /></button>
@@ -752,16 +845,28 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
             </div>
 
             {!order.icount_docnum && (
-              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Set iCount Docnum</p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  This order has no iCount docnum, so it cannot be synced. Paste the docnum from your iCount dashboard to enable sync.
-                </p>
-                <div className="flex gap-2">
+              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5 space-y-3">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Find iCount Docnum</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Auto-detect searches iCount by customer email for the most recent invoice/receipt. If nothing matches, paste the docnum manually.
+                  </p>
+                  {order.customer_email && (
+                    <button
+                      onClick={handleAutoDetect}
+                      disabled={autoDetecting}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-[10px] tracking-[0.2em] uppercase border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                    >
+                      {autoDetecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Auto-detect from iCount
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-amber-500/20">
                   <input
                     value={docnumInput}
                     onChange={(e) => setDocnumInput(e.target.value)}
-                    placeholder="e.g. 12345"
+                    placeholder="Or paste docnum manually e.g. 12345"
                     className="flex-1 px-3 py-2 bg-background border border-border/40 rounded-sm text-sm focus:border-amber-400 outline-none font-mono"
                   />
                   <button
