@@ -64,3 +64,6 @@ export const useDateRange = () => {
   if (!ctx) throw new Error("useDateRange must be used inside DateRangeProvider");
   return ctx;
 };
+
+// Safe variant: returns null when no provider exists (so components can opt-in to filtering)
+export const useDateRangeOptional = () => useContext(DateRangeCtx);
