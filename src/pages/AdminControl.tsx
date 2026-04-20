@@ -8,6 +8,8 @@ import {
   Mail, Send, Sparkles,
 } from "lucide-react";
 import AdminOrders from "./AdminOrders";
+import { DateRangeProvider, useDateRange, inRange } from "@/components/admin/DateRangeContext";
+import { DateRangePicker } from "@/components/admin/DateRangePicker";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 
@@ -86,53 +88,56 @@ const AdminControl = () => {
   if (!authorized) return null;
 
   return (
-    <div className="min-h-screen text-foreground" style={{ backgroundColor: "#0A0A0A" }}>
-      {/* Header — Command Center */}
-      <header className="border-b sticky top-0 z-30 backdrop-blur-md" style={{ backgroundColor: "rgba(10,10,10,0.95)", borderColor: "rgba(212,175,55,0.15)" }}>
-        <div className="container mx-auto px-6 py-5 max-w-7xl">
-          <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-            <div>
-              <Link to="/" className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-muted-foreground hover:text-[#D4AF37] transition-colors mb-3">
-                <ArrowLeft className="w-3 h-3" /> Exit Command Center
-              </Link>
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5" style={{ color: "#D4AF37" }} />
-                <h1 className="font-serif text-3xl tracking-wide" style={{ color: "#F5F5F0" }}>
-                  ANIMUS Command Center
-                </h1>
+    <DateRangeProvider>
+      <div className="min-h-screen text-foreground" style={{ backgroundColor: "#0A0A0A" }}>
+        <header className="border-b sticky top-0 z-30 backdrop-blur-md" style={{ backgroundColor: "rgba(10,10,10,0.95)", borderColor: "rgba(212,175,55,0.15)" }}>
+          <div className="container mx-auto px-6 py-5 max-w-7xl">
+            <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+              <div>
+                <Link to="/" className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-muted-foreground hover:text-[#D4AF37] transition-colors mb-3">
+                  <ArrowLeft className="w-3 h-3" /> Exit Command Center
+                </Link>
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-5 h-5" style={{ color: "#D4AF37" }} />
+                  <h1 className="font-serif text-3xl tracking-wide" style={{ color: "#F5F5F0" }}>
+                    ANIMUS Command Center
+                  </h1>
+                </div>
+                <p className="text-[10px] mt-2 tracking-[0.3em] uppercase" style={{ color: "#D4AF37" }}>
+                  Elite Operations · Founder Access
+                </p>
               </div>
-              <p className="text-[10px] mt-2 tracking-[0.3em] uppercase" style={{ color: "#D4AF37" }}>
-                Elite Operations · Founder Access
-              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <DateRangePicker />
+                <button
+                  onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
+                  className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.25em] uppercase border transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.1)", color: "#999" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#dc2626"; e.currentTarget.style.color = "#dc2626"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#999"; }}
+                >
+                  <LogOut className="w-3 h-3" /> Sign Out
+                </button>
+              </div>
             </div>
-            <button
-              onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.25em] uppercase border transition-all"
-              style={{ borderColor: "rgba(255,255,255,0.1)", color: "#999" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#dc2626"; e.currentTarget.style.color = "#dc2626"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#999"; }}
-            >
-              <LogOut className="w-3 h-3" /> Sign Out
-            </button>
+
+            <nav className="flex items-center gap-1 mt-6 -mb-5 border-b" style={{ borderColor: "rgba(212,175,55,0.1)" }}>
+              <CmdTab active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<Package className="w-3.5 h-3.5" />}>Orders</CmdTab>
+              <CmdTab active={tab === "finance"} onClick={() => setTab("finance")} icon={<DollarSign className="w-3.5 h-3.5" />}>Finance</CmdTab>
+              <CmdTab active={tab === "crm"} onClick={() => setTab("crm")} icon={<Users className="w-3.5 h-3.5" />}>CRM</CmdTab>
+              <CmdTab active={tab === "settings"} onClick={() => setTab("settings")} icon={<SettingsIcon className="w-3.5 h-3.5" />}>Settings</CmdTab>
+            </nav>
           </div>
+        </header>
 
-          {/* Tabs */}
-          <nav className="flex items-center gap-1 mt-6 -mb-5 border-b" style={{ borderColor: "rgba(212,175,55,0.1)" }}>
-            <CmdTab active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<Package className="w-3.5 h-3.5" />}>Orders</CmdTab>
-            <CmdTab active={tab === "finance"} onClick={() => setTab("finance")} icon={<DollarSign className="w-3.5 h-3.5" />}>Finance</CmdTab>
-            <CmdTab active={tab === "crm"} onClick={() => setTab("crm")} icon={<Users className="w-3.5 h-3.5" />}>CRM</CmdTab>
-            <CmdTab active={tab === "settings"} onClick={() => setTab("settings")} icon={<SettingsIcon className="w-3.5 h-3.5" />}>Settings</CmdTab>
-          </nav>
-        </div>
-      </header>
-
-      <main>
-        {tab === "dashboard" && <DashboardTab />}
-        {tab === "finance" && <FinanceTab />}
-        {tab === "crm" && <CrmTab />}
-        {tab === "settings" && <SettingsTab />}
-      </main>
-    </div>
+        <main>
+          {tab === "dashboard" && <DashboardTab />}
+          {tab === "finance" && <FinanceTab />}
+          {tab === "crm" && <CrmTab />}
+          {tab === "settings" && <SettingsTab />}
+        </main>
+      </div>
+    </DateRangeProvider>
   );
 };
 
@@ -164,6 +169,7 @@ const DashboardTab = () => (
 
 // ─── Finance Tab ────────────────────────────────────────────────────
 const FinanceTab = () => {
+  const { range } = useDateRange();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [costs, setCosts] = useState<CostSettings | null>(null);
@@ -183,7 +189,7 @@ const FinanceTab = () => {
 
   const stats = useMemo(() => {
     if (!costs) return null;
-    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount);
+    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount && inRange(o.created_at, range));
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
     const orderCount = paidOrders.length || 1;
 
@@ -219,7 +225,7 @@ const FinanceTab = () => {
       adSpendPerOrder, monthOrderCount, paidOrders, computeProfit,
       adAlert, productionAlert,
     };
-  }, [orders, costs]);
+  }, [orders, costs, range]);
 
   if (loading) {
     return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} /></div>;
@@ -234,7 +240,7 @@ const FinanceTab = () => {
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Financial Intelligence</h2>
         <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: "#888" }}>
-          Live · Updates with settings
+          {range.label} · Live
         </p>
       </div>
 
@@ -260,14 +266,14 @@ const FinanceTab = () => {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Kpi label="Revenue (All Time)" value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
+        <Kpi label={`Revenue · ${range.label}`} value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
         <Kpi label="Total Costs" value={`${costs.currency} ${stats.totalCost.toFixed(2)}`} negative />
         <Kpi label="Net Profit" value={`${costs.currency} ${stats.totalProfit.toFixed(2)}`} accent positive={stats.totalProfit >= 0} />
         <Kpi label="Margin" value={`${stats.margin.toFixed(1)}%`} accent />
         <Kpi label="Avg Order Value" value={`${costs.currency} ${stats.avgOrderValue.toFixed(2)}`} />
         <Kpi label="Avg Profit/Order" value={`${costs.currency} ${stats.avgProfit.toFixed(2)}`} positive={stats.avgProfit >= 0} />
-        <Kpi label="Ad Cost/Order (MTD)" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
-        <Kpi label="Orders This Month" value={`${stats.monthOrderCount}`} />
+        <Kpi label="Ad Cost/Order" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
+        <Kpi label={`Orders · ${range.label}`} value={`${stats.monthOrderCount}`} />
       </div>
 
       {/* Per-order profit table */}
@@ -345,11 +351,15 @@ const CostAlert = ({ level, title, message }: { level: "warn" | "info"; title: s
 
 // ─── CRM Tab ────────────────────────────────────────────────────────
 const CrmTab = () => {
+  const { range } = useDateRange();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [view, setView] = useState<"leads" | "customers">("leads");
+
+  const filteredLeads = useMemo(() => leads.filter(l => inRange(l.created_at, range)), [leads, range]);
+  const filteredOrders = useMemo(() => orders.filter(o => inRange(o.created_at, range)), [orders, range]);
 
   useEffect(() => {
     const load = async () => {
@@ -420,8 +430,8 @@ const CrmTab = () => {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Elite CRM</h2>
         <div className="flex items-center gap-1 border rounded-sm" style={{ borderColor: "rgba(212,175,55,0.2)" }}>
-          <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({leads.length})</CrmToggle>
-          <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({orders.length})</CrmToggle>
+          <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({filteredLeads.length})</CrmToggle>
+          <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({filteredOrders.length})</CrmToggle>
         </div>
       </div>
 
@@ -438,7 +448,7 @@ const CrmTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {leads.map(l => (
+                {filteredLeads.map(l => (
                   <tr key={l.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{l.email}</td>
                     <td className="px-5 py-3 text-xs capitalize" style={{ color: l.status === "invited" ? "#D4AF37" : "#888" }}>{l.status}</td>
@@ -456,8 +466,8 @@ const CrmTab = () => {
                     </td>
                   </tr>
                 ))}
-                {leads.length === 0 && (
-                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No leads yet</td></tr>
+                {filteredLeads.length === 0 && (
+                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No leads in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>
@@ -477,7 +487,7 @@ const CrmTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(o => (
+                {filteredOrders.map(o => (
                   <tr key={o.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || "—"}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#aaa" }}>{o.customer_email}</td>
@@ -496,8 +506,8 @@ const CrmTab = () => {
                     </td>
                   </tr>
                 ))}
-                {orders.length === 0 && (
-                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No customers yet</td></tr>
+                {filteredOrders.length === 0 && (
+                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No customers in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>

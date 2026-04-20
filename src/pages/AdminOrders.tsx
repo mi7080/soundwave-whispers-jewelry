@@ -6,6 +6,7 @@ import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
   Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet
 } from "lucide-react";
+import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 const DEFAULT_SKU = "SO-15845645";
@@ -60,6 +61,8 @@ const csvEscape = (val: unknown) => {
 
 const AdminOrders = () => {
   const navigate = useNavigate();
+  const dr = useDateRangeOptional();
+  const range = dr?.range;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<"orders" | "leads">("orders");
@@ -116,18 +119,22 @@ const AdminOrders = () => {
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter(o =>
+    let list = orders;
+    if (range) list = list.filter(o => inRange(o.created_at, range));
+    if (!q) return list;
+    return list.filter(o =>
       [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id, o.tracking_number]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
-  }, [orders, search]);
+  }, [orders, search, range]);
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return leads;
-    return leads.filter(l => l.email.toLowerCase().includes(q));
-  }, [leads, search]);
+    let list = leads;
+    if (range) list = list.filter(l => inRange(l.created_at, range));
+    if (!q) return list;
+    return list.filter(l => l.email.toLowerCase().includes(q));
+  }, [leads, search, range]);
 
   const updateWorkflowStatus = async (order: Order, status: WorkflowStatus) => {
     const prev = orders;
@@ -183,7 +190,7 @@ const AdminOrders = () => {
   };
 
   const exportShineOnBatch = async () => {
-    const batch = orders.filter(o => o.workflow_status === "paid");
+    const batch = orders.filter(o => o.workflow_status === "paid" && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No paid orders awaiting production"); return; }
 
     const incomplete = batch.filter(o =>
@@ -274,7 +281,7 @@ const AdminOrders = () => {
   }
   if (!authorized) return null;
 
-  const paidPending = orders.filter(o => o.workflow_status === "paid").length;
+  const paidPending = orders.filter(o => o.workflow_status === "paid" && (!range || inRange(o.created_at, range))).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
