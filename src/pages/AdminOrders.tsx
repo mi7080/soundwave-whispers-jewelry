@@ -416,14 +416,25 @@ const AdminOrders = () => {
             />
           </div>
           {tab === "orders" && (
-            <button
-              onClick={exportShineOnBatch}
-              disabled={paidPending === 0}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Export ShineOn Batch — Art Ready ({paidPending})
-            </button>
+            <>
+              <button
+                onClick={syncAllIncomplete}
+                disabled={bulkSyncing || incompleteCount === 0}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-500/40 text-amber-400 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Re-fetch shipping & customer data from iCount for all flagged orders"
+              >
+                {bulkSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
+                Sync All Incomplete ({incompleteCount})
+              </button>
+              <button
+                onClick={exportShineOnBatch}
+                disabled={paidPending === 0}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Export ShineOn Batch — Art Ready ({paidPending})
+              </button>
+            </>
           )}
         </div>
 
