@@ -207,9 +207,19 @@ const AdminOrders = () => {
   const [bulkSyncing, setBulkSyncing] = useState(false);
 
   const syncAllIncomplete = async () => {
-    const targets = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range)));
+    const allIncomplete = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
+    const targets = allIncomplete.filter(o => !!o.icount_docnum);
+    const noDocnum = allIncomplete.length - targets.length;
+
+    if (allIncomplete.length === 0) {
+      toast.info("No incomplete orders in selected range");
+      return;
+    }
     if (targets.length === 0) {
-      toast.info("No incomplete orders with an iCount docnum to sync");
+      toast.warning(
+        `${noDocnum} order(s) are incomplete but have no iCount docnum. Open each order and paste the docnum from iCount, then sync.`,
+        { duration: 8000 }
+      );
       return;
     }
     setBulkSyncing(true);
@@ -228,8 +238,19 @@ const AdminOrders = () => {
       }
     }
     setBulkSyncing(false);
-    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount`);
-    else toast.warning(`Synced ${okCount} • Failed ${failCount} — check console for details`, { duration: 6000 });
+    const noDocnumNote = noDocnum > 0 ? ` • ${noDocnum} skipped (no docnum)` : "";
+    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount${noDocnumNote}`);
+    else toast.warning(`Synced ${okCount} • Failed ${failCount}${noDocnumNote} — check console`, { duration: 6000 });
+  };
+
+  const setIcountDocnum = async (orderId: string, docnum: string) => {
+    const trimmed = docnum.trim();
+    if (!trimmed) { toast.error("Enter a docnum"); return; }
+    const { error } = await supabase.from("animus_orders").update({ icount_docnum: trimmed }).eq("id", orderId);
+    if (error) { toast.error("Failed to save docnum"); return; }
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed } : o));
+    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed } : s);
+    toast.success("Docnum saved — you can now sync from iCount");
   };
 
   const splitName = (full: string | null): [string, string] => {
