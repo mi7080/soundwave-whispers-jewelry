@@ -207,50 +207,108 @@ const AdminOrders = () => {
 
   const [bulkSyncing, setBulkSyncing] = useState(false);
 
+  const autoDetectDocnum = async (orderId: string): Promise<{ found: boolean; docnum?: string }> => {
+    const { data, error } = await supabase.functions.invoke("icount-find-docnum", { body: { orderId } });
+    if (error || !data) return { found: false };
+    if (data.success && data.found && data.docnum) {
+      setOrders(p => p.map(o => o.id === orderId
+        ? { ...o, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
+        : o));
+      setSelected(s => s && s.id === orderId
+        ? { ...s, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
+        : s);
+      return { found: true, docnum: data.docnum };
+    }
+    return { found: false };
+  };
+
+  const autoDetectSingle = async (orderId: string) => {
+    toast.info("Searching iCount by customer email…");
+    const r = await autoDetectDocnum(orderId);
+    if (r.found) {
+      toast.success(`Auto-detected docnum ${r.docnum} — syncing now…`);
+      await syncWithIcount(orderId);
+    } else {
+      toast.warning("No matching iCount document found. Set the docnum manually.");
+    }
+  };
+
   const syncAllIncomplete = async () => {
     const allIncomplete = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
-    const targets = allIncomplete.filter(o => !!o.icount_docnum);
-    const noDocnum = allIncomplete.length - targets.length;
-
     if (allIncomplete.length === 0) {
       toast.info("No incomplete orders in selected range");
       return;
     }
-    if (targets.length === 0) {
-      toast.warning(
-        `${noDocnum} order(s) are incomplete but have no iCount docnum. Open each order and paste the docnum from iCount, then sync.`,
-        { duration: 8000 }
-      );
-      return;
-    }
+
     setBulkSyncing(true);
-    toast.info(`Syncing ${targets.length} order(s) from iCount…`);
-    let okCount = 0;
-    let failCount = 0;
-    for (const o of targets) {
-      const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
-      if (error || !data?.success) {
-        failCount++;
-        console.error(`Sync failed for ${o.icount_docnum}:`, data?.error || error?.message);
-      } else {
-        okCount++;
-        const updates = data.updates || {};
-        setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+
+    // Phase 1 — auto-detect docnums for orders missing one (must have email)
+    const needsDetect = allIncomplete.filter(o => !o.icount_docnum && o.customer_email);
+    let detected = 0;
+    if (needsDetect.length > 0) {
+      toast.info(`Auto-detecting docnum for ${needsDetect.length} order(s) via iCount email lookup…`);
+      for (const o of needsDetect) {
+        const r = await autoDetectDocnum(o.id);
+        if (r.found) detected++;
       }
     }
+
+    // Phase 2 — re-read state by refetching from latest orders array via filter on `allIncomplete`
+    // We rely on the in-memory updates from autoDetectDocnum (state setter is queued — use detected list)
+    const targets = allIncomplete
+      .map(o => orders.find(x => x.id === o.id) || o)
+      .filter(o => !!o.icount_docnum || needsDetect.find(n => n.id === o.id));
+
+    // After auto-detect, we still need to know which ones now have docnum.
+    // Fetch fresh rows for the affected ids to be safe.
+    const ids = allIncomplete.map(o => o.id);
+    const { data: fresh } = await supabase
+      .from("animus_orders")
+      .select("id, icount_docnum")
+      .in("id", ids);
+    const docMap = new Map((fresh || []).map((r: any) => [r.id, r.icount_docnum]));
+    const syncTargets = allIncomplete.filter(o => !!docMap.get(o.id));
+    const stillNoDocnum = allIncomplete.length - syncTargets.length;
+
+    let okCount = 0;
+    let failCount = 0;
+    if (syncTargets.length > 0) {
+      toast.info(`Syncing ${syncTargets.length} order(s) from iCount…`);
+      for (const o of syncTargets) {
+        const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
+        if (error || !data?.success) {
+          failCount++;
+          console.error(`Sync failed for ${o.id}:`, data?.error || error?.message);
+        } else {
+          okCount++;
+          const updates = data.updates || {};
+          setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+        }
+      }
+    }
+
     setBulkSyncing(false);
-    const noDocnumNote = noDocnum > 0 ? ` • ${noDocnum} skipped (no docnum)` : "";
-    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount${noDocnumNote}`);
-    else toast.warning(`Synced ${okCount} • Failed ${failCount}${noDocnumNote} — check console`, { duration: 6000 });
+    const detectedNote = detected > 0 ? ` • ${detected} auto-detected` : "";
+    const skipNote = stillNoDocnum > 0 ? ` • ${stillNoDocnum} skipped (no docnum found)` : "";
+    if (failCount === 0 && (okCount > 0 || detected > 0)) {
+      toast.success(`Synced ${okCount}${detectedNote}${skipNote}`);
+    } else if (failCount > 0) {
+      toast.warning(`Synced ${okCount} • Failed ${failCount}${detectedNote}${skipNote}`, { duration: 7000 });
+    } else {
+      toast.info(`Nothing to sync${skipNote}`);
+    }
   };
 
   const setIcountDocnum = async (orderId: string, docnum: string) => {
     const trimmed = docnum.trim();
     if (!trimmed) { toast.error("Enter a docnum"); return; }
-    const { error } = await supabase.from("animus_orders").update({ icount_docnum: trimmed }).eq("id", orderId);
+    const { error } = await supabase
+      .from("animus_orders")
+      .update({ icount_docnum: trimmed, icount_docnum_auto_detected: false })
+      .eq("id", orderId);
     if (error) { toast.error("Failed to save docnum"); return; }
-    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed } : o));
-    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed } : s);
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed, icount_docnum_auto_detected: false } : o));
+    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed, icount_docnum_auto_detected: false } : s);
     toast.success("Docnum saved — you can now sync from iCount");
   };
 
