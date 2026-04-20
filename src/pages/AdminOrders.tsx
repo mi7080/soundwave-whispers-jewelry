@@ -204,6 +204,34 @@ const AdminOrders = () => {
     toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
   };
 
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+
+  const syncAllIncomplete = async () => {
+    const targets = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range)));
+    if (targets.length === 0) {
+      toast.info("No incomplete orders with an iCount docnum to sync");
+      return;
+    }
+    setBulkSyncing(true);
+    toast.info(`Syncing ${targets.length} order(s) from iCount…`);
+    let okCount = 0;
+    let failCount = 0;
+    for (const o of targets) {
+      const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
+      if (error || !data?.success) {
+        failCount++;
+        console.error(`Sync failed for ${o.icount_docnum}:`, data?.error || error?.message);
+      } else {
+        okCount++;
+        const updates = data.updates || {};
+        setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+      }
+    }
+    setBulkSyncing(false);
+    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount`);
+    else toast.warning(`Synced ${okCount} • Failed ${failCount} — check console for details`, { duration: 6000 });
+  };
+
   const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
