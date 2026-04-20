@@ -469,7 +469,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete }: {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
-                  <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `₪${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
                   <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
