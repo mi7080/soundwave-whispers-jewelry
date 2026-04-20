@@ -1,0 +1,1 @@
+UPDATE public.cost_settings SET currency = 'USD' WHERE id = 1; ALTER TABLE public.cost_settings ALTER COLUMN currency SET DEFAULT 'USD';
