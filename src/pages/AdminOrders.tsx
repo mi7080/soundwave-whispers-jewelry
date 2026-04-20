@@ -263,7 +263,7 @@ const AdminOrders = () => {
         city, zip, "", cc, "", "",
         "", "", "",
         "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
-        o.customer_email || "", "", "ILS", "", "", "", "", "",
+        o.customer_email || "", "", "USD", "", "", "", "", "",
         "", "", "en", "", "ANIMUS",
       ];
     });
