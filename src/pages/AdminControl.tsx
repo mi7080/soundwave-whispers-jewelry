@@ -542,7 +542,7 @@ const SettingsTab = () => {
     transaction_fee_percent: "0",
     transaction_fee_fixed: "0",
     monthly_ad_spend: "0",
-    currency: "ILS",
+    currency: "USD",
   });
 
   useEffect(() => {
@@ -571,7 +571,7 @@ const SettingsTab = () => {
       transaction_fee_percent: parseFloat(form.transaction_fee_percent) || 0,
       transaction_fee_fixed: parseFloat(form.transaction_fee_fixed) || 0,
       monthly_ad_spend: parseFloat(form.monthly_ad_spend) || 0,
-      currency: form.currency.trim().toUpperCase() || "ILS",
+      currency: form.currency.trim().toUpperCase() || "USD",
     };
     const { error } = await supabase.from("cost_settings").update(updates).eq("id", 1);
     setSaving(false);
@@ -625,7 +625,7 @@ const SettingsTab = () => {
         />
         <SettingField
           label="Currency Code"
-          hint="3-letter ISO code (ILS, USD, EUR…)"
+          hint="3-letter ISO code (USD, ILS, EUR…)"
           value={form.currency}
           onChange={(v) => setForm(f => ({ ...f, currency: v }))}
           isText
