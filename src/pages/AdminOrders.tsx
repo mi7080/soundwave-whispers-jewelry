@@ -146,11 +146,11 @@ const AdminOrders = () => {
 
   const saveTrackingAndNotify = async (orderId: string, tracking: string) => {
     const now = new Date().toISOString();
-    const updates: Record<string, unknown> = {
+    const updates = {
       tracking_number: tracking || null,
       tracking_updated_at: tracking ? now : null,
+      ...(tracking ? { workflow_status: "shipped" as const } : {}),
     };
-    if (tracking) updates.workflow_status = "shipped" as WorkflowStatus;
     const { error } = await supabase
       .from("animus_orders")
       .update(updates)
