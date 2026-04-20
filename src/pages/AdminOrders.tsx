@@ -482,7 +482,10 @@ const AdminOrders = () => {
   if (!authorized) return null;
 
   const paidPending = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
-  const incompleteInRange = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
+  const incompleteInRange = orders.filter(o =>
+    (isIncompleteShipping(o) || !o.print_image_url) &&
+    (!range || inRange(o.created_at, range))
+  );
   const incompleteCount = incompleteInRange.length;
   const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
 
