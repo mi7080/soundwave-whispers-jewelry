@@ -189,7 +189,7 @@ const FinanceTab = () => {
 
   const stats = useMemo(() => {
     if (!costs) return null;
-    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount);
+    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount && inRange(o.created_at, range));
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
     const orderCount = paidOrders.length || 1;
 
@@ -225,7 +225,7 @@ const FinanceTab = () => {
       adSpendPerOrder, monthOrderCount, paidOrders, computeProfit,
       adAlert, productionAlert,
     };
-  }, [orders, costs]);
+  }, [orders, costs, range]);
 
   if (loading) {
     return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} /></div>;
@@ -240,7 +240,7 @@ const FinanceTab = () => {
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Financial Intelligence</h2>
         <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: "#888" }}>
-          Live · Updates with settings
+          {range.label} · Live
         </p>
       </div>
 
