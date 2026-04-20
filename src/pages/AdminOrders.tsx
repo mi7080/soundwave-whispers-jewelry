@@ -234,69 +234,115 @@ const AdminOrders = () => {
   };
 
   const syncAllIncomplete = async () => {
-    const allIncomplete = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
+    // Include orders that are either missing shipping OR missing the print PNG
+    const allIncomplete = orders.filter(o =>
+      (isIncompleteShipping(o) || !o.print_image_url) &&
+      (!range || inRange(o.created_at, range))
+    );
     if (allIncomplete.length === 0) {
       toast.info("No incomplete orders in selected range");
       return;
     }
 
     setBulkSyncing(true);
+    toast.info(`Processing ${allIncomplete.length} order(s): find → pull → render → ready…`);
 
-    // Phase 1 — auto-detect docnums for orders missing one (must have email)
-    const needsDetect = allIncomplete.filter(o => !o.icount_docnum && o.customer_email);
     let detected = 0;
-    if (needsDetect.length > 0) {
-      toast.info(`Auto-detecting docnum for ${needsDetect.length} order(s) via iCount email lookup…`);
-      for (const o of needsDetect) {
-        const r = await autoDetectDocnum(o.id);
-        if (r.found) detected++;
-      }
-    }
+    let pulled = 0;
+    let rendered = 0;
+    let readied = 0;
+    let failed = 0;
+    let stillNoDocnum = 0;
 
-    // Phase 2 — re-read state by refetching from latest orders array via filter on `allIncomplete`
-    // We rely on the in-memory updates from autoDetectDocnum (state setter is queued — use detected list)
-    const targets = allIncomplete
-      .map(o => orders.find(x => x.id === o.id) || o)
-      .filter(o => !!o.icount_docnum || needsDetect.find(n => n.id === o.id));
-
-    // After auto-detect, we still need to know which ones now have docnum.
-    // Fetch fresh rows for the affected ids to be safe.
-    const ids = allIncomplete.map(o => o.id);
-    const { data: fresh } = await supabase
-      .from("animus_orders")
-      .select("id, icount_docnum")
-      .in("id", ids);
-    const docMap = new Map((fresh || []).map((r: any) => [r.id, r.icount_docnum]));
-    const syncTargets = allIncomplete.filter(o => !!docMap.get(o.id));
-    const stillNoDocnum = allIncomplete.length - syncTargets.length;
-
-    let okCount = 0;
-    let failCount = 0;
-    if (syncTargets.length > 0) {
-      toast.info(`Syncing ${syncTargets.length} order(s) from iCount…`);
-      for (const o of syncTargets) {
-        const { data, error } = await supabase.functions.invoke("sync-icount-order", { body: { orderId: o.id } });
-        if (error || !data?.success) {
-          failCount++;
-          console.error(`Sync failed for ${o.id}:`, data?.error || error?.message);
-        } else {
-          okCount++;
-          const updates = data.updates || {};
-          setOrders(p => p.map(x => x.id === o.id ? { ...x, ...updates } as Order : x));
+    for (const original of allIncomplete) {
+      try {
+        // Step 1 — FIND: auto-detect docnum if missing
+        let docnum = original.icount_docnum;
+        if (!docnum && original.customer_email) {
+          const r = await autoDetectDocnum(original.id);
+          if (r.found && r.docnum) {
+            docnum = r.docnum;
+            detected++;
+          }
         }
+        if (!docnum) {
+          stillNoDocnum++;
+          continue;
+        }
+
+        // Step 2 — PULL: sync shipping/customer fields from iCount
+        let latest: Partial<Order> = { icount_docnum: docnum };
+        const { data: syncData, error: syncErr } = await supabase.functions.invoke(
+          "sync-icount-order",
+          { body: { orderId: original.id } }
+        );
+        if (syncErr || !syncData?.success) {
+          console.error(`[bulk] Pull failed for ${original.id}:`, syncData?.error || syncErr?.message);
+          failed++;
+          continue;
+        }
+        latest = { ...latest, ...(syncData.updates || {}) };
+        pulled++;
+        setOrders(p => p.map(x => x.id === original.id ? { ...x, ...latest } as Order : x));
+
+        // Step 3 — RENDER: ensure 1000x1788 print PNG exists
+        const merged = { ...original, ...latest } as Order;
+        if (!merged.print_image_url) {
+          const { data: renderData, error: renderErr } = await supabase.functions.invoke(
+            "render-engraving-png",
+            { body: { orderId: original.id } }
+          );
+          if (renderErr || !renderData?.success || !renderData.print_image_url) {
+            console.error(`[bulk] Render failed for ${original.id}:`, renderData?.error || renderErr?.message);
+            failed++;
+            continue;
+          }
+          latest.print_image_url = renderData.print_image_url;
+          rendered++;
+          setOrders(p => p.map(x => x.id === original.id ? { ...x, print_image_url: renderData.print_image_url } as Order : x));
+        }
+
+        // Step 4 — READY: mark as paid (Art Ready) if shipping is complete and not already further along
+        const finalRow = { ...merged, ...latest } as Order;
+        const shippingOk = !!finalRow.shipping_address1 && !!finalRow.shipping_city && !!finalRow.shipping_country_code;
+        const canMarkReady =
+          shippingOk &&
+          !!finalRow.print_image_url &&
+          finalRow.workflow_status !== "sent_to_production" &&
+          finalRow.workflow_status !== "shipped";
+
+        if (canMarkReady && finalRow.workflow_status !== "paid") {
+          const { error: statusErr } = await supabase
+            .from("animus_orders")
+            .update({ workflow_status: "paid", fulfillment_status: "paid" })
+            .eq("id", original.id);
+          if (!statusErr) {
+            readied++;
+            setOrders(p => p.map(x => x.id === original.id
+              ? { ...x, workflow_status: "paid" as WorkflowStatus, fulfillment_status: "paid" } as Order
+              : x));
+          }
+        } else if (canMarkReady) {
+          readied++;
+        }
+      } catch (e: any) {
+        console.error(`[bulk] Unexpected error for ${original.id}:`, e?.message);
+        failed++;
       }
     }
 
     setBulkSyncing(false);
-    const detectedNote = detected > 0 ? ` • ${detected} auto-detected` : "";
-    const skipNote = stillNoDocnum > 0 ? ` • ${stillNoDocnum} skipped (no docnum found)` : "";
-    if (failCount === 0 && (okCount > 0 || detected > 0)) {
-      toast.success(`Synced ${okCount}${detectedNote}${skipNote}`);
-    } else if (failCount > 0) {
-      toast.warning(`Synced ${okCount} • Failed ${failCount}${detectedNote}${skipNote}`, { duration: 7000 });
-    } else {
-      toast.info(`Nothing to sync${skipNote}`);
-    }
+
+    const parts: string[] = [];
+    if (detected > 0) parts.push(`${detected} auto-detected`);
+    if (pulled > 0) parts.push(`${pulled} pulled`);
+    if (rendered > 0) parts.push(`${rendered} rendered`);
+    if (readied > 0) parts.push(`${readied} marked Ready`);
+    if (stillNoDocnum > 0) parts.push(`${stillNoDocnum} skipped (no docnum)`);
+    const summary = parts.length > 0 ? parts.join(" • ") : "no changes";
+
+    if (failed === 0) toast.success(`Bulk sync complete — ${summary}`, { duration: 6000 });
+    else toast.warning(`Bulk sync done — ${summary} • ${failed} failed (see console)`, { duration: 8000 });
   };
 
   const setIcountDocnum = async (orderId: string, docnum: string) => {
