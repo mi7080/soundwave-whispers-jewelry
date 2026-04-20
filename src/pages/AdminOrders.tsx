@@ -366,7 +366,7 @@ const AdminOrders = () => {
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              Export Daily Batch for ShineOn ({paidPending})
+              Export ShineOn Batch — Art Ready ({paidPending})
             </button>
           )}
         </div>
