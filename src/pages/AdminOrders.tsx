@@ -22,6 +22,7 @@ interface Order {
   amount: number | null;
   status: string;
   workflow_status: WorkflowStatus;
+  fulfillment_status: string;
   icount_docnum: string | null;
   tracking_number: string | null;
   tracking_updated_at: string | null;
