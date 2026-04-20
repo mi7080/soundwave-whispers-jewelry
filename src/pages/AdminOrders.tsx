@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw
 } from "lucide-react";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
@@ -181,6 +181,27 @@ const AdminOrders = () => {
     setOrders(p => p.map(o => o.id === orderId ? { ...o, print_image_url: data.print_image_url } : o));
     setSelected(s => s && s.id === orderId ? { ...s, print_image_url: data.print_image_url } : s);
     toast.success("PNG generated and stored");
+  };
+
+  const syncWithIcount = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order?.icount_docnum) {
+      toast.error("No iCount docnum on this order — cannot sync. Order may not have completed payment.");
+      return;
+    }
+    toast.info(`Syncing order ${order.icount_docnum} from iCount…`);
+    const { data, error } = await supabase.functions.invoke("sync-icount-order", {
+      body: { orderId },
+    });
+    if (error || !data?.success) {
+      toast.error(`Sync failed: ${data?.error || error?.message || "unknown"}`);
+      return;
+    }
+    const updates = data.updates || {};
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, ...updates } as Order : o));
+    setSelected(s => s && s.id === orderId ? { ...s, ...updates } as Order : s);
+    const fields = (data.synced_fields || []).length;
+    toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
   };
 
   const splitName = (full: string | null): [string, string] => {
@@ -382,7 +403,7 @@ const AdminOrders = () => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
-          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} />
+          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} />
         ) : (
           <LeadsTable leads={filteredLeads} />
         )}
@@ -394,6 +415,7 @@ const AdminOrders = () => {
           onClose={() => setSelected(null)}
           onSaveTracking={saveTrackingAndNotify}
           onRenderPng={renderPng}
+          onSyncIcount={syncWithIcount}
         />
       )}
     </div>
@@ -436,9 +458,10 @@ const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
   isIncomplete: (o: Order) => boolean;
+  onSyncIcount: (orderId: string) => Promise<void>;
 }) => {
   if (orders.length === 0) {
     return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No orders found</div>;
@@ -481,9 +504,20 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete }: {
                   <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
                   <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
-                      <Eye className="w-3 h-3" /> View
-                    </button>
+                    <div className="inline-flex items-center gap-3">
+                      {incomplete && o.icount_docnum && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-400 hover:text-amber-300"
+                          title="Re-fetch shipping & customer details from iCount"
+                        >
+                          <RotateCw className="w-3 h-3" /> Sync iCount
+                        </button>
+                      )}
+                      <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                        <Eye className="w-3 h-3" /> View
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -540,15 +574,17 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
+  onSyncIcount: (id: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -560,6 +596,11 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
     setRendering(true);
     await onRenderPng(order.id);
     setRendering(false);
+  };
+  const handleSync = async () => {
+    setSyncing(true);
+    await onSyncIcount(order.id);
+    setSyncing(false);
   };
 
   return (
@@ -609,7 +650,20 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng }: {
 
           {/* Shipping */}
           <section>
-            <h3 className="text-[10px] tracking-[0.25em] uppercase text-gold mb-3 flex items-center gap-2"><MapPin className="w-3 h-3" /> Shipping Address</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] tracking-[0.25em] uppercase text-gold flex items-center gap-2"><MapPin className="w-3 h-3" /> Shipping Address</h3>
+              {order.icount_docnum && (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/5 transition-colors disabled:opacity-50"
+                  title={`Re-fetch from iCount docnum ${order.icount_docnum}`}
+                >
+                  {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+                  Sync iCount
+                </button>
+              )}
+            </div>
             <div className="border border-border/30 rounded-sm p-4 bg-background/30 text-sm space-y-1">
               <p className="text-foreground">{order.customer_name || "—"}</p>
               <p className="text-muted-foreground">{order.shipping_address1 || <span className="italic">No address on file</span>}</p>
