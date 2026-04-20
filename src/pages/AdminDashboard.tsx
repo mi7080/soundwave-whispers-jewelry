@@ -77,9 +77,9 @@ const AdminDashboard = () => {
     downloadSvg(order.svg_content, filename);
   };
 
-  const handleDownloadBack = (order: AnimusOrder) => {
+  const handleDownloadBack = async (order: AnimusOrder) => {
     if (!order.pet_name.trim()) { toast.error("No name for back engraving."); return; }
-    const backSvg = generateBackEngravingSvg(order.pet_name);
+    const backSvg = await generateBackEngravingSvg(order.pet_name);
     const filename = `ANIMUS_BACK_${order.pet_name.replace(/\s+/g, "_")}_${order.id.slice(0, 8)}.svg`;
     downloadSvg(backSvg, filename);
   };
