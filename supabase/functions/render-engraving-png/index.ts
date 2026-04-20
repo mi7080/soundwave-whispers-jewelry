@@ -63,6 +63,18 @@ serve(async (req) => {
     if (orderErr || !order) throw new Error(orderErr?.message || "Order not found");
     if (!order.svg_content) throw new Error("Order has no SVG content");
 
+    // Guard: svg must contain a real <svg ...> root with children (not "<svg></svg>" placeholder)
+    const svg = order.svg_content.trim();
+    const hasRoot = /<svg[\s>][\s\S]*<\/svg>/i.test(svg);
+    const hasContent = /<(rect|path|circle|g|text|polygon|polyline|line|image)\b/i.test(svg);
+    if (!hasRoot || !hasContent) {
+      throw new Error(
+        `Order ${orderId} has placeholder/empty SVG (length ${svg.length}). ` +
+        `Customer must complete the design step before rendering. ` +
+        `Re-generate svg_content via the design flow, then retry.`
+      );
+    }
+
     await ensureWasm();
     // Native 1000x1788 — no distortion, matches SVG canvas exactly
     const resvg = new Resvg(order.svg_content, {
