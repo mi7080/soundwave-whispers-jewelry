@@ -19,6 +19,7 @@ interface Order {
   pet_name: string;
   customer_name: string | null;
   customer_email: string | null;
+  customer_phone: string | null;
   amount: number | null;
   status: string;
   workflow_status: WorkflowStatus;
@@ -28,9 +29,19 @@ interface Order {
   tracking_number: string | null;
   tracking_updated_at: string | null;
   shipping_address1: string | null;
+  shipping_address2: string | null;
   shipping_city: string | null;
+  shipping_state: string | null;
   shipping_zip: string | null;
   shipping_country_code: string | null;
+  billing_same_as_shipping: boolean;
+  billing_name: string | null;
+  billing_address1: string | null;
+  billing_address2: string | null;
+  billing_city: string | null;
+  billing_state: string | null;
+  billing_zip: string | null;
+  billing_country_code: string | null;
   design_image_url: string | null;
   print_image_url: string | null;
   svg_content: string;
@@ -432,23 +443,39 @@ const AdminOrders = () => {
       const fullName = o.customer_name || `${firstName} ${lastName}`.trim();
       const printUrl = o.print_image_url || o.design_image_url || "";
       const engraving1 = o.pet_name || "";
-      const addr1 = o.shipping_address1 || "";
-      const city = o.shipping_city || "";
-      const zip = o.shipping_zip || "";
-      const cc = o.shipping_country_code || "";
+
+      // Shipping
+      const sAddr1 = o.shipping_address1 || "";
+      const sAddr2 = o.shipping_address2 || "";
+      const sCity = o.shipping_city || "";
+      const sState = o.shipping_state || "";
+      const sZip = o.shipping_zip || "";
+      const sCC = o.shipping_country_code || "";
+      const phone = o.customer_phone || "";
+
+      // Billing — fall back to shipping when same_as_shipping
+      const useShipForBill = o.billing_same_as_shipping !== false;
+      const bName = useShipForBill ? fullName : (o.billing_name || fullName);
+      const [bFirst, bLast] = splitName(bName);
+      const bAddr1 = useShipForBill ? sAddr1 : (o.billing_address1 || "");
+      const bAddr2 = useShipForBill ? sAddr2 : (o.billing_address2 || "");
+      const bCity = useShipForBill ? sCity : (o.billing_city || "");
+      const bState = useShipForBill ? sState : (o.billing_state || "");
+      const bZip = useShipForBill ? sZip : (o.billing_zip || "");
+      const bCC = useShipForBill ? sCC : (o.billing_country_code || "");
 
       return [
         sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
         engraving1, printUrl, engraving1, "", "",
-        firstName, lastName, fullName, addr1, "", "",
-        city, zip, "", cc, "", "",
+        bFirst, bLast, bName, bAddr1, bAddr2, phone,
+        bCity, bZip, "", bCC, bState, bState,
         "", "", "",
-        firstName, lastName, fullName, addr1, "", "",
-        city, zip, "", cc, "", "",
+        firstName, lastName, fullName, sAddr1, sAddr2, phone,
+        sCity, sZip, "", sCC, sState, sState,
         "", "", "",
         "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
-        o.customer_email || "", "", "ILS", "", "", "", "", "",
-        "", "", "en", "", "ANIMUS",
+        o.customer_email || "", "", "USD", "", "", "", "", "",
+        "", phone, "en", "", "ANIMUS",
       ];
     });
 
