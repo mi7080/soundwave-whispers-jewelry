@@ -207,9 +207,19 @@ const AdminOrders = () => {
   const [bulkSyncing, setBulkSyncing] = useState(false);
 
   const syncAllIncomplete = async () => {
-    const targets = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range)));
+    const allIncomplete = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
+    const targets = allIncomplete.filter(o => !!o.icount_docnum);
+    const noDocnum = allIncomplete.length - targets.length;
+
+    if (allIncomplete.length === 0) {
+      toast.info("No incomplete orders in selected range");
+      return;
+    }
     if (targets.length === 0) {
-      toast.info("No incomplete orders with an iCount docnum to sync");
+      toast.warning(
+        `${noDocnum} order(s) are incomplete but have no iCount docnum. Open each order and paste the docnum from iCount, then sync.`,
+        { duration: 8000 }
+      );
       return;
     }
     setBulkSyncing(true);
@@ -228,8 +238,19 @@ const AdminOrders = () => {
       }
     }
     setBulkSyncing(false);
-    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount`);
-    else toast.warning(`Synced ${okCount} • Failed ${failCount} — check console for details`, { duration: 6000 });
+    const noDocnumNote = noDocnum > 0 ? ` • ${noDocnum} skipped (no docnum)` : "";
+    if (failCount === 0) toast.success(`Synced ${okCount} order(s) from iCount${noDocnumNote}`);
+    else toast.warning(`Synced ${okCount} • Failed ${failCount}${noDocnumNote} — check console`, { duration: 6000 });
+  };
+
+  const setIcountDocnum = async (orderId: string, docnum: string) => {
+    const trimmed = docnum.trim();
+    if (!trimmed) { toast.error("Enter a docnum"); return; }
+    const { error } = await supabase.from("animus_orders").update({ icount_docnum: trimmed }).eq("id", orderId);
+    if (error) { toast.error("Failed to save docnum"); return; }
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed } : o));
+    setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed } : s);
+    toast.success("Docnum saved — you can now sync from iCount");
   };
 
   const splitName = (full: string | null): [string, string] => {
@@ -356,7 +377,9 @@ const AdminOrders = () => {
   if (!authorized) return null;
 
   const paidPending = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
-  const incompleteCount = orders.filter(o => isIncompleteShipping(o) && o.icount_docnum && (!range || inRange(o.created_at, range))).length;
+  const incompleteInRange = orders.filter(o => isIncompleteShipping(o) && (!range || inRange(o.created_at, range)));
+  const incompleteCount = incompleteInRange.length;
+  const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -422,10 +445,14 @@ const AdminOrders = () => {
                 onClick={syncAllIncomplete}
                 disabled={bulkSyncing || incompleteCount === 0}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-500/40 text-amber-400 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Re-fetch shipping & customer data from iCount for all flagged orders"
+                title={
+                  incompleteWithDocnum > 0
+                    ? `Re-fetch shipping & customer data from iCount for ${incompleteWithDocnum} flagged order(s)`
+                    : "All flagged orders are missing iCount docnum — open each one and paste the docnum"
+                }
               >
                 {bulkSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
-                Sync All Incomplete ({incompleteCount})
+                Sync All Incomplete ({incompleteCount}{incompleteCount > 0 && incompleteWithDocnum < incompleteCount ? ` • ${incompleteWithDocnum} ready` : ""})
               </button>
               <button
                 onClick={exportShineOnBatch}
@@ -456,6 +483,7 @@ const AdminOrders = () => {
           onSaveTracking={saveTrackingAndNotify}
           onRenderPng={renderPng}
           onSyncIcount={syncWithIcount}
+          onSetDocnum={setIcountDocnum}
         />
       )}
     </div>
@@ -534,9 +562,15 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                     <div className="flex items-center gap-2">
                       <span>{o.customer_name || o.pet_name}</span>
                       {incomplete && (
-                        <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 text-destructive bg-destructive/5">
-                          Data Incomplete
-                        </span>
+                        o.icount_docnum ? (
+                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 text-destructive bg-destructive/5">
+                            Data Incomplete
+                          </span>
+                        ) : (
+                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-amber-500/40 text-amber-400 bg-amber-500/5">
+                            Needs Docnum
+                          </span>
+                        )
                       )}
                     </div>
                   </td>
@@ -614,17 +648,20 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
   onSyncIcount: (id: string) => Promise<void>;
+  onSetDocnum: (id: string, docnum: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [docnumInput, setDocnumInput] = useState("");
+  const [savingDocnum, setSavingDocnum] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -713,6 +750,31 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
               </p>
               {order.customer_email && <p className="text-xs text-muted-foreground/80 mt-2">{order.customer_email}</p>}
             </div>
+
+            {!order.icount_docnum && (
+              <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Set iCount Docnum</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  This order has no iCount docnum, so it cannot be synced. Paste the docnum from your iCount dashboard to enable sync.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={docnumInput}
+                    onChange={(e) => setDocnumInput(e.target.value)}
+                    placeholder="e.g. 12345"
+                    className="flex-1 px-3 py-2 bg-background border border-border/40 rounded-sm text-sm focus:border-amber-400 outline-none font-mono"
+                  />
+                  <button
+                    onClick={async () => { setSavingDocnum(true); await onSetDocnum(order.id, docnumInput); setSavingDocnum(false); setDocnumInput(""); }}
+                    disabled={savingDocnum || !docnumInput.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                  >
+                    {savingDocnum ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    Save Docnum
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Tracking */}
