@@ -196,18 +196,16 @@ const AdminOrders = () => {
     o.workflow_status !== "shipped" &&
     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
 
+  const isIncompleteShipping = (o: Order) =>
+    !o.shipping_address1 || !o.shipping_city || !o.shipping_country_code;
+
   const exportShineOnBatch = async () => {
     const batch = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
-    const incomplete = batch.filter(o =>
-      !o.shipping_address1 || !o.shipping_city || !o.shipping_zip || !o.shipping_country_code || !o.customer_email
-    );
-    if (incomplete.length > 0) {
-      const names = incomplete.slice(0, 3).map(o => o.customer_name || o.pet_name || o.id.slice(0, 6)).join(", ");
-      const more = incomplete.length > 3 ? ` + ${incomplete.length - 3} more` : "";
-      toast.error(`${incomplete.length} order(s) missing shipping/email — fix before export: ${names}${more}`, { duration: 8000 });
-      return;
+    const incompleteCount = batch.filter(isIncompleteShipping).length;
+    if (incompleteCount > 0) {
+      toast.warning(`${incompleteCount} order(s) have incomplete shipping — empty cells will be exported`, { duration: 5000 });
     }
 
     const missingPng = batch.filter(o => !o.print_image_url);
