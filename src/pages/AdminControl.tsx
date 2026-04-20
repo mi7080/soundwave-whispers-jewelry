@@ -169,6 +169,7 @@ const DashboardTab = () => (
 
 // ─── Finance Tab ────────────────────────────────────────────────────
 const FinanceTab = () => {
+  const { range } = useDateRange();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [costs, setCosts] = useState<CostSettings | null>(null);
