@@ -504,9 +504,20 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
                   <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
-                      <Eye className="w-3 h-3" /> View
-                    </button>
+                    <div className="inline-flex items-center gap-3">
+                      {incomplete && o.icount_docnum && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-400 hover:text-amber-300"
+                          title="Re-fetch shipping & customer details from iCount"
+                        >
+                          <RotateCw className="w-3 h-3" /> Sync iCount
+                        </button>
+                      )}
+                      <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                        <Eye className="w-3 h-3" /> View
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
