@@ -618,7 +618,19 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono text-foreground">{o.icount_docnum || "—"}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-foreground">
+                    {o.icount_docnum ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {o.icount_docnum}
+                        {o.icount_docnum_auto_detected && (
+                          <CheckCircle2
+                            className="w-3.5 h-3.5 text-emerald-400"
+                            aria-label="Auto-detected from iCount"
+                          />
+                        )}
+                      </span>
+                    ) : "—"}
+                  </td>
                   <td className="px-4 py-3 text-foreground">
                     <div className="flex items-center gap-2">
                       <span>{o.customer_name || o.pet_name}</span>
@@ -640,6 +652,15 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
+                      {incomplete && !o.icount_docnum && o.customer_email && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-400 hover:text-emerald-300"
+                          title="Search iCount by customer email and auto-link the most recent invoice/receipt"
+                        >
+                          <Sparkles className="w-3 h-3" /> Auto-detect
+                        </button>
+                      )}
                       {incomplete && o.icount_docnum && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
