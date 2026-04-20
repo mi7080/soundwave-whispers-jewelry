@@ -775,8 +775,12 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
         <div className="sticky top-0 bg-card border-b border-border/30 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-serif text-foreground">{order.customer_name || order.pet_name}</h2>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5">
-              Order {order.icount_docnum || order.id.slice(0, 8)} • {new Date(order.created_at).toLocaleString()}
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5 inline-flex items-center gap-1.5">
+              Order {order.icount_docnum || order.id.slice(0, 8)}
+              {order.icount_docnum && order.icount_docnum_auto_detected && (
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" aria-label="Auto-detected from iCount" />
+              )}
+              <span>• {new Date(order.created_at).toLocaleString()}</span>
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1"><X className="w-5 h-5" /></button>
