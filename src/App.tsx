@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AdminCRM from "./pages/AdminCRM.tsx";
 import AdminAuth from "./pages/AdminAuth.tsx";
 import AdminOrders from "./pages/AdminOrders.tsx";
+import AdminControl from "./pages/AdminControl.tsx";
 import PolicyPage from "./pages/PolicyPage.tsx";
 import SoulPage from "./pages/SoulPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -42,6 +43,7 @@ function AppContent() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/orders" element={<AdminOrders />} />
+        <Route path="/admin/control" element={<AdminControl />} />
         <Route path="/admin-login" element={<AdminAuth />} />
         <Route path="/admin-dashboard" element={<AdminCRM />} />
         <Route path="/checkout" element={<Checkout />} />
