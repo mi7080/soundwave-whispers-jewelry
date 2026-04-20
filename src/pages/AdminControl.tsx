@@ -266,14 +266,14 @@ const FinanceTab = () => {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Kpi label="Revenue (All Time)" value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
+        <Kpi label={`Revenue · ${range.label}`} value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
         <Kpi label="Total Costs" value={`${costs.currency} ${stats.totalCost.toFixed(2)}`} negative />
         <Kpi label="Net Profit" value={`${costs.currency} ${stats.totalProfit.toFixed(2)}`} accent positive={stats.totalProfit >= 0} />
         <Kpi label="Margin" value={`${stats.margin.toFixed(1)}%`} accent />
         <Kpi label="Avg Order Value" value={`${costs.currency} ${stats.avgOrderValue.toFixed(2)}`} />
         <Kpi label="Avg Profit/Order" value={`${costs.currency} ${stats.avgProfit.toFixed(2)}`} positive={stats.avgProfit >= 0} />
-        <Kpi label="Ad Cost/Order (MTD)" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
-        <Kpi label="Orders This Month" value={`${stats.monthOrderCount}`} />
+        <Kpi label="Ad Cost/Order" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
+        <Kpi label={`Orders · ${range.label}`} value={`${stats.monthOrderCount}`} />
       </div>
 
       {/* Per-order profit table */}
