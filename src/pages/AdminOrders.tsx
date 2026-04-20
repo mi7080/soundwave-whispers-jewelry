@@ -203,6 +203,15 @@ const AdminOrders = () => {
     const batch = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
+    // Reliability check — block orders missing email or shipping address
+    const missingCritical = batch.filter(o => !o.customer_email || !o.shipping_address1);
+    if (missingCritical.length > 0) {
+      missingCritical.forEach(o => {
+        toast.error(`Order ${o.icount_docnum || o.id.slice(0, 8)} is missing shipping info. Please sync with iCount first.`, { duration: 6000 });
+      });
+      return;
+    }
+
     const incompleteCount = batch.filter(isIncompleteShipping).length;
     if (incompleteCount > 0) {
       toast.warning(`${incompleteCount} order(s) have incomplete shipping — empty cells will be exported`, { duration: 5000 });
