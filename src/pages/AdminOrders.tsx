@@ -730,13 +730,14 @@ const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   );
 };
 
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum, onAutoDetect }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
   onSyncIcount: (id: string) => Promise<void>;
   onSetDocnum: (id: string, docnum: string) => Promise<void>;
+  onAutoDetect: (id: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
@@ -744,6 +745,7 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
   const [syncing, setSyncing] = useState(false);
   const [docnumInput, setDocnumInput] = useState("");
   const [savingDocnum, setSavingDocnum] = useState(false);
+  const [autoDetecting, setAutoDetecting] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -760,6 +762,11 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
     setSyncing(true);
     await onSyncIcount(order.id);
     setSyncing(false);
+  };
+  const handleAutoDetect = async () => {
+    setAutoDetecting(true);
+    await onAutoDetect(order.id);
+    setAutoDetecting(false);
   };
 
   return (
