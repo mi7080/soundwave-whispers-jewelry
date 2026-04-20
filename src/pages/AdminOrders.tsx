@@ -203,6 +203,15 @@ const AdminOrders = () => {
     const batch = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
+    // Reliability check — block orders missing email or shipping address
+    const missingCritical = batch.filter(o => !o.customer_email || !o.shipping_address1);
+    if (missingCritical.length > 0) {
+      missingCritical.forEach(o => {
+        toast.error(`Order ${o.icount_docnum || o.id.slice(0, 8)} is missing shipping info. Please sync with iCount first.`, { duration: 6000 });
+      });
+      return;
+    }
+
     const incompleteCount = batch.filter(isIncompleteShipping).length;
     if (incompleteCount > 0) {
       toast.warning(`${incompleteCount} order(s) have incomplete shipping — empty cells will be exported`, { duration: 5000 });
@@ -254,7 +263,7 @@ const AdminOrders = () => {
       const cc = o.shipping_country_code || "";
 
       return [
-        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Acrylic Heart Pendant", o.amount ?? "",
+        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
         engraving1, printUrl, engraving1, "", "",
         firstName, lastName, fullName, addr1, "", "",
         city, zip, "", cc, "", "",
@@ -263,7 +272,7 @@ const AdminOrders = () => {
         city, zip, "", cc, "", "",
         "", "", "",
         "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
-        o.customer_email || "", "", "USD", "", "", "", "", "",
+        o.customer_email || "", "", "ILS", "", "", "", "", "",
         "", "", "en", "", "ANIMUS",
       ];
     });
