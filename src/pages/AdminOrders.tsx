@@ -562,9 +562,15 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                     <div className="flex items-center gap-2">
                       <span>{o.customer_name || o.pet_name}</span>
                       {incomplete && (
-                        <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 text-destructive bg-destructive/5">
-                          Data Incomplete
-                        </span>
+                        o.icount_docnum ? (
+                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 text-destructive bg-destructive/5">
+                            Data Incomplete
+                          </span>
+                        ) : (
+                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-amber-500/40 text-amber-400 bg-amber-500/5">
+                            Needs Docnum
+                          </span>
+                        )
                       )}
                     </div>
                   </td>
