@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Waves, QrCode } from "lucide-react";
 import logo from "@/assets/logo.png";
