@@ -83,6 +83,7 @@ const Checkout = () => {
   const failed = searchParams.get("status") === "failed";
 
   const applyDiscount = async () => {
+    if (discountCode) return; // already applied — locked until payment link is created
     const code = discountInput.trim().toUpperCase();
     setDiscountError(null);
     if (!code) return;
