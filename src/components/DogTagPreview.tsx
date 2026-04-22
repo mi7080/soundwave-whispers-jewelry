@@ -214,17 +214,6 @@ const DogTagPreview = ({
       ctx.restore();
     }
 
-    if (qrDataUrl) {
-      ctx.save();
-      ctx.globalCompositeOperation = "source-over";
-      const labelSize = Math.max(6, tw * 0.03);
-      ctx.font = `400 ${labelSize}px 'Inter', sans-serif`;
-      ctx.fillStyle = "rgba(30, 30, 30, 0.85)";
-      ctx.textAlign = "center";
-      ctx.fillText("SCAN TO HEAR", tx + tw / 2, ty + th * 0.72);
-      ctx.restore();
-    }
-
     if (petName.trim()) {
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
