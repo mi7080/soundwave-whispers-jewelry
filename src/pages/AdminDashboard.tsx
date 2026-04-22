@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadSvg, generateProductionSvg, generateBackEngravingSvg } from "@/lib/svgExport";
-import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen, FileSpreadsheet, CheckCircle2, Circle } from "lucide-react";
+import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen, FileSpreadsheet, CheckCircle2, Circle, Mail, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -45,6 +45,32 @@ const AdminDashboard = () => {
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(new Date()));
   const [marking, setMarking] = useState(false);
+  const [sendingCampaign, setSendingCampaign] = useState<"email1" | "email2" | null>(null);
+  const [leadCount, setLeadCount] = useState<number | null>(null);
+
+  const sendCampaign = async (campaign: "email1" | "email2", testEmail?: string) => {
+    const label = campaign === "email1" ? "Email 1 (Status Update)" : "Email 2 (Referral Program)";
+    const audience = testEmail ? `test send to ${testEmail}` : `the full waitlist (${leadCount ?? "all"} leads)`;
+    if (!confirm(`Send ${label} to ${audience}?\n\nThis cannot be undone.`)) return;
+
+    setSendingCampaign(campaign);
+    try {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://animuswave.com";
+      const { data, error } = await supabase.functions.invoke("send-campaign-email", {
+        body: { campaign, baseUrl, testEmail },
+      });
+      if (error) throw error;
+      toast.success(
+        `${label} — sent ${data?.sent ?? 0} / ${data?.total ?? 0}` +
+          (data?.failed ? ` (${data.failed} failed)` : "")
+      );
+      if (data?.errors?.length) console.warn("Send errors:", data.errors);
+    } catch (e: any) {
+      toast.error(`Campaign failed: ${e.message || "Unknown error"}`);
+    } finally {
+      setSendingCampaign(null);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -57,6 +83,15 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => { fetchOrders(); }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { count } = await supabase
+        .from("waitlist_leads")
+        .select("*", { count: "exact", head: true });
+      if (typeof count === "number") setLeadCount(count);
+    })();
+  }, []);
 
   const filteredOrders = useMemo(
     () => orders.filter(o => toLocalDateStr(new Date(o.created_at)) === selectedDate),
@@ -202,6 +237,78 @@ const AdminDashboard = () => {
             <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
+        </div>
+
+        {/* Email Campaigns */}
+        <div className="border border-gold/30 rounded-sm p-5 mb-6 bg-card">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-sm tracking-[0.2em] uppercase text-gold flex items-center gap-2">
+                <Mail className="w-4 h-4" /> Waitlist Campaigns
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Send to all <span className="text-foreground font-medium">{leadCount ?? "…"}</span> leads via Resend.
+                Codes & referral links are personalized per lead.
+              </p>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="border border-border/30 rounded-sm p-4 flex flex-col gap-3">
+              <div>
+                <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Email 1</p>
+                <p className="text-sm text-foreground mt-1">Status Update — "We're listening… 🕊️"</p>
+              </div>
+              <div className="flex gap-2 mt-auto">
+                <button
+                  onClick={() => {
+                    const t = prompt("Test email address (leave blank to cancel):");
+                    if (t) sendCampaign("email1", t);
+                  }}
+                  disabled={sendingCampaign !== null}
+                  className="flex-1 px-3 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold transition-colors disabled:opacity-40"
+                >
+                  Test Send
+                </button>
+                <button
+                  onClick={() => sendCampaign("email1")}
+                  disabled={sendingCampaign !== null || !leadCount}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gold text-background text-[10px] tracking-[0.2em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                >
+                  {sendingCampaign === "email1" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                  Send to All
+                </button>
+              </div>
+            </div>
+            <div className="border border-border/30 rounded-sm p-4 flex flex-col gap-3">
+              <div>
+                <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Email 2</p>
+                <p className="text-sm text-foreground mt-1">Referral Program — "ANIMUS for free? 🎁"</p>
+              </div>
+              <div className="flex gap-2 mt-auto">
+                <button
+                  onClick={() => {
+                    const t = prompt("Test email address (leave blank to cancel):");
+                    if (t) sendCampaign("email2", t);
+                  }}
+                  disabled={sendingCampaign !== null}
+                  className="flex-1 px-3 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold transition-colors disabled:opacity-40"
+                >
+                  Test Send
+                </button>
+                <button
+                  onClick={() => sendCampaign("email2")}
+                  disabled={sendingCampaign !== null || !leadCount}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gold text-background text-[10px] tracking-[0.2em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                >
+                  {sendingCampaign === "email2" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                  Send to All
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 mt-3">
+            ⚠ Sender domain in <code className="text-foreground/70">supabase/functions/send-campaign-email/index.ts</code> is currently <code className="text-foreground/70">onboarding@resend.dev</code>. Verify your domain in Resend, then update the FROM_ADDRESS constant.
+          </p>
         </div>
 
         {/* Date Filter + CSV Export */}

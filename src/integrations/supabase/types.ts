@@ -149,6 +149,47 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_sends: {
+        Row: {
+          campaign_name: string
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          recipient_email: string
+          resend_id: string | null
+          status: string
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          recipient_email: string
+          resend_id?: string | null
+          status: string
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          recipient_email?: string
+          resend_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sends_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_settings: {
         Row: {
           currency: string
@@ -178,6 +219,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_percent: number
+          id: string
+          lead_id: string | null
+          used_at: string | null
+          used_by_order: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_percent: number
+          id?: string
+          lead_id?: string | null
+          used_at?: string | null
+          used_by_order?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_percent?: number
+          id?: string
+          lead_id?: string | null
+          used_at?: string | null
+          used_by_order?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_used_by_order_fkey"
+            columns: ["used_by_order"]
+            isOneToOne: false
+            referencedRelation: "animus_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -315,25 +404,45 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          extra_discount_percent: number
           id: string
+          referral_code: string | null
+          referral_count: number
+          referred_by: string | null
           status: string
           status_updated_at: string | null
         }
         Insert: {
           created_at?: string
           email: string
+          extra_discount_percent?: number
           id?: string
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           status?: string
           status_updated_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string
+          extra_discount_percent?: number
           id?: string
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           status?: string
           status_updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_leads_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "waitlist_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -355,6 +464,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_referrer: { Args: { _code: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -370,6 +480,14 @@ export type Database = {
           message: Json
           msg_id: number
           read_ct: number
+        }[]
+      }
+      validate_discount_code: {
+        Args: { _code: string }
+        Returns: {
+          already_used: boolean
+          discount_percent: number
+          valid: boolean
         }[]
       }
     }
