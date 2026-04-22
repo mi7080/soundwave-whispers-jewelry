@@ -428,12 +428,13 @@ const Checkout = () => {
                         value={discountInput}
                         onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
                         placeholder="ENTER CODE"
-                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider"
+                        disabled={paymentLinkCreated}
+                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <button
                         type="button"
                         onClick={applyDiscount}
-                        disabled={validatingDiscount || !discountInput.trim()}
+                        disabled={validatingDiscount || !discountInput.trim() || paymentLinkCreated}
                         className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/40 rounded-md hover:bg-gold/10 transition-colors disabled:opacity-50"
                       >
                         {validatingDiscount ? "…" : "Apply"}
