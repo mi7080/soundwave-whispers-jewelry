@@ -1,12 +1,15 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import dogtagMockup from "@/assets/dogtag-mockup.png";
 
+export type PendantMaterial = "gold" | "silver";
+
 interface DogTagPreviewProps {
   waveformData: number[];
   petName: string;
   qrDataUrl?: string | null;
   showBack?: boolean;
   backText?: string;
+  material?: PendantMaterial;
 }
 
 const DogTagPreview = ({
@@ -15,6 +18,7 @@ const DogTagPreview = ({
   qrDataUrl,
   showBack = false,
   backText = "",
+  material = "silver",
 }: DogTagPreviewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
