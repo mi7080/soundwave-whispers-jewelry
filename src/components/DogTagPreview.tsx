@@ -236,7 +236,7 @@ const DogTagPreview = ({
       ctx.fillText(petName, tx + tw / 2, ty + th * 0.82);
       ctx.restore();
     }
-  }, [baseImage, waveformData, petName, qrImage, qrDataUrl, showBack, backText, tag]);
+  }, [baseImage, waveformData, petName, qrImage, qrDataUrl, showBack, backText, tag, material]);
 
   return (
     <div
