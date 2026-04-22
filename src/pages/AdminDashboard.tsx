@@ -84,6 +84,15 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { count } = await supabase
+        .from("waitlist_leads")
+        .select("*", { count: "exact", head: true });
+      if (typeof count === "number") setLeadCount(count);
+    })();
+  }, []);
+
   const filteredOrders = useMemo(
     () => orders.filter(o => toLocalDateStr(new Date(o.created_at)) === selectedDate),
     [orders, selectedDate]
