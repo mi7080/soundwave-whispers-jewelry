@@ -162,7 +162,12 @@ const Checkout = () => {
         .from("animus_orders")
         .update(update as never)
         .eq("id", orderId);
-      if (updErr) throw new Error(updErr.message);
+      if (updErr) {
+        console.error("[Checkout] Order update failed:", updErr);
+        throw new Error(
+          `Could not save your details (${updErr.code || "DB"}): ${updErr.message}${updErr.hint ? ` — ${updErr.hint}` : ""}`
+        );
+      }
 
       // 2. Create payment via iCount API (shipping pre-filled, customer only enters CC)
       const siteUrl = window.location.origin;
