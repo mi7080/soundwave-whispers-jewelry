@@ -390,12 +390,63 @@ const Checkout = () => {
               <Row k="Finish" v={variant.title} />
               {order?.pet_name && <Row k="Engraving" v={order.pet_name} truncate />}
               <div className="border-t border-white/10 pt-2.5 mt-2">
-                <Row k="Subtotal" v={`$${variant.foundersPrice.toFixed(2)}`} />
+                <Row k="Subtotal" v={`$${subtotal.toFixed(2)}`} />
                 <Row k="Shipping" v={<span className="text-gold text-xs tracking-widest uppercase">FREE</span>} />
+                {discountCode && (
+                  <Row
+                    k={`Discount (${discountCode})`}
+                    v={<span className="text-gold">−${discountAmount.toFixed(2)}</span>}
+                  />
+                )}
               </div>
+
+              {/* Discount code entry */}
+              <div className="border-t border-white/10 pt-3 mt-1">
+                {!discountCode ? (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">
+                      Discount Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={discountInput}
+                        onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
+                        placeholder="ENTER CODE"
+                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyDiscount}
+                        disabled={validatingDiscount || !discountInput.trim()}
+                        className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/40 rounded-md hover:bg-gold/10 transition-colors disabled:opacity-50"
+                      >
+                        {validatingDiscount ? "…" : "Apply"}
+                      </button>
+                    </div>
+                    {discountError && (
+                      <p className="text-[10px] text-red-400">{discountError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gold tracking-wider">
+                      ✓ {discountPercent}% OFF applied
+                    </span>
+                    <button
+                      type="button"
+                      onClick={removeDiscount}
+                      className="text-white/50 hover:text-white text-[10px] tracking-widest uppercase"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="border-t border-white/10 pt-3 mt-1 flex justify-between items-baseline">
                 <span className="text-white font-serif text-lg">Total</span>
-                <span className="text-gold font-serif text-2xl">${variant.foundersPrice.toFixed(2)}</span>
+                <span className="text-gold font-serif text-2xl">${total.toFixed(2)}</span>
               </div>
               <p className="text-[10px] tracking-[0.2em] uppercase text-gold/70 text-center pt-1">Founders Price</p>
             </div>
