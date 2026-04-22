@@ -184,7 +184,7 @@ const Checkout = () => {
         shipping_zip: values.zip,
         shipping_country_code: values.country,
         billing_same_as_shipping: values.billingSame,
-        amount: variant.foundersPrice,
+        amount: total,
         status: "shipping_captured",
       };
       if (!values.billingSame) {
