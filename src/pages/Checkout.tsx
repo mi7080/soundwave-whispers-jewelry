@@ -69,7 +69,54 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Discount code state
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountCode, setDiscountCode] = useState<string | null>(null);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
+
+  const subtotal = variant.foundersPrice;
+  const discountAmount = +(subtotal * (discountPercent / 100)).toFixed(2);
+  const total = +Math.max(0, subtotal - discountAmount).toFixed(2);
+
   const failed = searchParams.get("status") === "failed";
+
+  const applyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    setDiscountError(null);
+    if (!code) return;
+    setValidatingDiscount(true);
+    try {
+      const { data, error } = await supabase.rpc("validate_discount_code", { _code: code });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.valid) {
+        setDiscountCode(null);
+        setDiscountPercent(0);
+        setDiscountError("Invalid discount code");
+      } else if (row.already_used) {
+        setDiscountCode(null);
+        setDiscountPercent(0);
+        setDiscountError("This code has already been used");
+      } else {
+        setDiscountCode(code);
+        setDiscountPercent(row.discount_percent || 0);
+        toast.success(`${row.discount_percent}% discount applied`);
+      }
+    } catch (e: any) {
+      setDiscountError(e?.message || "Could not validate code");
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  const removeDiscount = () => {
+    setDiscountCode(null);
+    setDiscountPercent(0);
+    setDiscountInput("");
+    setDiscountError(null);
+  };
 
   const form = useForm<ShippingForm>({
     resolver: zodResolver(shippingSchema),
