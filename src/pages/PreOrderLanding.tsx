@@ -29,10 +29,14 @@ const steps = [
 ];
 
 const PreOrderLanding = () => {
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get("ref")?.trim().toLowerCase() || null;
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [leadCount, setLeadCount] = useState<number | null>(null);
+  const [referrerId, setReferrerId] = useState<string | null>(null);
 
   const fetchCount = async () => {
     const { count } = await supabase
@@ -45,6 +49,17 @@ const PreOrderLanding = () => {
     fetchCount();
   }, []);
 
+  // Look up referrer once per ?ref= param
+  useEffect(() => {
+    if (!refCode) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.rpc("lookup_referrer", { _code: refCode });
+      if (!cancelled && data) setReferrerId(data as unknown as string);
+    })();
+    return () => { cancelled = true; };
+  }, [refCode]);
+
   const discountAvailable = leadCount === null ? true : leadCount < DISCOUNT_LIMIT;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,9 +69,14 @@ const PreOrderLanding = () => {
     setStatus("loading");
     setErrorMsg("");
 
+    const insertPayload: { email: string; referred_by?: string } = {
+      email: email.trim().toLowerCase(),
+    };
+    if (referrerId) insertPayload.referred_by = referrerId;
+
     const { error } = await supabase
       .from("waitlist_leads")
-      .insert({ email: email.trim().toLowerCase() });
+      .insert(insertPayload);
 
     if (error) {
       if (error.code === "23505") {
