@@ -429,17 +429,29 @@ const Checkout = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gold tracking-wider">
-                      ✓ {discountPercent}% OFF applied
-                    </span>
-                    <button
-                      type="button"
-                      onClick={removeDiscount}
-                      className="text-white/50 hover:text-white text-[10px] tracking-widest uppercase"
-                    >
-                      Remove
-                    </button>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">
+                      Discount Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={discountCode}
+                        readOnly
+                        disabled
+                        aria-label="Applied discount code (locked)"
+                        className="flex-1 bg-background/30 border border-gold/30 rounded-md px-3 py-2 text-sm text-gold/90 uppercase tracking-wider cursor-not-allowed opacity-80"
+                      />
+                      <span
+                        className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/30 rounded-md flex items-center gap-1 bg-gold/5"
+                        aria-live="polite"
+                      >
+                        <Lock className="w-3 h-3" /> {discountPercent}% Off
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-white/40 tracking-wider">
+                      Code locked. Continue to payment to redeem.
+                    </p>
                   </div>
                 )}
               </div>
