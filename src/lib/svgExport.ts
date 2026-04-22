@@ -120,21 +120,11 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
     }
   }
 
-  // --- "SCAN TO HEAR" label as outlined paths ---
-  let scanLabelPath = "";
-  try {
-    const inter = await loadFont("inter");
-    scanLabelPath = textToPath(inter, "SCAN TO HEAR", cx, 1160, 20, 4);
-  } catch (e) {
-    console.warn("Font load failed for scan label — omitting text from SVG:", e);
-  }
-
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- FRONT SIDE: Pure-vector waveform + QR + outlined text (1000x1788) -->
+  <!-- FRONT SIDE: Pure-vector waveform + QR (1000x1788) — minimalist, no text -->
   <g id="waveform">${waveRects}</g>
   <g id="qr-code">${qrRects}</g>
-  <g id="scan-label">${scanLabelPath}</g>
 </svg>`;
 }
 

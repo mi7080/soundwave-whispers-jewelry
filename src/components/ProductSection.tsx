@@ -419,7 +419,7 @@ const ProductSection = () => {
                   ${parseFloat(selectedVariant?.price.amount || "89").toFixed(2)}
                 </span>
               </div>
-              <div className="flex items-center gap-6 pt-1">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-8 sm:gap-10 pt-2">
                 {variants.map((v, i) => {
                   const isGold = v.node.title.toLowerCase().includes("gold");
                   const isSelected = selectedVariantIdx === i;
@@ -427,14 +427,14 @@ const ProductSection = () => {
                     <button
                       key={v.node.id}
                       onClick={() => setSelectedVariantIdx(i)}
-                      className="group flex flex-col items-center gap-2"
+                      className="group flex flex-col items-center gap-3"
                       aria-label={`Select ${v.node.title}`}
                       aria-pressed={isSelected}
                     >
                       <span
-                        className={`relative w-11 h-11 rounded-full transition-all duration-200 ${
+                        className={`relative w-16 h-16 sm:w-[68px] sm:h-[68px] rounded-full transition-all duration-200 ${
                           isSelected
-                            ? "ring-2 ring-gold ring-offset-2 ring-offset-background scale-105"
+                            ? "ring-2 ring-gold ring-offset-4 ring-offset-background scale-105"
                             : "ring-1 ring-border/40 hover:ring-gold/50"
                         }`}
                         style={{
@@ -444,7 +444,7 @@ const ProductSection = () => {
                           boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)",
                         }}
                       />
-                      <span className={`text-[10px] tracking-[0.2em] uppercase font-sans transition-colors ${
+                      <span className={`text-[11px] tracking-[0.2em] uppercase font-sans transition-colors ${
                         isSelected ? "text-gold" : "text-muted-foreground group-hover:text-foreground"
                       }`}>
                         {isGold ? "Gold" : "Silver"}

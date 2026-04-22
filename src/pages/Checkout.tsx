@@ -321,7 +321,13 @@ const Checkout = () => {
             <p className="text-[10px] tracking-[0.3em] uppercase text-gold font-sans">Your Pendant</p>
 
             {order?.design_image_url && (
-              <div className="rounded-md overflow-hidden border border-gold/20 bg-white flex items-center justify-center">
+              <div
+                className="rounded-md overflow-hidden border border-gold/20 flex items-center justify-center p-3 shadow-inner"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0 1px, transparent 1px 2px), linear-gradient(135deg, hsl(0 0% 96%) 0%, hsl(30 8% 88%) 50%, hsl(0 0% 92%) 100%)",
+                }}
+              >
                 <img
                   src={order.design_image_url}
                   alt="Your soundwave pendant with QR engraving"
