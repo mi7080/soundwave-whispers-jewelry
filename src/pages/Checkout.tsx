@@ -75,6 +75,9 @@ const Checkout = () => {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [validatingDiscount, setValidatingDiscount] = useState(false);
+  // Hard lock — flipped true once a payment link is created. Prevents ANY
+  // change to the applied discount (no remove, no reapply, no clear).
+  const [paymentLinkCreated, setPaymentLinkCreated] = useState(false);
 
   const subtotal = variant.foundersPrice;
   const discountAmount = +(subtotal * (discountPercent / 100)).toFixed(2);
@@ -83,6 +86,10 @@ const Checkout = () => {
   const failed = searchParams.get("status") === "failed";
 
   const applyDiscount = async () => {
+    if (paymentLinkCreated) {
+      toast.error("Payment link already created — discount is locked.");
+      return;
+    }
     if (discountCode) return; // already applied — locked until payment link is created
     const code = discountInput.trim().toUpperCase();
     setDiscountError(null);
@@ -113,6 +120,10 @@ const Checkout = () => {
   };
 
   const removeDiscount = () => {
+    if (paymentLinkCreated) {
+      toast.error("Payment link already created — discount cannot be removed.");
+      return;
+    }
     setDiscountCode(null);
     setDiscountPercent(0);
     setDiscountInput("");
