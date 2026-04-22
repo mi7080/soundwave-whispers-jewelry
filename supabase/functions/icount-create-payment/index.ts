@@ -148,6 +148,20 @@ serve(async (req) => {
       .update({ status: "payment_pending" })
       .eq("id", orderId);
 
+    // Mark discount code as used (best-effort; reservation — final mark on webhook can re-affirm)
+    if (discountCode) {
+      try {
+        await supabase
+          .from("discount_codes")
+          .update({ used_at: new Date().toISOString(), used_by_order: orderId })
+          .eq("code", String(discountCode).toUpperCase())
+          .is("used_at", null);
+        console.log("[iCount] Reserved discount code:", discountCode, "pct:", discountPercent);
+      } catch (e) {
+        console.warn("[iCount] Could not reserve discount code:", e);
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, paymentUrl, orderId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
