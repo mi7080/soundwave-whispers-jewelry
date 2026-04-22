@@ -75,6 +75,9 @@ const Checkout = () => {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [validatingDiscount, setValidatingDiscount] = useState(false);
+  // Hard lock — flipped true once a payment link is created. Prevents ANY
+  // change to the applied discount (no remove, no reapply, no clear).
+  const [paymentLinkCreated, setPaymentLinkCreated] = useState(false);
 
   const subtotal = variant.foundersPrice;
   const discountAmount = +(subtotal * (discountPercent / 100)).toFixed(2);
@@ -83,6 +86,10 @@ const Checkout = () => {
   const failed = searchParams.get("status") === "failed";
 
   const applyDiscount = async () => {
+    if (paymentLinkCreated) {
+      toast.error("Payment link already created — discount is locked.");
+      return;
+    }
     if (discountCode) return; // already applied — locked until payment link is created
     const code = discountInput.trim().toUpperCase();
     setDiscountError(null);
@@ -113,6 +120,10 @@ const Checkout = () => {
   };
 
   const removeDiscount = () => {
+    if (paymentLinkCreated) {
+      toast.error("Payment link already created — discount cannot be removed.");
+      return;
+    }
     setDiscountCode(null);
     setDiscountPercent(0);
     setDiscountInput("");
@@ -244,6 +255,9 @@ const Checkout = () => {
         console.error("[Checkout] Payment URL creation failed:", payErr, payData);
         throw new Error(payData?.error || payErr?.message || "Could not create payment link");
       }
+
+      // Hard-lock the discount: payment link exists. No further changes allowed.
+      setPaymentLinkCreated(true);
 
       // 3. Redirect to iCount credit card screen
       window.location.href = payData.paymentUrl;
@@ -414,12 +428,13 @@ const Checkout = () => {
                         value={discountInput}
                         onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
                         placeholder="ENTER CODE"
-                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider"
+                        disabled={paymentLinkCreated}
+                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <button
                         type="button"
                         onClick={applyDiscount}
-                        disabled={validatingDiscount || !discountInput.trim()}
+                        disabled={validatingDiscount || !discountInput.trim() || paymentLinkCreated}
                         className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/40 rounded-md hover:bg-gold/10 transition-colors disabled:opacity-50"
                       >
                         {validatingDiscount ? "…" : "Apply"}
@@ -451,7 +466,9 @@ const Checkout = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-white/40 tracking-wider">
-                      Code locked. Continue to payment to redeem.
+                      {paymentLinkCreated
+                        ? "Discount locked — payment link already created."
+                        : "Code locked. Continue to payment to redeem."}
                     </p>
                   </div>
                 )}
