@@ -256,6 +256,9 @@ const Checkout = () => {
         throw new Error(payData?.error || payErr?.message || "Could not create payment link");
       }
 
+      // Hard-lock the discount: payment link exists. No further changes allowed.
+      setPaymentLinkCreated(true);
+
       // 3. Redirect to iCount credit card screen
       window.location.href = payData.paymentUrl;
     } catch (err: any) {
