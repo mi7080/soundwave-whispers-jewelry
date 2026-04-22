@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadSvg, generateProductionSvg, generateBackEngravingSvg } from "@/lib/svgExport";
-import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen, FileSpreadsheet, CheckCircle2, Circle } from "lucide-react";
+import { Download, Loader2, RefreshCw, ArrowLeft, FileText, Music, Image, ExternalLink, FolderOpen, FileSpreadsheet, CheckCircle2, Circle, Mail, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -45,6 +45,32 @@ const AdminDashboard = () => {
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(new Date()));
   const [marking, setMarking] = useState(false);
+  const [sendingCampaign, setSendingCampaign] = useState<"email1" | "email2" | null>(null);
+  const [leadCount, setLeadCount] = useState<number | null>(null);
+
+  const sendCampaign = async (campaign: "email1" | "email2", testEmail?: string) => {
+    const label = campaign === "email1" ? "Email 1 (Status Update)" : "Email 2 (Referral Program)";
+    const audience = testEmail ? `test send to ${testEmail}` : `the full waitlist (${leadCount ?? "all"} leads)`;
+    if (!confirm(`Send ${label} to ${audience}?\n\nThis cannot be undone.`)) return;
+
+    setSendingCampaign(campaign);
+    try {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://animuswave.com";
+      const { data, error } = await supabase.functions.invoke("send-campaign-email", {
+        body: { campaign, baseUrl, testEmail },
+      });
+      if (error) throw error;
+      toast.success(
+        `${label} — sent ${data?.sent ?? 0} / ${data?.total ?? 0}` +
+          (data?.failed ? ` (${data.failed} failed)` : "")
+      );
+      if (data?.errors?.length) console.warn("Send errors:", data.errors);
+    } catch (e: any) {
+      toast.error(`Campaign failed: ${e.message || "Unknown error"}`);
+    } finally {
+      setSendingCampaign(null);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
