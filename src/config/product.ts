@@ -38,19 +38,11 @@ export const PRODUCT_CONFIG = {
     },
     {
       id: "variant-gold",
-      title: "18K Yellow Gold Finish",
+      title: "14K Gold Finish",
       fullPrice: 89,
       foundersPrice: 89,
       image: dogtagGold,
-      imageAlt: "ANIMUS Memorial Pendant — 18K Yellow Gold Dog Tag",
-    },
-    {
-      id: "variant-rose",
-      title: "Rose Gold Finish",
-      fullPrice: 89,
-      foundersPrice: 89,
-      image: dogtagGold,
-      imageAlt: "ANIMUS Memorial Pendant — Rose Gold Dog Tag",
+      imageAlt: "ANIMUS Memorial Pendant — 14K Gold Dog Tag",
     },
   ],
 
