@@ -465,7 +465,9 @@ const Checkout = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-white/40 tracking-wider">
-                      Code locked. Continue to payment to redeem.
+                      {paymentLinkCreated
+                        ? "Discount locked — payment link already created."
+                        : "Code locked. Continue to payment to redeem."}
                     </p>
                   </div>
                 )}
