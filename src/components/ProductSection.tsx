@@ -381,42 +381,77 @@ const ProductSection = () => {
 
         <div className="max-w-2xl mx-auto space-y-6">
 
-          {/* Variant Picker */}
-          {variants.length > 1 && (
-            <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
+          {/* Live Pendant Preview */}
+          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-5">
+            <div className="flex items-center justify-between">
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Select Finish
+                Live Preview
               </label>
-              <div className="flex gap-3">
-                {variants.map((v, i) => (
-                  <button
-                    key={v.node.id}
-                    onClick={() => setSelectedVariantIdx(i)}
-                    className={`flex-1 border rounded-sm px-4 py-3 text-sm font-sans transition-all ${
-                      selectedVariantIdx === i
-                        ? "border-gold text-gold bg-gold/5"
-                        : "border-border/50 text-muted-foreground hover:border-gold/40"
-                    }`}
-                  >
-                    <span className="block">{v.node.title}</span>
-                    <span className="block text-xs mt-1 opacity-70">
-                      ${parseFloat(v.node.price.amount).toFixed(2)} {v.node.price.currencyCode}
-                    </span>
-                  </button>
-                ))}
+              <button
+                onClick={() => setShowBackPreview(v => !v)}
+                className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-gold transition-colors font-sans"
+              >
+                {showBackPreview ? "View Front" : "View Back"}
+              </button>
+            </div>
+            <DogTagPreview
+              waveformData={waveformData}
+              petName={dedicatedText.trim() || backText.trim() || ""}
+              qrDataUrl={qrDataUrl}
+              showBack={showBackPreview}
+              backText={backText}
+              material={selectedVariant?.title?.toLowerCase().includes("gold") ? "gold" : "silver"}
+            />
+          </div>
+
+          {/* Variant Picker — luxury swatch selector */}
+          {variants.length > 0 && (
+            <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
+                  Select Finish
+                </label>
+                <span className="text-sm font-serif text-foreground">
+                  ${parseFloat(selectedVariant?.price.amount || "89").toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center gap-6 pt-1">
+                {variants.map((v, i) => {
+                  const isGold = v.node.title.toLowerCase().includes("gold");
+                  const isSelected = selectedVariantIdx === i;
+                  return (
+                    <button
+                      key={v.node.id}
+                      onClick={() => setSelectedVariantIdx(i)}
+                      className="group flex flex-col items-center gap-2"
+                      aria-label={`Select ${v.node.title}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`relative w-11 h-11 rounded-full transition-all duration-200 ${
+                          isSelected
+                            ? "ring-2 ring-gold ring-offset-2 ring-offset-background scale-105"
+                            : "ring-1 ring-border/40 hover:ring-gold/50"
+                        }`}
+                        style={{
+                          background: isGold
+                            ? "linear-gradient(135deg, #f0d68a 0%, #d4a849 50%, #b8862e 100%)"
+                            : "linear-gradient(135deg, #f5f5f5 0%, #c8c8c8 50%, #8a8a8a 100%)",
+                          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)",
+                        }}
+                      />
+                      <span className={`text-[10px] tracking-[0.2em] uppercase font-sans transition-colors ${
+                        isSelected ? "text-gold" : "text-muted-foreground group-hover:text-foreground"
+                      }`}>
+                        {isGold ? "Gold" : "Silver"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Price */}
-          {selectedVariant && (
-            <div className="text-center">
-              <span className="text-2xl font-serif text-foreground">
-                ${parseFloat(selectedVariant.price.amount).toFixed(2)}
-              </span>
-              <span className="text-sm text-muted-foreground ml-2">{selectedVariant.price.currencyCode}</span>
-            </div>
-          )}
 
           {/* Step 1: Audio Upload */}
           <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
