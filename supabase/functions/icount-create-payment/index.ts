@@ -26,6 +26,7 @@ serve(async (req) => {
     const {
       orderId, fullName, email, phone, address, city, state, zip, country,
       amount, currency, siteUrl, successUrl, failureUrl,
+      discountCode, discountPercent,
     } = body;
 
     if (!orderId || !email || !amount) {
