@@ -69,7 +69,11 @@ const ProductSection = () => {
   const [dedicatedText, setDedicatedText] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [product, setProduct] = useState<LocalProduct | null>(null);
-  const [selectedVariantIdx, setSelectedVariantIdx] = useState(resumeVariantIdx || 0);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState(
+    Number.isFinite(resumeVariantIdx) && resumeVariantIdx >= 0 && resumeVariantIdx < PRODUCT_CONFIG.variants.length
+      ? resumeVariantIdx
+      : 0,
+  );
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
