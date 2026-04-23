@@ -60,6 +60,11 @@ serve(async (req) => {
     const finalSuccess = successUrl || `${siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
     const finalFailure = failureUrl || `${siteUrl || ""}/checkout?order=${orderId}&status=failed`;
 
+    // Split full name into first/last for iCount pre-fill
+    const nameParts = (fullName || "").trim().split(/\s+/);
+    const fname = nameParts[0] || "";
+    const lname = nameParts.slice(1).join(" ") || "";
+
     // iCount payment-page payload — shipping pre-filled, customer only sees CC entry
     const paymentPayload: Record<string, any> = {
       sid: icountToken, // iCount uses sid for v3.php
@@ -68,9 +73,13 @@ serve(async (req) => {
       currency_code: currency || "USD",
       lang: "en",
       sum: Number(amount),
-      description: `ANIMUS Memorial Pendant — ${order.pet_name || "Custom"}`,
+      // Fixed product label visible on iCount page
+      info: "ANIMUS Personalized Pendant",
+      description: `ANIMUS Personalized Pendant — ${order.pet_name || "Custom"}`,
       // Customer details (pre-filled)
       client_name: fullName || "",
+      fname,
+      lname,
       email: email,
       mobile: phone || "",
       cc_address: address || "",
@@ -82,9 +91,9 @@ serve(async (req) => {
       hide_address: 1,
       hide_email: 1,
       hide_name: 1,
-      // Reference / callbacks
+      // Reference / callbacks — order_id carried in `comment` (primary), plus legacy fields
+      comment: orderId,
       custom: orderId,
-      info: orderId,
       cs1: orderId,
       cs2: fullName || "",
       cs3: amount,

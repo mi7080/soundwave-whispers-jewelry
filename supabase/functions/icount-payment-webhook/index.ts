@@ -34,8 +34,8 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[iCount Webhook] Received payload:", JSON.stringify(body));
 
-    // Extract order ID from the custom field
-    const orderId = body.custom || body.order_id || body.orderId;
+    // Extract order ID — checked in order: comment (primary), custom, cs1, then legacy fields
+    const orderId = body.comment || body.custom || body.cs1 || body.order_id || body.orderId || body.info;
     const paymentStatus = body.status || body.payment_status;
 
     if (!orderId) {
