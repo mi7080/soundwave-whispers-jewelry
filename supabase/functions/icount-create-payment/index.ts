@@ -148,6 +148,24 @@ serve(async (req) => {
       .update({ status: "payment_pending" })
       .eq("id", orderId);
 
+    // Fire-and-forget: try to auto-detect & link iCount docnum by customer email.
+    // Runs in background so we don't block returning the payment URL.
+    // Webhook will overwrite this if/when it fires with the authoritative docnum.
+    (async () => {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/icount-find-docnum`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ orderId, email }),
+        });
+      } catch (e) {
+        console.warn("[iCount] Auto-detect docnum kickoff failed:", e);
+      }
+    })();
+
     // Mark discount code as used (best-effort; reservation — final mark on webhook can re-affirm)
     if (discountCode) {
       try {
