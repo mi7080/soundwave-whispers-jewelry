@@ -37,6 +37,7 @@ export type Database = {
           fulfillment_status: string
           icount_docnum: string | null
           icount_docnum_auto_detected: boolean
+          icount_webhook_payload: Json | null
           id: string
           pet_name: string
           pet_photo_url: string | null
@@ -81,6 +82,7 @@ export type Database = {
           fulfillment_status?: string
           icount_docnum?: string | null
           icount_docnum_auto_detected?: boolean
+          icount_webhook_payload?: Json | null
           id?: string
           pet_name: string
           pet_photo_url?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           fulfillment_status?: string
           icount_docnum?: string | null
           icount_docnum_auto_detected?: boolean
+          icount_webhook_payload?: Json | null
           id?: string
           pet_name?: string
           pet_photo_url?: string | null

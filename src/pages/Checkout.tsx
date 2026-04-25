@@ -66,6 +66,7 @@ const Checkout = () => {
   const variant = PRODUCT_CONFIG.variants[variantIdx] || PRODUCT_CONFIG.variants[0];
 
   const [order, setOrder] = useState<any>(null);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -160,6 +161,7 @@ const Checkout = () => {
           return;
         }
         setOrder(data);
+        setOrderStatus(data.status);
         // Pre-fill if user already submitted shipping (returning from failed payment)
         form.reset({
           fullName: data.customer_name || "",
@@ -178,6 +180,44 @@ const Checkout = () => {
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, navigate]);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    const handleStatus = (status?: string | null) => {
+      if (!status) return;
+      setOrderStatus(status);
+      if (status === "paid" || status === "fulfilled") {
+        navigate(`/thank-you?order=${orderId}`, { replace: true });
+      }
+    };
+
+    const pollStatus = async () => {
+      const { data } = await supabase
+        .from("animus_orders")
+        .select("status")
+        .eq("id", orderId)
+        .maybeSingle();
+      handleStatus(data?.status);
+    };
+
+    const channel = supabase
+      .channel(`checkout-order-status-${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "animus_orders", filter: `id=eq.${orderId}` },
+        (payload) => handleStatus((payload.new as { status?: string })?.status)
+      )
+      .subscribe();
+
+    const interval = window.setInterval(pollStatus, 3000);
+    pollStatus();
+
+    return () => {
+      window.clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [orderId, navigate]);
 
   const onSubmit = async (values: ShippingForm) => {
@@ -304,6 +344,12 @@ const Checkout = () => {
           {failed && (
             <div className="p-4 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
               Payment was not successful. Please review your details and try again.
+            </div>
+          )}
+
+          {(orderStatus === "payment_pending" || orderStatus === "paid") && (
+            <div className="p-4 rounded-md border border-gold/30 bg-gold/10 text-gold text-sm">
+              {orderStatus === "paid" ? "Payment confirmed. Redirecting…" : "Waiting for payment confirmation…"}
             </div>
           )}
 

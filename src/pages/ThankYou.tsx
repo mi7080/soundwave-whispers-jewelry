@@ -41,6 +41,7 @@ const ThankYou = () => {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [resolvedName, setResolvedName] = useState<string>("");
   const [resolvedAmount, setResolvedAmount] = useState<number | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [lookupDone, setLookupDone] = useState(false);
 
   const parsedUrlAmount = amountParam ? parseFloat(amountParam) : NaN;
@@ -70,19 +71,59 @@ const ThankYou = () => {
     }
     supabase
       .from("animus_orders")
-      .select("pet_name")
+        .select("pet_name, amount, status")
       .eq("id", orderId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           if (!decodedUrlName && data.pet_name) setResolvedName(data.pet_name);
           if (!Number.isFinite(parsedUrlAmount) || parsedUrlAmount <= 0) {
-            setResolvedAmount(PRODUCT_CONFIG.variants[0].foundersPrice);
+            setResolvedAmount(data.amount || PRODUCT_CONFIG.variants[0].foundersPrice);
           }
+          setOrderStatus(data.status || null);
         }
         setLookupDone(true);
       });
   }, [orderId, decodedUrlName, parsedUrlAmount, lookupDone]);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    const handleStatus = (status?: string | null) => {
+      if (status) setOrderStatus(status);
+    };
+
+    const pollStatus = async () => {
+      const { data } = await supabase
+        .from("animus_orders")
+        .select("status, amount, pet_name")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (!data) return;
+      handleStatus(data.status);
+      if (!decodedUrlName && data.pet_name) setResolvedName(data.pet_name);
+      if ((!Number.isFinite(parsedUrlAmount) || parsedUrlAmount <= 0) && data.amount) {
+        setResolvedAmount(data.amount);
+      }
+    };
+
+    const channel = supabase
+      .channel(`thank-you-order-status-${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "animus_orders", filter: `id=eq.${orderId}` },
+        (payload) => handleStatus((payload.new as { status?: string })?.status)
+      )
+      .subscribe();
+
+    const interval = window.setInterval(pollStatus, 3000);
+    pollStatus();
+
+    return () => {
+      window.clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, decodedUrlName, parsedUrlAmount]);
 
   const createConfetti = useCallback(() => {
     const newParticles: Particle[] = [];
@@ -131,6 +172,7 @@ const ThankYou = () => {
   const displayName = effectiveName;
   const displayOrderId = orderId ?? "";
   const displayAmount = effectiveAmount ? effectiveAmount.toFixed(2) : "";
+  const isPaid = orderStatus === "paid" || orderStatus === "fulfilled" || orderStatus === "shineon_error";
 
   // While DB fallback is resolving, render a blank background to avoid a
   // brief "Payment Error" flash on real successful redirects.
@@ -230,7 +272,7 @@ const ThankYou = () => {
               <span className="text-white/60">Status</span>
               <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs tracking-widest uppercase">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Payment Confirmed
+                {isPaid ? "Paid" : "Confirming Payment"}
               </span>
             </div>
           </div>
