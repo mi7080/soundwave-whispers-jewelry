@@ -8,6 +8,10 @@ const corsHeaders = {
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
 const SHINEON_SKU = "SO-15845645";
+const FINALIZED_STATUSES = new Set(["paid", "fulfilled", "shineon_error"]);
+const SUCCESS_STATUSES = new Set(["success", "approved", "paid", "completed", "complete", "authorized", "captured"]);
+const FAILURE_STATUSES = new Set(["failed", "failure", "declined", "cancelled", "canceled", "error", "void"]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -15,16 +19,12 @@ serve(async (req) => {
   }
 
   try {
-    // Verify iCount webhook secret
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
     const receivedSecret = req.headers.get("X-iCount-Secret") || req.headers.get("x-icount-secret");
 
     if (webhookSecret && receivedSecret !== webhookSecret) {
       console.error("[iCount Webhook] Invalid secret header");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -34,49 +34,75 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[iCount Webhook] Received payload:", JSON.stringify(body));
 
-    // Extract order ID — checked in order: comment (primary), custom, cs1, then legacy fields
-    const orderId = body.comment || body.custom || body.cs1 || body.order_id || body.orderId || body.info;
-    const paymentStatus = body.status || body.payment_status;
+    const paymentStatus = normalizeString(body.status || body.payment_status || body.transaction_status || body.paymentStatus);
+    const isSuccess = isSuccessfulPayment(body, paymentStatus);
+    const isFailure = isFailedPayment(body, paymentStatus);
+    const docnumEarly = firstString(body.docnum, body.doc_number, body.invoice_number, body.document_number);
+    const customerEmailEarly = normalizeString(body.client_email || body.email || body.customer_email);
+    const paymentAmountEarly = body.amount ?? body.total ?? body.total_paid ?? null;
 
-    if (!orderId) {
-      console.error("[iCount Webhook] No order ID found in payload");
-      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_order_id" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let orderId = extractOrderId(body);
+    let order = orderId ? await fetchOrder(supabase, orderId) : null;
+
+    if (!order) {
+      const lookup = await secondaryOrderLookup(supabase, { docnum: docnumEarly, email: customerEmailEarly, amount: paymentAmountEarly });
+      order = lookup.order;
+      orderId = lookup.orderId;
+      if (lookup.reason) console.log(`[iCount Webhook] Secondary lookup result: ${lookup.reason}`);
     }
 
-    console.log(`[iCount Webhook] Order: ${orderId}, Status: ${paymentStatus}`);
+    if (!orderId || !order) {
+      console.error("[iCount Webhook] No matching order found for payload");
+      return json({ success: true, skipped: true, reason: "no_matching_order" });
+    }
 
-    // Only process successful payments
-    const isSuccess = paymentStatus === "success" || paymentStatus === "approved" || body.is_paid === true || body.paid === true;
+    console.log(`[iCount Webhook] Order: ${orderId}, Status: ${paymentStatus || "unknown"}, Success: ${isSuccess}`);
+
+    await supabase
+      .from("animus_orders")
+      .update({
+        icount_webhook_payload: body,
+        ...(docnumEarly ? { icount_docnum: String(docnumEarly), icount_docnum_auto_detected: false } : {}),
+      } as any)
+      .eq("id", orderId);
 
     if (!isSuccess) {
-      console.log("[iCount Webhook] Payment not successful, updating status");
-      await supabase
-        .from("animus_orders")
-        .update({ status: "payment_failed" })
-        .eq("id", orderId);
+      if (FINALIZED_STATUSES.has(String(order.status))) {
+        console.log(`[iCount Webhook] Ignoring non-success webhook for finalized order ${orderId}`);
+        return json({ success: true, skipped: true, reason: "already_finalized", orderId });
+      }
 
-      return new Response(JSON.stringify({ success: true, payment_status: "failed" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (isFailure) {
+        await supabase
+          .from("animus_orders")
+          .update({ status: "payment_failed" } as any)
+          .eq("id", orderId);
+        return json({ success: true, payment_status: "failed", orderId });
+      }
+
+      return json({ success: true, skipped: true, reason: "payment_not_successful", orderId, payment_status: paymentStatus || null });
     }
 
-    // Extract shipping + customer fields from iCount payload
-    const docnumEarly = body.docnum || body.doc_number || body.invoice_number || null;
-    const customerEmailEarly = body.client_email || body.email || null;
+    if (FINALIZED_STATUSES.has(String(order.status))) {
+      console.log(`[iCount Webhook] Order ${orderId} is already finalized (${order.status}); skipping duplicate fulfillment`);
+      return json({ success: true, skipped: true, reason: "already_finalized", orderId });
+    }
+
     const customerNameEarly = body.client_name || [body.first_name, body.last_name].filter(Boolean).join(" ").trim() || null;
-    const paymentAmountEarly = body.amount ?? body.total ?? null;
 
     const orderUpdate: Record<string, unknown> = {
       status: "paid",
       workflow_status: "paid",
-      icount_docnum: docnumEarly ? String(docnumEarly) : null,
+      icount_webhook_payload: body,
       shipping_address1: body.address || body.street || null,
       shipping_city: body.city || null,
       shipping_zip: body.zip || body.postal_code || null,
       shipping_country_code: body.country_code || body.country || null,
     };
+    if (docnumEarly) {
+      orderUpdate.icount_docnum = String(docnumEarly);
+      orderUpdate.icount_docnum_auto_detected = false;
+    }
     if (customerEmailEarly) orderUpdate.customer_email = customerEmailEarly;
     if (customerNameEarly) orderUpdate.customer_name = customerNameEarly;
     if (paymentAmountEarly !== null && paymentAmountEarly !== "") {
@@ -84,57 +110,48 @@ serve(async (req) => {
       if (!Number.isNaN(amt)) orderUpdate.amount = amt;
     }
 
-    // Strip nulls so we don't overwrite existing values with empty data
-    Object.keys(orderUpdate).forEach(k => {
+    Object.keys(orderUpdate).forEach((k) => {
       if (orderUpdate[k] === null || orderUpdate[k] === undefined || orderUpdate[k] === "") delete orderUpdate[k];
     });
-    // Always set status fields
-    orderUpdate.status = "paid";
-    orderUpdate.workflow_status = "paid";
 
-    await supabase
+    const { error: paidErr } = await supabase
       .from("animus_orders")
-      .update(orderUpdate)
-      .eq("id", orderId);
+      .update(orderUpdate as any)
+      .eq("id", orderId)
+      .not("status", "in", "(paid,fulfilled,shineon_error)");
 
-    console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly})`);
+    if (paidErr) {
+      console.error("[iCount Webhook] Failed marking order paid:", paidErr);
+      return json({ success: false, error: "Failed to mark order as paid" }, 500);
+    }
 
-    // Retrieve order details for ShineOn fulfillment (also used by email below)
-    const { data: order, error: dbError } = await supabase
+    console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly || "none"})`);
+
+    const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
       .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name")
       .eq("id", orderId)
       .maybeSingle();
 
-    if (dbError || !order) {
+    if (dbError || !freshOrder) {
       console.error("[iCount Webhook] Order not found for ShineOn:", orderId);
-      return new Response(JSON.stringify({ success: true, shineon_skipped: true, reason: "order_not_found" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, shineon_skipped: true, reason: "order_not_found", orderId });
     }
 
-    if (!order.design_image_url) {
+    if (!freshOrder.design_image_url) {
       console.error("[iCount Webhook] No design_image_url for order:", orderId);
-      return new Response(JSON.stringify({ success: true, shineon_skipped: true, reason: "no_design_url" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, shineon_skipped: true, reason: "no_design_url", orderId });
     }
 
-    // Send order to ShineOn (Direct API v1)
     const shineonApiKey = Deno.env.get("SHINEON_API_KEY");
     if (!shineonApiKey) {
       console.error("[iCount Webhook] SHINEON_API_KEY not configured");
-      return new Response(JSON.stringify({ success: true, shineon_skipped: true, reason: "missing_shineon_key" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, shineon_skipped: true, reason: "missing_shineon_key", orderId });
     }
 
-    // iCount docnum → ShineOn order_number
-    const docnum = body.docnum || body.doc_number || body.invoice_number || `icount-${orderId}`;
-
-    // Map iCount customer fields → ShineOn shipping_address
-    const fullName = body.client_name || order.customer_name || "";
-    const customerEmailForShipping = body.client_email || body.email || order.customer_email || "";
+    const docnum = docnumEarly || `icount-${orderId}`;
+    const fullName = body.client_name || freshOrder.customer_name || "";
+    const customerEmailForShipping = body.client_email || body.email || freshOrder.customer_email || "";
     const shippingAddress = {
       first_name: fullName.split(" ")[0] || body.first_name || "",
       last_name: fullName.split(" ").slice(1).join(" ") || body.last_name || "",
@@ -150,9 +167,6 @@ serve(async (req) => {
       email: customerEmailForShipping,
     };
 
-    // engraving_text = soul page URL (the generated image/recording page)
-    const engravingText = order.soul_page_url || order.design_image_url;
-
     const shineonPayload = {
       order_number: String(docnum),
       shipping_address: shippingAddress,
@@ -160,12 +174,12 @@ serve(async (req) => {
         {
           sku: SHINEON_SKU,
           quantity: 1,
-          line_item_print_url: order.design_image_url,
+          line_item_print_url: freshOrder.design_image_url,
         },
       ],
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${order.design_image_url}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${freshOrder.design_image_url}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -183,7 +197,6 @@ serve(async (req) => {
 
     if (!shineonResponse.ok) {
       console.error(`[iCount Webhook] ShineOn API error ${shineonResponse.status}: ${shineonResult}`);
-      // Persist full error response body for debugging
       await supabase
         .from("email_send_log")
         .insert({
@@ -198,27 +211,25 @@ serve(async (req) => {
             response_status: shineonResponse.status,
             response_body: shineonResult,
           },
-        });
+        } as any);
 
       await supabase
         .from("animus_orders")
-        .update({ status: "shineon_error" })
-        .eq("id", orderId);
+        .update({ status: "shineon_error" } as any)
+        .eq("id", orderId)
+        .eq("status", "paid");
 
-      return new Response(JSON.stringify({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult, orderId });
     }
 
-    // Update order status to fulfilled
     await supabase
       .from("animus_orders")
-      .update({ status: "fulfilled" })
-      .eq("id", orderId);
+      .update({ status: "fulfilled" } as any)
+      .eq("id", orderId)
+      .eq("status", "paid");
 
     console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn successfully`);
 
-    // Send shipping notification email
     const shipEmail = body.client_email || body.email;
     const shipName = body.client_name || body.first_name || "";
     const trackingUrl = shineonResult ? (() => { try { return JSON.parse(shineonResult)?.order?.tracking_url; } catch { return undefined; } })() : undefined;
@@ -232,7 +243,7 @@ serve(async (req) => {
             templateData: {
               name: shipName,
               orderId,
-              petName: order?.pet_name || "",
+              petName: freshOrder?.pet_name || "",
               trackingUrl: trackingUrl || "",
             },
           },
@@ -243,14 +254,88 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, shineon_submitted: true, orderId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
+    return json({ success: true, shineon_submitted: true, orderId });
+  } catch (err: any) {
     console.error("[iCount Webhook] Unexpected error:", err);
-    return new Response(JSON.stringify({ success: true, error: err.message }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ success: true, error: err?.message || "Unknown error" });
   }
 });
+
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : value == null ? "" : String(value).trim().toLowerCase();
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return null;
+}
+
+function isSuccessfulPayment(body: any, paymentStatus: string): boolean {
+  return SUCCESS_STATUSES.has(paymentStatus) || body.is_paid === true || body.paid === true || body.success === true || body.approved === true;
+}
+
+function isFailedPayment(body: any, paymentStatus: string): boolean {
+  return FAILURE_STATUSES.has(paymentStatus) || body.is_paid === false || body.paid === false || body.success === false;
+}
+
+function extractOrderId(body: any): string | null {
+  const candidates = [body.comment, body.custom, body.cs1, body.order_id, body.orderId, body.info];
+  for (const candidate of candidates) {
+    const value = typeof candidate === "string" ? candidate.trim() : String(candidate || "").trim();
+    if (UUID_RE.test(value)) return value;
+  }
+  return null;
+}
+
+async function fetchOrder(supabase: any, orderId: string) {
+  const { data, error } = await supabase
+    .from("animus_orders")
+    .select("id, status, design_image_url, pet_name, soul_page_url, customer_email, customer_name, icount_docnum")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (error) console.error("[iCount Webhook] Order lookup failed:", error);
+  return data || null;
+}
+
+async function secondaryOrderLookup(supabase: any, input: { docnum: string | null; email: string; amount: unknown }) {
+  if (input.docnum) {
+    const { data } = await supabase
+      .from("animus_orders")
+      .select("id, status, design_image_url, pet_name, soul_page_url, customer_email, customer_name, icount_docnum")
+      .eq("icount_docnum", String(input.docnum))
+      .maybeSingle();
+    if (data) return { orderId: data.id, order: data, reason: "matched_docnum" };
+  }
+
+  if (input.email) {
+    let query = supabase
+      .from("animus_orders")
+      .select("id, status, design_image_url, pet_name, soul_page_url, customer_email, customer_name, icount_docnum, amount, created_at")
+      .eq("customer_email", input.email)
+      .in("status", ["shipping_captured", "payment_pending", "pending", "paid"])
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const { data } = await query;
+    const rows = data || [];
+    if (rows.length > 0) {
+      const webhookAmount = Number(input.amount);
+      const matchedByAmount = Number.isFinite(webhookAmount)
+        ? rows.find((row: any) => Number(row.amount) === webhookAmount)
+        : null;
+      const selected = matchedByAmount || rows[0];
+      return { orderId: selected.id, order: selected, reason: matchedByAmount ? "matched_email_amount" : "matched_recent_email" };
+    }
+  }
+
+  return { orderId: null, order: null, reason: "no_secondary_match" };
+}
