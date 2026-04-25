@@ -102,7 +102,19 @@ serve(async (req) => {
       ipn_url: webhookUrl,
     };
 
-    console.log("[iCount] Creating payment for order:", orderId);
+    console.log("[iCount] Creating payment payload:", JSON.stringify({
+      orderId,
+      sum: paymentPayload.sum,
+      email: paymentPayload.email,
+      fname: paymentPayload.fname,
+      lname: paymentPayload.lname,
+      info: paymentPayload.info,
+      comment: paymentPayload.comment,
+      custom: paymentPayload.custom,
+      cs1: paymentPayload.cs1,
+      discountCode: discountCode ? String(discountCode).toUpperCase() : null,
+      discountPercent: discountPercent || 0,
+    }));
 
     const icountResp = await fetch(`${ICOUNT_API_BASE}/cc_page/sale`, {
       method: "POST",
