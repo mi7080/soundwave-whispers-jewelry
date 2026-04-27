@@ -174,7 +174,7 @@ serve(async (req) => {
         {
           sku: SHINEON_SKU,
           quantity: 1,
-          line_item_print_url: freshOrder.design_image_url,
+          print_url: freshOrder.design_image_url,
         },
       ],
     };
