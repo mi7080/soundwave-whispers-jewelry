@@ -161,18 +161,18 @@ const AdminOrders = () => {
     return list.filter(l => l.email.toLowerCase().includes(q));
   }, [leads, search, range]);
 
-  const updateWorkflowStatus = async (order: Order, status: WorkflowStatus) => {
+  const updateOrderStatus = async (order: Order, status: OrderStatus) => {
     const prev = orders;
-    setOrders(p => p.map(o => o.id === order.id ? { ...o, workflow_status: status } : o));
+    setOrders(p => p.map(o => o.id === order.id ? { ...o, status } : o));
     const { error } = await supabase
       .from("animus_orders")
-      .update({ workflow_status: status })
+      .update({ status })
       .eq("id", order.id);
     if (error) {
       setOrders(prev);
       toast.error("Failed to update status");
     } else {
-      toast.success(`Marked as ${STATUS_OPTIONS.find(s => s.value === status)?.label}`);
+      toast.success(`Marked as ${STATUS_OPTIONS.find(s => s.value === status)?.label || status}`);
     }
   };
 
