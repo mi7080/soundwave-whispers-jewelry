@@ -331,18 +331,18 @@ const AdminOrders = () => {
         const canMarkReady =
           shippingOk &&
           !!finalRow.print_image_url &&
-          finalRow.workflow_status !== "sent_to_production" &&
-          finalRow.workflow_status !== "shipped";
+          finalRow.status !== "fulfilled" &&
+          finalRow.status !== "shipped";
 
-        if (canMarkReady && finalRow.workflow_status !== "paid") {
+        if (canMarkReady && finalRow.status !== "paid") {
           const { error: statusErr } = await supabase
             .from("animus_orders")
-            .update({ workflow_status: "paid", fulfillment_status: "paid" })
+            .update({ status: "paid" })
             .eq("id", original.id);
           if (!statusErr) {
             readied++;
             setOrders(p => p.map(x => x.id === original.id
-              ? { ...x, workflow_status: "paid" as WorkflowStatus, fulfillment_status: "paid" } as Order
+              ? { ...x, status: "paid" } as Order
               : x));
           }
         } else if (canMarkReady) {
