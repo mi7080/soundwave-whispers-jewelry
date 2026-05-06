@@ -129,7 +129,7 @@ serve(async (req) => {
 
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name")
+      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -152,18 +152,31 @@ serve(async (req) => {
     const docnum = docnumEarly || `icount-${orderId}`;
     const fullName = body.client_name || freshOrder.customer_name || "";
     const customerEmailForShipping = body.client_email || body.email || freshOrder.customer_email || "";
+    const pick = (...vals: any[]) => {
+      for (const v of vals) {
+        if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
+      }
+      return "";
+    };
+    const ship_city = pick(body.city, (freshOrder as any).shipping_city);
+    const ship_country_code = pick(body.country_code, body.country, (freshOrder as any).shipping_country_code);
+    let ship_state = pick(body.state, body.province, (freshOrder as any).shipping_state);
+    // Israel-specific: ShineOn requires province; Israel has none — fall back to city
+    if (ship_country_code.toUpperCase() === "IL" && !ship_state) {
+      ship_state = ship_city;
+    }
     const shippingAddress = {
       first_name: fullName.split(" ")[0] || body.first_name || "",
       last_name: fullName.split(" ").slice(1).join(" ") || body.last_name || "",
-      address1: body.address || body.street || "",
-      address2: body.address2 || "",
-      city: body.city || "",
-      province: body.state || body.province || "",
+      address1: pick(body.address, body.street, (freshOrder as any).shipping_address1),
+      address2: pick(body.address2, (freshOrder as any).shipping_address2),
+      city: ship_city,
+      province: ship_state,
       province_code: body.province_code || "",
-      country: body.country || "",
-      country_code: body.country_code || "",
-      zip: body.zip || body.postal_code || "",
-      phone: body.phone || "",
+      country: pick(body.country, (freshOrder as any).shipping_country_code),
+      country_code: ship_country_code,
+      zip: pick(body.zip, body.postal_code, (freshOrder as any).shipping_zip),
+      phone: pick(body.phone, (freshOrder as any).customer_phone),
       email: customerEmailForShipping,
     };
 
