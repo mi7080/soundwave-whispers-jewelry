@@ -99,10 +99,10 @@ const AdminCRM = () => {
     return { revenue, totalOrders: orders.length, totalLeads: leads.length };
   }, [orders, leads]);
 
-  const updateOrderStatus = async (id: string, status: FulfillmentStatus) => {
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
     const prev = orders;
-    setOrders((p) => p.map((o) => (o.id === id ? { ...o, fulfillment_status: status } : o)));
-    const { error } = await supabase.from("animus_orders").update({ fulfillment_status: status } as any).eq("id", id);
+    setOrders((p) => p.map((o) => (o.id === id ? { ...o, status } : o)));
+    const { error } = await supabase.from("animus_orders").update({ status } as any).eq("id", id);
     if (error) {
       setOrders(prev);
       toast.error("Failed to update status");
