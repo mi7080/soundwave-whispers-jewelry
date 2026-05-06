@@ -139,8 +139,21 @@ serve(async (req) => {
     }
 
     if (!freshOrder.design_image_url) {
-      console.error("[iCount Webhook] No design_image_url for order:", orderId);
-      return json({ success: true, shineon_skipped: true, reason: "no_design_url", orderId });
+      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has no design_image_url — marked as shineon_error`);
+      await supabase
+        .from("animus_orders")
+        .update({ status: "shineon_error" } as any)
+        .eq("id", orderId);
+      await supabase
+        .from("email_send_log")
+        .insert({
+          template_name: "missing-design-url",
+          recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
+          status: "error",
+          error_message: `Order ${orderId} has no design_image_url — cannot submit to ShineOn`,
+          metadata: { orderId },
+        } as any);
+      return json({ success: true, shineon_error: true, reason: "no_design_url", orderId });
     }
 
     const shineonApiKey = Deno.env.get("SHINEON_API_KEY");
