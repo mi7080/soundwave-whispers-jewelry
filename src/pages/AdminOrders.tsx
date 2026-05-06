@@ -78,7 +78,8 @@ const AdminOrders = () => {
   const range = dr?.range;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [tab, setTab] = useState<"orders" | "leads">("orders");
+  const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
@@ -369,6 +370,58 @@ const AdminOrders = () => {
     toast.success("Docnum saved — you can now sync from iCount");
   };
 
+  const retryShineOn = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    setRetrying(orderId);
+    try {
+      // Reset status away from finalized so webhook will reprocess
+      const { error: resetErr } = await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", orderId);
+      if (resetErr) throw new Error(resetErr.message);
+
+      const body = {
+        order_id: orderId,
+        status: "paid",
+        amount: order.amount,
+        client_email: order.customer_email,
+        client_name: order.customer_name,
+        phone: order.customer_phone,
+        address: order.shipping_address1,
+        address2: order.shipping_address2,
+        city: order.shipping_city,
+        state: order.shipping_state,
+        zip: order.shipping_zip,
+        country_code: order.shipping_country_code,
+        docnum: order.icount_docnum,
+      };
+
+      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", { body });
+      if (error) throw new Error(error.message);
+      if (data?.shineon_error) {
+        toast.error(`ShineOn retry failed: ${String(data.body || "").slice(0, 200)}`);
+        // restore shineon_error status
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", orderId);
+        setOrders(p => p.map(o => o.id === orderId ? { ...o, status: "shineon_error" } : o));
+        return;
+      }
+      if (data?.shineon_submitted) {
+        setOrders(p => p.map(o => o.id === orderId
+          ? { ...o, status: "fulfilled", workflow_status: "sent_to_production" as WorkflowStatus }
+          : o));
+        toast.success("ShineOn retry succeeded — order fulfilled");
+      } else {
+        toast.warning(`Retry result: ${data?.reason || "no submission"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Retry failed: ${e?.message || "unknown"}`);
+    } finally {
+      setRetrying(null);
+    }
+  };
+
   const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
@@ -515,6 +568,15 @@ const AdminOrders = () => {
   );
   const incompleteCount = incompleteInRange.length;
   const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
+  const shineOnErrorOrders = orders.filter(o => o.status === "shineon_error" && (!range || inRange(o.created_at, range)));
+  const filteredShineOnErrors = (() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return shineOnErrorOrders;
+    return shineOnErrorOrders.filter(o =>
+      [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id]
+        .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
+    );
+  })();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -557,6 +619,16 @@ const AdminOrders = () => {
         <div className="flex items-center gap-1 mb-4 border-b border-border/30">
           <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<Package className="w-3.5 h-3.5" />}>
             Orders <span className="opacity-60">({orders.length})</span>
+          </TabButton>
+          <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<Package className="w-3.5 h-3.5" />}>
+            ShineOn Errors{" "}
+            {shineOnErrorOrders.length > 0 ? (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
+                {shineOnErrorOrders.length}
+              </span>
+            ) : (
+              <span className="opacity-60">(0)</span>
+            )}
           </TabButton>
           <TabButton active={tab === "leads"} onClick={() => setTab("leads")} icon={<Users className="w-3.5 h-3.5" />}>
             Leads <span className="opacity-60">({leads.length})</span>
@@ -606,6 +678,13 @@ const AdminOrders = () => {
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
           <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
+        ) : tab === "errors" ? (
+          <ShineOnErrorsTable
+            orders={filteredShineOnErrors}
+            onSelect={setSelected}
+            onRetry={retryShineOn}
+            retryingId={retrying}
+          />
         ) : (
           <LeadsTable leads={filteredLeads} />
         )}
@@ -754,6 +833,77 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const ShineOnErrorsTable = ({ orders, onSelect, onRetry, retryingId }: {
+  orders: Order[];
+  onSelect: (o: Order) => void;
+  onRetry: (orderId: string) => Promise<void>;
+  retryingId: string | null;
+}) => {
+  if (orders.length === 0) {
+    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No ShineOn errors — all clear</div>;
+  }
+  return (
+    <div className="border-2 border-destructive/40 rounded-sm overflow-hidden bg-destructive/5">
+      <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/30">
+        <p className="text-[11px] tracking-[0.2em] uppercase text-destructive font-medium">
+          {orders.length} order{orders.length === 1 ? "" : "s"} failed ShineOn submission — retry below
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-background/50 border-b border-destructive/20">
+            <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-left px-4 py-3">Docnum</th>
+              <th className="text-left px-4 py-3">Customer</th>
+              <th className="text-left px-4 py-3">Email</th>
+              <th className="text-right px-4 py-3">Amount</th>
+              <th className="text-right px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => (
+              <tr key={o.id} className="border-b border-destructive/20 hover:bg-background/30 border-l-4 border-l-destructive">
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </td>
+                <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || "—"}</td>
+                <td className="px-4 py-3 text-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>{o.customer_name || o.pet_name}</span>
+                    <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/50 text-destructive bg-destructive/10">
+                      ShineOn Error
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
+                <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="inline-flex items-center gap-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onRetry(o.id); }}
+                      disabled={retryingId === o.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    >
+                      {retryingId === o.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <RotateCw className="w-3 h-3" />}
+                      Retry ShineOn
+                    </button>
+                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                      <Eye className="w-3 h-3" /> View
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
