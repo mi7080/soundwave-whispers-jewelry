@@ -432,7 +432,7 @@ const AdminOrders = () => {
   };
 
   const isArtReady = (o: Order) =>
-    o.fulfillment_status === "paid" &&
+    o.status === "paid" &&
     o.workflow_status !== "sent_to_production" &&
     o.workflow_status !== "shipped" &&
     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
