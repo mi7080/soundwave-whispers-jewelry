@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, ExternalLink, Loader2, LogOut, Mail, RefreshCw, ShieldAlert } from "lucide-react";
 
-type FulfillmentStatus = "paid" | "sent_to_shineon" | "shipped";
+type OrderStatus = "payment_pending" | "paid" | "shineon_error" | "fulfilled" | "shipped" | "payment_failed";
 type LeadStatus = "new" | "contacted" | "converted";
 
 interface OrderRow {
@@ -13,7 +13,7 @@ interface OrderRow {
   customer_name: string | null;
   customer_email: string | null;
   amount: number | null;
-  fulfillment_status: FulfillmentStatus;
+  status: OrderStatus | string;
   soul_page_url: string;
   created_at: string;
 }
@@ -26,10 +26,13 @@ interface LeadRow {
   created_at: string;
 }
 
-const FULFILLMENT_OPTIONS: { value: FulfillmentStatus; label: string; cls: string }[] = [
+const FULFILLMENT_OPTIONS: { value: OrderStatus; label: string; cls: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", cls: "border-zinc-500/40 text-zinc-300 bg-zinc-500/5" },
   { value: "paid", label: "Paid", cls: "border-gold/40 text-gold bg-gold/5" },
-  { value: "sent_to_shineon", label: "Sent to ShineOn", cls: "border-blue-500/40 text-blue-400 bg-blue-500/5" },
+  { value: "shineon_error", label: "ShineOn Error", cls: "border-destructive/50 text-destructive bg-destructive/10" },
+  { value: "fulfilled", label: "Fulfilled", cls: "border-blue-500/40 text-blue-400 bg-blue-500/5" },
   { value: "shipped", label: "Shipped", cls: "border-green-500/40 text-green-400 bg-green-500/5" },
+  { value: "payment_failed", label: "Payment Failed", cls: "border-red-500/40 text-red-400 bg-red-500/5" },
 ];
 
 const AdminCRM = () => {
