@@ -11,7 +11,16 @@ import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeConte
 const ADMIN_EMAIL = "mi7080@gmail.com";
 const DEFAULT_SKU = "SO-15845645";
 
-type WorkflowStatus = "new" | "paid" | "sent_to_production" | "shipped";
+type OrderStatus =
+  | "pending"
+  | "draft"
+  | "shipping_captured"
+  | "payment_pending"
+  | "payment_failed"
+  | "paid"
+  | "shineon_error"
+  | "fulfilled"
+  | "shipped";
 
 interface Order {
   id: string;
@@ -21,9 +30,7 @@ interface Order {
   customer_email: string | null;
   customer_phone: string | null;
   amount: number | null;
-  status: string;
-  workflow_status: WorkflowStatus;
-  fulfillment_status: string;
+  status: OrderStatus | string;
   icount_docnum: string | null;
   icount_docnum_auto_detected?: boolean | null;
   tracking_number: string | null;
@@ -59,11 +66,13 @@ interface Lead {
   status_updated_at: string | null;
 }
 
-const STATUS_OPTIONS: { value: WorkflowStatus; label: string; tone: string }[] = [
-  { value: "new", label: "New", tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" },
+const STATUS_OPTIONS: { value: OrderStatus; label: string; tone: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" },
   { value: "paid", label: "Paid", tone: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
-  { value: "sent_to_production", label: "Sent to Production", tone: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
+  { value: "shineon_error", label: "ShineOn Error", tone: "bg-destructive/10 text-destructive border-destructive/40" },
+  { value: "fulfilled", label: "Fulfilled", tone: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
   { value: "shipped", label: "Shipped", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" },
+  { value: "payment_failed", label: "Payment Failed", tone: "bg-red-500/10 text-red-300 border-red-500/30" },
 ];
 
 const csvEscape = (val: unknown) => {
