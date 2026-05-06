@@ -873,7 +873,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
                   <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
-                  <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
+                  <td className="px-4 py-3"><StatusPill status={o.status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
                       {incomplete && !o.icount_docnum && o.customer_email && (
