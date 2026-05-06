@@ -80,6 +80,7 @@ const AdminOrders = () => {
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string[]>(["paid", "shineon_error"]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,12 +136,13 @@ const AdminOrders = () => {
     const q = search.trim().toLowerCase();
     let list = orders;
     if (range) list = list.filter(o => inRange(o.created_at, range));
+    if (statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.status));
     if (!q) return list;
     return list.filter(o =>
       [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id, o.tracking_number]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
-  }, [orders, search, range]);
+  }, [orders, search, range, statusFilter]);
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -430,7 +432,7 @@ const AdminOrders = () => {
   };
 
   const isArtReady = (o: Order) =>
-    o.fulfillment_status === "paid" &&
+    o.status === "paid" &&
     o.workflow_status !== "sent_to_production" &&
     o.workflow_status !== "shipped" &&
     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
@@ -635,6 +637,15 @@ const AdminOrders = () => {
           </TabButton>
         </div>
 
+        {/* Status filter (Orders tab only) */}
+        {tab === "orders" && (
+          <StatusFilterBar
+            orders={orders.filter(o => !range || inRange(o.created_at, range))}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+          />
+        )}
+
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row gap-3 mb-5">
           <div className="relative flex-1">
@@ -706,6 +717,54 @@ const AdminOrders = () => {
 };
 
 // ─── Subcomponents ──────────────────────────────────────────────────
+
+const STATUS_FILTER_OPTIONS: { value: string; label: string; tone: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", tone: "border-zinc-500/40 text-zinc-300 hover:bg-zinc-500/10" },
+  { value: "paid", label: "Paid", tone: "border-amber-500/40 text-amber-300 hover:bg-amber-500/10" },
+  { value: "shineon_error", label: "ShineOn Error", tone: "border-destructive/50 text-destructive hover:bg-destructive/10" },
+  { value: "fulfilled", label: "Fulfilled", tone: "border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10" },
+  { value: "payment_failed", label: "Payment Failed", tone: "border-red-500/40 text-red-300 hover:bg-red-500/10" },
+];
+
+const StatusFilterBar = ({ orders, selected, onChange }: {
+  orders: Order[]; selected: string[]; onChange: (s: string[]) => void;
+}) => {
+  const counts: Record<string, number> = {};
+  for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
+  const allActive = selected.length === 0;
+  const toggle = (value: string) => {
+    if (selected.includes(value)) onChange(selected.filter(v => v !== value));
+    else onChange([...selected, value]);
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <button
+        onClick={() => onChange([])}
+        className={`text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm border transition-colors ${
+          allActive ? "border-gold text-gold bg-gold/5" : "border-border/50 text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        All <span className="opacity-60 ml-1">({orders.length})</span>
+      </button>
+      {STATUS_FILTER_OPTIONS.map(opt => {
+        const active = selected.includes(opt.value);
+        const count = counts[opt.value] || 0;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            className={`text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm border transition-colors ${opt.tone} ${
+              active ? "bg-foreground/5 ring-1 ring-gold/40" : "opacity-70"
+            }`}
+          >
+            {opt.label} <span className="opacity-70 ml-1">({count})</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 
 const StatCard = ({ label, value, accent }: { label: string; value: number; accent?: "gold" | "emerald" }) => (
   <div className="border border-border/30 rounded-sm p-4 bg-card">
