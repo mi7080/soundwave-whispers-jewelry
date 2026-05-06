@@ -244,7 +244,7 @@ const OrdersTable = ({
   onStatusChange,
 }: {
   orders: OrderRow[];
-  onStatusChange: (id: string, status: FulfillmentStatus) => void;
+  onStatusChange: (id: string, status: OrderStatus) => void;
 }) => {
   if (orders.length === 0) {
     return (
