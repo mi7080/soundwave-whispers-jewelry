@@ -189,7 +189,7 @@ const FinanceTab = () => {
 
   const stats = useMemo(() => {
     if (!costs) return null;
-    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount && inRange(o.created_at, range));
+    const paidOrders = orders.filter(o => ["paid","fulfilled","shipped","shineon_error"].includes(o.status) && o.amount && inRange(o.created_at, range));
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
     const orderCount = paidOrders.length || 1;
 
