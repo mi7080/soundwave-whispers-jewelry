@@ -92,7 +92,6 @@ serve(async (req) => {
 
     const orderUpdate: Record<string, unknown> = {
       status: "paid",
-      workflow_status: "paid",
       icount_webhook_payload: body,
       shipping_address1: body.address || body.street || null,
       shipping_city: body.city || null,

@@ -27,7 +27,7 @@ interface OrderSummary {
   id: string;
   amount: number | null;
   created_at: string;
-  workflow_status: string;
+  status: string;
   customer_email: string | null;
   customer_name: string | null;
   pet_name: string;
@@ -177,7 +177,7 @@ const FinanceTab = () => {
   useEffect(() => {
     const load = async () => {
       const [ordersRes, costsRes] = await Promise.all([
-        supabase.from("animus_orders").select("id,amount,created_at,workflow_status,customer_email,customer_name,pet_name").order("created_at", { ascending: false }),
+        supabase.from("animus_orders").select("id,amount,created_at,status,customer_email,customer_name,pet_name").order("created_at", { ascending: false }),
         supabase.from("cost_settings").select("*").eq("id", 1).maybeSingle(),
       ]);
       if (ordersRes.data) setOrders(ordersRes.data as OrderSummary[]);
@@ -189,7 +189,7 @@ const FinanceTab = () => {
 
   const stats = useMemo(() => {
     if (!costs) return null;
-    const paidOrders = orders.filter(o => o.workflow_status !== "new" && o.amount && inRange(o.created_at, range));
+    const paidOrders = orders.filter(o => ["paid","fulfilled","shipped","shineon_error"].includes(o.status) && o.amount && inRange(o.created_at, range));
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
     const orderCount = paidOrders.length || 1;
 
@@ -365,7 +365,7 @@ const CrmTab = () => {
     const load = async () => {
       const [leadsRes, ordersRes] = await Promise.all([
         supabase.from("waitlist_leads").select("*").order("created_at", { ascending: false }),
-        supabase.from("animus_orders").select("id,amount,created_at,workflow_status,customer_email,customer_name,pet_name")
+        supabase.from("animus_orders").select("id,amount,created_at,status,customer_email,customer_name,pet_name")
           .not("customer_email", "is", null).order("created_at", { ascending: false }),
       ]);
       if (leadsRes.data) setLeads(leadsRes.data as LeadSummary[]);
@@ -492,7 +492,7 @@ const CrmTab = () => {
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || "—"}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#aaa" }}>{o.customer_email}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#888" }}>{o.pet_name}</td>
-                    <td className="px-5 py-3 text-xs capitalize" style={{ color: "#888" }}>{o.workflow_status.replace(/_/g, " ")}</td>
+                    <td className="px-5 py-3 text-xs capitalize" style={{ color: "#888" }}>{o.status.replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-right">
                       <button
                         onClick={() => sendCustomerUpdate(o)}

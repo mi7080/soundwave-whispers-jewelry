@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, ExternalLink, Loader2, LogOut, Mail, RefreshCw, ShieldAlert } from "lucide-react";
 
-type FulfillmentStatus = "paid" | "sent_to_shineon" | "shipped";
+type OrderStatus = "payment_pending" | "paid" | "shineon_error" | "fulfilled" | "shipped" | "payment_failed";
 type LeadStatus = "new" | "contacted" | "converted";
 
 interface OrderRow {
@@ -13,7 +13,7 @@ interface OrderRow {
   customer_name: string | null;
   customer_email: string | null;
   amount: number | null;
-  fulfillment_status: FulfillmentStatus;
+  status: OrderStatus | string;
   soul_page_url: string;
   created_at: string;
 }
@@ -26,10 +26,13 @@ interface LeadRow {
   created_at: string;
 }
 
-const FULFILLMENT_OPTIONS: { value: FulfillmentStatus; label: string; cls: string }[] = [
+const FULFILLMENT_OPTIONS: { value: OrderStatus; label: string; cls: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", cls: "border-zinc-500/40 text-zinc-300 bg-zinc-500/5" },
   { value: "paid", label: "Paid", cls: "border-gold/40 text-gold bg-gold/5" },
-  { value: "sent_to_shineon", label: "Sent to ShineOn", cls: "border-blue-500/40 text-blue-400 bg-blue-500/5" },
+  { value: "shineon_error", label: "ShineOn Error", cls: "border-destructive/50 text-destructive bg-destructive/10" },
+  { value: "fulfilled", label: "Fulfilled", cls: "border-blue-500/40 text-blue-400 bg-blue-500/5" },
   { value: "shipped", label: "Shipped", cls: "border-green-500/40 text-green-400 bg-green-500/5" },
+  { value: "payment_failed", label: "Payment Failed", cls: "border-red-500/40 text-red-400 bg-red-500/5" },
 ];
 
 const AdminCRM = () => {
@@ -77,7 +80,7 @@ const AdminCRM = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [ordersRes, leadsRes] = await Promise.all([
-      supabase.from("animus_orders").select("id, pet_name, customer_name, customer_email, amount, fulfillment_status, soul_page_url, created_at").order("created_at", { ascending: false }),
+      supabase.from("animus_orders").select("id, pet_name, customer_name, customer_email, amount, status, soul_page_url, created_at").order("created_at", { ascending: false }),
       supabase.from("waitlist_leads").select("id, email, status, status_updated_at, created_at").order("created_at", { ascending: false }),
     ]);
     if (ordersRes.error) toast.error("Failed to load orders");
@@ -96,10 +99,10 @@ const AdminCRM = () => {
     return { revenue, totalOrders: orders.length, totalLeads: leads.length };
   }, [orders, leads]);
 
-  const updateOrderStatus = async (id: string, status: FulfillmentStatus) => {
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
     const prev = orders;
-    setOrders((p) => p.map((o) => (o.id === id ? { ...o, fulfillment_status: status } : o)));
-    const { error } = await supabase.from("animus_orders").update({ fulfillment_status: status } as any).eq("id", id);
+    setOrders((p) => p.map((o) => (o.id === id ? { ...o, status } : o)));
+    const { error } = await supabase.from("animus_orders").update({ status } as any).eq("id", id);
     if (error) {
       setOrders(prev);
       toast.error("Failed to update status");
@@ -241,7 +244,7 @@ const OrdersTable = ({
   onStatusChange,
 }: {
   orders: OrderRow[];
-  onStatusChange: (id: string, status: FulfillmentStatus) => void;
+  onStatusChange: (id: string, status: OrderStatus) => void;
 }) => {
   if (orders.length === 0) {
     return (
@@ -267,7 +270,7 @@ const OrdersTable = ({
           </thead>
           <tbody>
             {orders.map((o) => {
-              const opt = FULFILLMENT_OPTIONS.find((f) => f.value === o.fulfillment_status) ?? FULFILLMENT_OPTIONS[0];
+              const opt = FULFILLMENT_OPTIONS.find((f) => f.value === o.status) ?? FULFILLMENT_OPTIONS[0];
               return (
                 <tr key={o.id} className="border-b border-border/20 hover:bg-background/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{o.customer_name || "—"}</td>
@@ -281,8 +284,8 @@ const OrdersTable = ({
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={o.fulfillment_status}
-                      onChange={(e) => onStatusChange(o.id, e.target.value as FulfillmentStatus)}
+                      value={o.status}
+                      onChange={(e) => onStatusChange(o.id, e.target.value as OrderStatus)}
                       className={`text-[9px] tracking-[0.2em] uppercase px-2 py-1 rounded-sm border bg-transparent cursor-pointer ${opt.cls}`}
                     >
                       {FULFILLMENT_OPTIONS.map((f) => (

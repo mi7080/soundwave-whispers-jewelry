@@ -11,7 +11,16 @@ import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeConte
 const ADMIN_EMAIL = "mi7080@gmail.com";
 const DEFAULT_SKU = "SO-15845645";
 
-type WorkflowStatus = "new" | "paid" | "sent_to_production" | "shipped";
+type OrderStatus =
+  | "pending"
+  | "draft"
+  | "shipping_captured"
+  | "payment_pending"
+  | "payment_failed"
+  | "paid"
+  | "shineon_error"
+  | "fulfilled"
+  | "shipped";
 
 interface Order {
   id: string;
@@ -21,9 +30,7 @@ interface Order {
   customer_email: string | null;
   customer_phone: string | null;
   amount: number | null;
-  status: string;
-  workflow_status: WorkflowStatus;
-  fulfillment_status: string;
+  status: OrderStatus | string;
   icount_docnum: string | null;
   icount_docnum_auto_detected?: boolean | null;
   tracking_number: string | null;
@@ -59,11 +66,13 @@ interface Lead {
   status_updated_at: string | null;
 }
 
-const STATUS_OPTIONS: { value: WorkflowStatus; label: string; tone: string }[] = [
-  { value: "new", label: "New", tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" },
+const STATUS_OPTIONS: { value: OrderStatus; label: string; tone: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" },
   { value: "paid", label: "Paid", tone: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
-  { value: "sent_to_production", label: "Sent to Production", tone: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
+  { value: "shineon_error", label: "ShineOn Error", tone: "bg-destructive/10 text-destructive border-destructive/40" },
+  { value: "fulfilled", label: "Fulfilled", tone: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
   { value: "shipped", label: "Shipped", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" },
+  { value: "payment_failed", label: "Payment Failed", tone: "bg-red-500/10 text-red-300 border-red-500/30" },
 ];
 
 const csvEscape = (val: unknown) => {
@@ -152,18 +161,18 @@ const AdminOrders = () => {
     return list.filter(l => l.email.toLowerCase().includes(q));
   }, [leads, search, range]);
 
-  const updateWorkflowStatus = async (order: Order, status: WorkflowStatus) => {
+  const updateOrderStatus = async (order: Order, status: OrderStatus) => {
     const prev = orders;
-    setOrders(p => p.map(o => o.id === order.id ? { ...o, workflow_status: status } : o));
+    setOrders(p => p.map(o => o.id === order.id ? { ...o, status } : o));
     const { error } = await supabase
       .from("animus_orders")
-      .update({ workflow_status: status })
+      .update({ status })
       .eq("id", order.id);
     if (error) {
       setOrders(prev);
       toast.error("Failed to update status");
     } else {
-      toast.success(`Marked as ${STATUS_OPTIONS.find(s => s.value === status)?.label}`);
+      toast.success(`Marked as ${STATUS_OPTIONS.find(s => s.value === status)?.label || status}`);
     }
   };
 
@@ -172,7 +181,7 @@ const AdminOrders = () => {
     const updates = {
       tracking_number: tracking || null,
       tracking_updated_at: tracking ? now : null,
-      ...(tracking ? { workflow_status: "shipped" as const } : {}),
+      ...(tracking ? { status: "shipped" as const } : {}),
     };
     const { error } = await supabase
       .from("animus_orders")
@@ -322,18 +331,18 @@ const AdminOrders = () => {
         const canMarkReady =
           shippingOk &&
           !!finalRow.print_image_url &&
-          finalRow.workflow_status !== "sent_to_production" &&
-          finalRow.workflow_status !== "shipped";
+          finalRow.status !== "fulfilled" &&
+          finalRow.status !== "shipped";
 
-        if (canMarkReady && finalRow.workflow_status !== "paid") {
+        if (canMarkReady && finalRow.status !== "paid") {
           const { error: statusErr } = await supabase
             .from("animus_orders")
-            .update({ workflow_status: "paid", fulfillment_status: "paid" })
+            .update({ status: "paid" })
             .eq("id", original.id);
           if (!statusErr) {
             readied++;
             setOrders(p => p.map(x => x.id === original.id
-              ? { ...x, workflow_status: "paid" as WorkflowStatus, fulfillment_status: "paid" } as Order
+              ? { ...x, status: "paid" } as Order
               : x));
           }
         } else if (canMarkReady) {
@@ -411,7 +420,7 @@ const AdminOrders = () => {
       }
       if (data?.shineon_submitted) {
         setOrders(p => p.map(o => o.id === orderId
-          ? { ...o, status: "fulfilled", workflow_status: "sent_to_production" as WorkflowStatus }
+          ? { ...o, status: "fulfilled" }
           : o));
         toast.success("ShineOn retry succeeded — order fulfilled");
       } else {
@@ -433,8 +442,6 @@ const AdminOrders = () => {
 
   const isArtReady = (o: Order) =>
     o.status === "paid" &&
-    o.workflow_status !== "sent_to_production" &&
-    o.workflow_status !== "shipped" &&
     !!o.svg_content && o.svg_content.trim() !== "<svg></svg>";
 
   const isIncompleteShipping = (o: Order) =>
@@ -547,10 +554,10 @@ const AdminOrders = () => {
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("animus_orders")
-      .update({ workflow_status: "sent_to_production", exported_at: now })
+      .update({ status: "fulfilled", exported_at: now })
       .in("id", ids);
     if (error) { toast.error("CSV downloaded but DB update failed"); return; }
-    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, workflow_status: "sent_to_production", exported_at: now } : o));
+    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: "fulfilled", exported_at: now } : o));
     toast.success(`Exported ${batch.length} orders — ShineOn production file ready`);
   };
 
@@ -613,7 +620,7 @@ const AdminOrders = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard label="Total Orders" value={orders.length} />
           <StatCard label="Paid (Pending)" value={paidPending} accent="gold" />
-          <StatCard label="Shipped" value={orders.filter(o => o.workflow_status === "shipped").length} accent="emerald" />
+          <StatCard label="Fulfilled" value={orders.filter(o => o.status === "fulfilled" || o.status === "shipped").length} accent="emerald" />
           <StatCard label="Waitlist Leads" value={leads.length} />
         </div>
 
@@ -688,7 +695,7 @@ const AdminOrders = () => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
-          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
+          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
         ) : tab === "errors" ? (
           <ShineOnErrorsTable
             orders={filteredShineOnErrors}
@@ -784,24 +791,27 @@ const TabButton = ({ active, onClick, icon, children }: { active: boolean; onCli
   </button>
 );
 
-const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s: WorkflowStatus) => void }) => {
-  const opt = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
+const StatusPill = ({ status, onChange }: { status: string; onChange: (s: OrderStatus) => void }) => {
+  const opt = STATUS_OPTIONS.find(o => o.value === status) || { value: status, label: status, tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" };
   return (
     <select
       value={status}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onChange(e.target.value as WorkflowStatus)}
+      onChange={(e) => onChange(e.target.value as OrderStatus)}
       className={`text-[10px] tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-sm border bg-transparent cursor-pointer focus:outline-none ${opt.tone}`}
     >
       {STATUS_OPTIONS.map(o => (
         <option key={o.value} value={o.value} className="bg-background text-foreground">{o.label}</option>
       ))}
+      {!STATUS_OPTIONS.find(o => o.value === status) && (
+        <option value={status} className="bg-background text-foreground">{status}</option>
+      )}
     </select>
   );
 };
 
 const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect }: {
-  orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
+  orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: OrderStatus) => void;
   isIncomplete: (o: Order) => boolean;
   onSyncIcount: (orderId: string) => Promise<void>;
   onAutoDetect: (orderId: string) => Promise<void>;
@@ -863,7 +873,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
                   <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
-                  <td className="px-4 py-3"><StatusPill status={o.workflow_status} onChange={(s) => onStatusChange(o, s)} /></td>
+                  <td className="px-4 py-3"><StatusPill status={o.status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
                       {incomplete && !o.icount_docnum && o.customer_email && (
