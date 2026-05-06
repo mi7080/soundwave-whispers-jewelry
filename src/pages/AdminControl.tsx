@@ -27,7 +27,7 @@ interface OrderSummary {
   id: string;
   amount: number | null;
   created_at: string;
-  workflow_status: string;
+  status: string;
   customer_email: string | null;
   customer_name: string | null;
   pet_name: string;
