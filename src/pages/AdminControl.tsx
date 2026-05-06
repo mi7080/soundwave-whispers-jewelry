@@ -492,7 +492,7 @@ const CrmTab = () => {
                     <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || "—"}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#aaa" }}>{o.customer_email}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#888" }}>{o.pet_name}</td>
-                    <td className="px-5 py-3 text-xs capitalize" style={{ color: "#888" }}>{o.workflow_status.replace(/_/g, " ")}</td>
+                    <td className="px-5 py-3 text-xs capitalize" style={{ color: "#888" }}>{o.status.replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-right">
                       <button
                         onClick={() => sendCustomerUpdate(o)}
