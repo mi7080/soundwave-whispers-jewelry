@@ -568,6 +568,15 @@ const AdminOrders = () => {
   );
   const incompleteCount = incompleteInRange.length;
   const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
+  const shineOnErrorOrders = orders.filter(o => o.status === "shineon_error" && (!range || inRange(o.created_at, range)));
+  const filteredShineOnErrors = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return shineOnErrorOrders;
+    return shineOnErrorOrders.filter(o =>
+      [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id]
+        .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
+    );
+  }, [shineOnErrorOrders, search]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
