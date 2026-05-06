@@ -136,12 +136,13 @@ const AdminOrders = () => {
     const q = search.trim().toLowerCase();
     let list = orders;
     if (range) list = list.filter(o => inRange(o.created_at, range));
+    if (statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.status));
     if (!q) return list;
     return list.filter(o =>
       [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id, o.tracking_number]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
-  }, [orders, search, range]);
+  }, [orders, search, range, statusFilter]);
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
