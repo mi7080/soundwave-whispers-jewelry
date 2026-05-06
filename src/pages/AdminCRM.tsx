@@ -284,8 +284,8 @@ const OrdersTable = ({
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={o.fulfillment_status}
-                      onChange={(e) => onStatusChange(o.id, e.target.value as FulfillmentStatus)}
+                      value={o.status}
+                      onChange={(e) => onStatusChange(o.id, e.target.value as OrderStatus)}
                       className={`text-[9px] tracking-[0.2em] uppercase px-2 py-1 rounded-sm border bg-transparent cursor-pointer ${opt.cls}`}
                     >
                       {FULFILLMENT_OPTIONS.map((f) => (
