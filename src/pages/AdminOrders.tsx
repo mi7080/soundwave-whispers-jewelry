@@ -791,24 +791,27 @@ const TabButton = ({ active, onClick, icon, children }: { active: boolean; onCli
   </button>
 );
 
-const StatusPill = ({ status, onChange }: { status: WorkflowStatus; onChange: (s: WorkflowStatus) => void }) => {
-  const opt = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
+const StatusPill = ({ status, onChange }: { status: string; onChange: (s: OrderStatus) => void }) => {
+  const opt = STATUS_OPTIONS.find(o => o.value === status) || { value: status, label: status, tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" };
   return (
     <select
       value={status}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onChange(e.target.value as WorkflowStatus)}
+      onChange={(e) => onChange(e.target.value as OrderStatus)}
       className={`text-[10px] tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-sm border bg-transparent cursor-pointer focus:outline-none ${opt.tone}`}
     >
       {STATUS_OPTIONS.map(o => (
         <option key={o.value} value={o.value} className="bg-background text-foreground">{o.label}</option>
       ))}
+      {!STATUS_OPTIONS.find(o => o.value === status) && (
+        <option value={status} className="bg-background text-foreground">{status}</option>
+      )}
     </select>
   );
 };
 
 const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect }: {
-  orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: WorkflowStatus) => void;
+  orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: OrderStatus) => void;
   isIncomplete: (o: Order) => boolean;
   onSyncIcount: (orderId: string) => Promise<void>;
   onAutoDetect: (orderId: string) => Promise<void>;
