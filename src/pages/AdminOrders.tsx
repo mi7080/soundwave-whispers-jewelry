@@ -420,7 +420,7 @@ const AdminOrders = () => {
       }
       if (data?.shineon_submitted) {
         setOrders(p => p.map(o => o.id === orderId
-          ? { ...o, status: "fulfilled", workflow_status: "sent_to_production" as WorkflowStatus }
+          ? { ...o, status: "fulfilled" }
           : o));
         toast.success("ShineOn retry succeeded — order fulfilled");
       } else {
