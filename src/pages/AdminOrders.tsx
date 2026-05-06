@@ -840,6 +840,77 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
   );
 };
 
+const ShineOnErrorsTable = ({ orders, onSelect, onRetry, retryingId }: {
+  orders: Order[];
+  onSelect: (o: Order) => void;
+  onRetry: (orderId: string) => Promise<void>;
+  retryingId: string | null;
+}) => {
+  if (orders.length === 0) {
+    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No ShineOn errors — all clear</div>;
+  }
+  return (
+    <div className="border-2 border-destructive/40 rounded-sm overflow-hidden bg-destructive/5">
+      <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/30">
+        <p className="text-[11px] tracking-[0.2em] uppercase text-destructive font-medium">
+          {orders.length} order{orders.length === 1 ? "" : "s"} failed ShineOn submission — retry below
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-background/50 border-b border-destructive/20">
+            <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-left px-4 py-3">Docnum</th>
+              <th className="text-left px-4 py-3">Customer</th>
+              <th className="text-left px-4 py-3">Email</th>
+              <th className="text-right px-4 py-3">Amount</th>
+              <th className="text-right px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => (
+              <tr key={o.id} className="border-b border-destructive/20 hover:bg-background/30 border-l-4 border-l-destructive">
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </td>
+                <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || "—"}</td>
+                <td className="px-4 py-3 text-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>{o.customer_name || o.pet_name}</span>
+                    <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/50 text-destructive bg-destructive/10">
+                      ShineOn Error
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
+                <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="inline-flex items-center gap-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onRetry(o.id); }}
+                      disabled={retryingId === o.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    >
+                      {retryingId === o.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <RotateCw className="w-3 h-3" />}
+                      Retry ShineOn
+                    </button>
+                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                      <Eye className="w-3 h-3" /> View
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 const LeadsTable = ({ leads }: { leads: Lead[] }) => {
   if (leads.length === 0) {
     return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No leads found</div>;
