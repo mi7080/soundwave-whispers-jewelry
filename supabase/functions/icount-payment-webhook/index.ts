@@ -129,7 +129,7 @@ serve(async (req) => {
 
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name")
+      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
