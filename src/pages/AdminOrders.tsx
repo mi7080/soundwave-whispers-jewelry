@@ -80,6 +80,7 @@ const AdminOrders = () => {
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string[]>(["paid", "shineon_error"]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
