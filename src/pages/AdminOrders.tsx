@@ -637,6 +637,15 @@ const AdminOrders = () => {
           </TabButton>
         </div>
 
+        {/* Status filter (Orders tab only) */}
+        {tab === "orders" && (
+          <StatusFilterBar
+            orders={orders.filter(o => !range || inRange(o.created_at, range))}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+          />
+        )}
+
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row gap-3 mb-5">
           <div className="relative flex-1">
