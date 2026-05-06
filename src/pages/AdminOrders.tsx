@@ -181,7 +181,7 @@ const AdminOrders = () => {
     const updates = {
       tracking_number: tracking || null,
       tracking_updated_at: tracking ? now : null,
-      ...(tracking ? { workflow_status: "shipped" as const } : {}),
+      ...(tracking ? { status: "shipped" as const } : {}),
     };
     const { error } = await supabase
       .from("animus_orders")
