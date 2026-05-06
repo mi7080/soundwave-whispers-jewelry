@@ -678,6 +678,13 @@ const AdminOrders = () => {
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
           <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateWorkflowStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
+        ) : tab === "errors" ? (
+          <ShineOnErrorsTable
+            orders={filteredShineOnErrors}
+            onSelect={setSelected}
+            onRetry={retryShineOn}
+            retryingId={retrying}
+          />
         ) : (
           <LeadsTable leads={filteredLeads} />
         )}
