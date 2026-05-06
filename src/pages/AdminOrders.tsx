@@ -554,10 +554,10 @@ const AdminOrders = () => {
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("animus_orders")
-      .update({ workflow_status: "sent_to_production", exported_at: now })
+      .update({ status: "fulfilled", exported_at: now })
       .in("id", ids);
     if (error) { toast.error("CSV downloaded but DB update failed"); return; }
-    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, workflow_status: "sent_to_production", exported_at: now } : o));
+    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: "fulfilled", exported_at: now } : o));
     toast.success(`Exported ${batch.length} orders — ShineOn production file ready`);
   };
 
