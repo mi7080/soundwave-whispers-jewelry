@@ -80,7 +80,7 @@ const AdminCRM = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [ordersRes, leadsRes] = await Promise.all([
-      supabase.from("animus_orders").select("id, pet_name, customer_name, customer_email, amount, fulfillment_status, soul_page_url, created_at").order("created_at", { ascending: false }),
+      supabase.from("animus_orders").select("id, pet_name, customer_name, customer_email, amount, status, soul_page_url, created_at").order("created_at", { ascending: false }),
       supabase.from("waitlist_leads").select("id, email, status, status_updated_at, created_at").order("created_at", { ascending: false }),
     ]);
     if (ordersRes.error) toast.error("Failed to load orders");
