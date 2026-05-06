@@ -718,6 +718,54 @@ const AdminOrders = () => {
 
 // ─── Subcomponents ──────────────────────────────────────────────────
 
+const STATUS_FILTER_OPTIONS: { value: string; label: string; tone: string }[] = [
+  { value: "payment_pending", label: "Payment Pending", tone: "border-zinc-500/40 text-zinc-300 hover:bg-zinc-500/10" },
+  { value: "paid", label: "Paid", tone: "border-amber-500/40 text-amber-300 hover:bg-amber-500/10" },
+  { value: "shineon_error", label: "ShineOn Error", tone: "border-destructive/50 text-destructive hover:bg-destructive/10" },
+  { value: "fulfilled", label: "Fulfilled", tone: "border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10" },
+  { value: "payment_failed", label: "Payment Failed", tone: "border-red-500/40 text-red-300 hover:bg-red-500/10" },
+];
+
+const StatusFilterBar = ({ orders, selected, onChange }: {
+  orders: Order[]; selected: string[]; onChange: (s: string[]) => void;
+}) => {
+  const counts: Record<string, number> = {};
+  for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
+  const allActive = selected.length === 0;
+  const toggle = (value: string) => {
+    if (selected.includes(value)) onChange(selected.filter(v => v !== value));
+    else onChange([...selected, value]);
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <button
+        onClick={() => onChange([])}
+        className={`text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm border transition-colors ${
+          allActive ? "border-gold text-gold bg-gold/5" : "border-border/50 text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        All <span className="opacity-60 ml-1">({orders.length})</span>
+      </button>
+      {STATUS_FILTER_OPTIONS.map(opt => {
+        const active = selected.includes(opt.value);
+        const count = counts[opt.value] || 0;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            className={`text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm border transition-colors ${opt.tone} ${
+              active ? "bg-foreground/5 ring-1 ring-gold/40" : "opacity-70"
+            }`}
+          >
+            {opt.label} <span className="opacity-70 ml-1">({count})</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+
 const StatCard = ({ label, value, accent }: { label: string; value: number; accent?: "gold" | "emerald" }) => (
   <div className="border border-border/30 rounded-sm p-4 bg-card">
     <p className={`text-2xl font-serif ${accent === "gold" ? "text-gold" : accent === "emerald" ? "text-emerald-400" : "text-foreground"}`}>{value}</p>
