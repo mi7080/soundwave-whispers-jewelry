@@ -611,6 +611,16 @@ const AdminOrders = () => {
           <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<Package className="w-3.5 h-3.5" />}>
             Orders <span className="opacity-60">({orders.length})</span>
           </TabButton>
+          <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<Package className="w-3.5 h-3.5" />}>
+            ShineOn Errors{" "}
+            {shineOnErrorOrders.length > 0 ? (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
+                {shineOnErrorOrders.length}
+              </span>
+            ) : (
+              <span className="opacity-60">(0)</span>
+            )}
+          </TabButton>
           <TabButton active={tab === "leads"} onClick={() => setTab("leads")} icon={<Users className="w-3.5 h-3.5" />}>
             Leads <span className="opacity-60">({leads.length})</span>
           </TabButton>
