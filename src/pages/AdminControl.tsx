@@ -365,7 +365,7 @@ const CrmTab = () => {
     const load = async () => {
       const [leadsRes, ordersRes] = await Promise.all([
         supabase.from("waitlist_leads").select("*").order("created_at", { ascending: false }),
-        supabase.from("animus_orders").select("id,amount,created_at,workflow_status,customer_email,customer_name,pet_name")
+        supabase.from("animus_orders").select("id,amount,created_at,status,customer_email,customer_name,pet_name")
           .not("customer_email", "is", null).order("created_at", { ascending: false }),
       ]);
       if (leadsRes.data) setLeads(leadsRes.data as LeadSummary[]);
