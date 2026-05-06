@@ -78,7 +78,8 @@ const AdminOrders = () => {
   const range = dr?.range;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [tab, setTab] = useState<"orders" | "leads">("orders");
+  const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
