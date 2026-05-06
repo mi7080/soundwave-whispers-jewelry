@@ -370,6 +370,58 @@ const AdminOrders = () => {
     toast.success("Docnum saved — you can now sync from iCount");
   };
 
+  const retryShineOn = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    setRetrying(orderId);
+    try {
+      // Reset status away from finalized so webhook will reprocess
+      const { error: resetErr } = await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", orderId);
+      if (resetErr) throw new Error(resetErr.message);
+
+      const body = {
+        order_id: orderId,
+        status: "paid",
+        amount: order.amount,
+        client_email: order.customer_email,
+        client_name: order.customer_name,
+        phone: order.customer_phone,
+        address: order.shipping_address1,
+        address2: order.shipping_address2,
+        city: order.shipping_city,
+        state: order.shipping_state,
+        zip: order.shipping_zip,
+        country_code: order.shipping_country_code,
+        docnum: order.icount_docnum,
+      };
+
+      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", { body });
+      if (error) throw new Error(error.message);
+      if (data?.shineon_error) {
+        toast.error(`ShineOn retry failed: ${String(data.body || "").slice(0, 200)}`);
+        // restore shineon_error status
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", orderId);
+        setOrders(p => p.map(o => o.id === orderId ? { ...o, status: "shineon_error" } : o));
+        return;
+      }
+      if (data?.shineon_submitted) {
+        setOrders(p => p.map(o => o.id === orderId
+          ? { ...o, status: "fulfilled", workflow_status: "sent_to_production" as WorkflowStatus }
+          : o));
+        toast.success("ShineOn retry succeeded — order fulfilled");
+      } else {
+        toast.warning(`Retry result: ${data?.reason || "no submission"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Retry failed: ${e?.message || "unknown"}`);
+    } finally {
+      setRetrying(null);
+    }
+  };
+
   const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
