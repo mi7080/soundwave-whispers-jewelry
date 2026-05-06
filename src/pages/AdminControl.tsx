@@ -177,7 +177,7 @@ const FinanceTab = () => {
   useEffect(() => {
     const load = async () => {
       const [ordersRes, costsRes] = await Promise.all([
-        supabase.from("animus_orders").select("id,amount,created_at,workflow_status,customer_email,customer_name,pet_name").order("created_at", { ascending: false }),
+        supabase.from("animus_orders").select("id,amount,created_at,status,customer_email,customer_name,pet_name").order("created_at", { ascending: false }),
         supabase.from("cost_settings").select("*").eq("id", 1).maybeSingle(),
       ]);
       if (ordersRes.data) setOrders(ordersRes.data as OrderSummary[]);
