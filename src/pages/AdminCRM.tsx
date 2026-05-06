@@ -270,7 +270,7 @@ const OrdersTable = ({
           </thead>
           <tbody>
             {orders.map((o) => {
-              const opt = FULFILLMENT_OPTIONS.find((f) => f.value === o.fulfillment_status) ?? FULFILLMENT_OPTIONS[0];
+              const opt = FULFILLMENT_OPTIONS.find((f) => f.value === o.status) ?? FULFILLMENT_OPTIONS[0];
               return (
                 <tr key={o.id} className="border-b border-border/20 hover:bg-background/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{o.customer_name || "—"}</td>
