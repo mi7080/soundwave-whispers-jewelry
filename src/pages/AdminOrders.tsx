@@ -620,7 +620,7 @@ const AdminOrders = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard label="Total Orders" value={orders.length} />
           <StatCard label="Paid (Pending)" value={paidPending} accent="gold" />
-          <StatCard label="Shipped" value={orders.filter(o => o.workflow_status === "shipped").length} accent="emerald" />
+          <StatCard label="Fulfilled" value={orders.filter(o => o.status === "fulfilled" || o.status === "shipped").length} accent="emerald" />
           <StatCard label="Waitlist Leads" value={leads.length} />
         </div>
 
