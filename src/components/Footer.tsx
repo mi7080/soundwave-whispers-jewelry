@@ -11,7 +11,7 @@ const Footer = () => {
             <p className="text-muted-foreground text-sm font-light leading-relaxed">
               Luxury soundwave keepsakes that capture life's most meaningful moments — for loved ones, memories, and bonds that matter.
             </p>
-            <p className="text-muted-foreground/50 text-[10px] font-light leading-relaxed mt-2">
+            <p className="text-muted-foreground/80 text-[10px] font-light leading-relaxed mt-2">
               Custom items are non-refundable. Replacements provided for defects or unscannable QR codes.
             </p>
           </div>
@@ -44,7 +44,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border/30 pt-8 text-center">
-          <p className="text-muted-foreground/50 text-xs">
+          <p className="text-muted-foreground text-xs">
             © {new Date().getFullYear()} ANIMUS Memory Pendants. All rights reserved.
           </p>
         </div>

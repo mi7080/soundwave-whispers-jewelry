@@ -1,0 +1,18 @@
+# ANIMUS
+
+> Luxury memorial soundwave pendants. Turn a voice, heartbeat, or song into a laser-engraved dog-tag pendant with a scannable QR Soul Page that plays the original audio forever.
+
+ANIMUS pendants are made in 316L stainless steel or 14K gold finish, custom-engraved with a personal soundwave on the front and a unique QR code on the back. Each pendant links to a private Soul Page hosted by ANIMUS.
+
+## Pages
+
+- [Home](/): Brand intro, the soundwave-to-pendant story, and pre-order access.
+- [Store](/early-access-store): Product details, materials, gallery, and checkout.
+- [FAQ](/faq): How the QR code works, materials, shipping, and care.
+- [Shipping Policy](/shipping): US shipping times and carriers.
+- [Refund Policy](/refund): Custom-product return and replacement terms.
+- [Terms of Service](/terms): Order and usage agreement.
+- [Forever Memory Guarantee](/guarantee): Lifetime audio hosting promise.
+- [Care Instructions](/care): How to clean and store the pendant.
+- [Contact](/contact): Support email and hours.
+- [Track Your Order](/track): How to track a shipped order.

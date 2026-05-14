@@ -38,6 +38,7 @@ const HeroSection = () => {
               alt="ANIMUS Memory Pendant with soundwave and QR code engraving"
               width={1024}
               height={1024}
+              fetchPriority="high"
               className="w-full rounded-sm shadow-2xl"
             />
           </div>

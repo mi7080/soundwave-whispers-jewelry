@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import Footer from "@/components/Footer";
 
 const policies: Record<string, { title: string; subtitle: string; content: string[] }> = {
@@ -90,8 +91,20 @@ const PolicyPage = () => {
     );
   }
 
+  const pageTitle = `${page.title} — ANIMUS`;
+  const pageDesc = page.content[0]?.slice(0, 155) ?? page.subtitle;
+  const canonical = `https://animuswave.com/${slug}`;
+
   return (
     <main className="min-h-screen bg-background pt-20">
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDesc} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={canonical} />
+      </Helmet>
       <div className="container mx-auto px-6 py-16">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-gold transition-colors mb-12">
           <ArrowLeft className="w-4 h-4" />

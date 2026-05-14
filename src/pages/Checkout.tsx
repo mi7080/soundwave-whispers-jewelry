@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, Lock } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { PRODUCT_CONFIG } from "@/config/product";
 import logo from "@/assets/logo.png";
@@ -318,6 +319,15 @@ const Checkout = () => {
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
+      <Helmet>
+        <title>Secure Checkout — ANIMUS Pendant</title>
+        <meta name="description" content="Complete your ANIMUS Memorial Pendant order. Encrypted payment, free US shipping, and a custom QR Soul Page." />
+        <meta name="robots" content="noindex" />
+        <link rel="canonical" href="https://animuswave.com/checkout" />
+        <meta property="og:title" content="Secure Checkout — ANIMUS Pendant" />
+        <meta property="og:description" content="Complete your ANIMUS Memorial Pendant order securely." />
+        <meta property="og:url" content="https://animuswave.com/checkout" />
+      </Helmet>
       <nav className="w-full py-6 px-6 border-b border-border/30">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button
