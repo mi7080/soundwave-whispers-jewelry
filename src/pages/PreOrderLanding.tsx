@@ -117,6 +117,14 @@ const PreOrderLanding = () => {
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
+      <Helmet>
+        <title>ANIMUS — Memorial Soundwave Pendant</title>
+        <meta name="description" content="Join the ANIMUS waiting list for a luxury memorial soundwave pendant with a scannable QR Soul Page that plays your audio forever." />
+        <link rel="canonical" href="https://animuswave.com/" />
+        <meta property="og:title" content="ANIMUS — Memorial Soundwave Pendant" />
+        <meta property="og:description" content="Join the waiting list for a luxury memorial soundwave pendant with a scannable QR Soul Page." />
+        <meta property="og:url" content="https://animuswave.com/" />
+      </Helmet>
       {/* Nav */}
       <nav className="w-full py-6 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-center">
