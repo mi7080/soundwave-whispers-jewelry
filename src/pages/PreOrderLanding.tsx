@@ -185,6 +185,7 @@ const PreOrderLanding = () => {
               alt="ANIMUS Memory Pendant with engraved soundwave and QR code"
               width={1024}
               height={1024}
+              fetchPriority="high"
               className="w-full h-auto object-cover"
             />
           </div>
