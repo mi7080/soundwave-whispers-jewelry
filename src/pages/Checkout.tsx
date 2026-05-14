@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, Lock } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { PRODUCT_CONFIG } from "@/config/product";
 import logo from "@/assets/logo.png";
