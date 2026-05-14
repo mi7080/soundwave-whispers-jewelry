@@ -44,7 +44,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border/30 pt-8 text-center">
-          <p className="text-muted-foreground/50 text-xs">
+          <p className="text-muted-foreground text-xs">
             © {new Date().getFullYear()} ANIMUS Memory Pendants. All rights reserved.
           </p>
         </div>
