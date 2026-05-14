@@ -45,8 +45,26 @@ const faqs = [
 ];
 
 const FAQ = () => {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
   return (
     <main className="min-h-screen bg-background pt-20">
+      <Helmet>
+        <title>ANIMUS FAQ — Soundwave Pendant Questions</title>
+        <meta name="description" content="Answers about ANIMUS soundwave pendants: how the QR code works, materials, water resistance, audio quality, and shipping." />
+        <link rel="canonical" href="https://animuswave.com/faq" />
+        <meta property="og:title" content="ANIMUS FAQ — Soundwave Pendant Questions" />
+        <meta property="og:description" content="Answers about ANIMUS pendants: QR playback, materials, water resistance, and shipping." />
+        <meta property="og:url" content="https://animuswave.com/faq" />
+        <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
+      </Helmet>
       <div className="container mx-auto px-6 py-16">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-gold transition-colors mb-12">
           <ArrowLeft className="w-4 h-4" />
