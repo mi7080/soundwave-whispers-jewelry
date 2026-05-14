@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import Footer from "@/components/Footer";
 
 const policies: Record<string, { title: string; subtitle: string; content: string[] }> = {
