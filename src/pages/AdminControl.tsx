@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Loader2, ArrowLeft, LogOut, RefreshCw, Package, Users, DollarSign,
   Settings as SettingsIcon, TrendingUp, TrendingDown, AlertTriangle, Save,
-  Mail, Send, Sparkles,
+  Mail, Send, Sparkles, Image as ImageIcon, RotateCw, Zap, AlertOctagon,
 } from "lucide-react";
 import AdminOrders from "./AdminOrders";
 import { DateRangeProvider, useDateRange, inRange } from "@/components/admin/DateRangeContext";
@@ -40,7 +40,22 @@ interface LeadSummary {
   created_at: string;
 }
 
-type TabKey = "dashboard" | "finance" | "crm" | "settings";
+interface RecoveryOrder {
+  id: string;
+  created_at: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  amount: number | null;
+  status: string;
+  print_image_url: string | null;
+  icount_docnum: string | null;
+  shipping_address1: string | null;
+  shipping_city: string | null;
+  shipping_country_code: string | null;
+}
+
+type TabKey = "dashboard" | "finance" | "crm" | "recovery" | "settings";
 
 const AdminControl = () => {
   const navigate = useNavigate();
@@ -125,6 +140,7 @@ const AdminControl = () => {
               <CmdTab active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<Package className="w-3.5 h-3.5" />}>Orders</CmdTab>
               <CmdTab active={tab === "finance"} onClick={() => setTab("finance")} icon={<DollarSign className="w-3.5 h-3.5" />}>Finance</CmdTab>
               <CmdTab active={tab === "crm"} onClick={() => setTab("crm")} icon={<Users className="w-3.5 h-3.5" />}>CRM</CmdTab>
+              <CmdTab active={tab === "recovery"} onClick={() => setTab("recovery")} icon={<AlertOctagon className="w-3.5 h-3.5" />}>Recovery</CmdTab>
               <CmdTab active={tab === "settings"} onClick={() => setTab("settings")} icon={<SettingsIcon className="w-3.5 h-3.5" />}>Settings</CmdTab>
             </nav>
           </div>
@@ -134,6 +150,7 @@ const AdminControl = () => {
           {tab === "dashboard" && <DashboardTab />}
           {tab === "finance" && <FinanceTab />}
           {tab === "crm" && <CrmTab />}
+          {tab === "recovery" && <RecoveryTab />}
           {tab === "settings" && <SettingsTab />}
         </main>
       </div>
@@ -531,6 +548,269 @@ const CrmToggle = ({ active, onClick, children }: { active: boolean; onClick: ()
     {children}
   </button>
 );
+
+// ─── Recovery Tab ───────────────────────────────────────────────────
+const RecoveryTab = () => {
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<RecoveryOrder[]>([]);
+  const [working, setWorking] = useState<Record<string, string | null>>({});
+
+  const setTask = (id: string, task: string | null) =>
+    setWorking(w => ({ ...w, [id]: task }));
+
+  const fetchRecovery = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("animus_orders")
+      .select("id,created_at,customer_name,customer_email,customer_phone,amount,status,print_image_url,icount_docnum,shipping_address1,shipping_city,shipping_country_code")
+      .or("status.eq.shineon_error,and(status.eq.paid,print_image_url.is.null)")
+      .order("created_at", { ascending: false });
+    if (data) setOrders(data as RecoveryOrder[]);
+    if (error) toast.error("Failed to load recovery orders");
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchRecovery(); }, []);
+
+  const handleRenderPng = async (orderId: string) => {
+    setTask(orderId, "render");
+    try {
+      const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId } });
+      if (error || !data?.success) throw new Error(error?.message || data?.error || "Render failed");
+      setOrders(p => p.map(o => o.id === orderId ? { ...o, print_image_url: data.print_image_url } : o));
+      toast.success("PNG rendered — now click Retry ShineOn to submit");
+    } catch (e: any) {
+      toast.error(`Render failed: ${e?.message}`);
+    } finally {
+      setTask(orderId, null);
+    }
+  };
+
+  const handleRetryShineOn = async (order: RecoveryOrder) => {
+    setTask(order.id, "shineon");
+    try {
+      const { error: resetErr } = await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", order.id);
+      if (resetErr) throw new Error(resetErr.message);
+
+      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", {
+        body: {
+          order_id: order.id,
+          status: "paid",
+          amount: order.amount,
+          client_email: order.customer_email,
+          client_name: order.customer_name,
+          docnum: order.icount_docnum,
+        },
+      });
+      if (error) throw new Error(error.message);
+
+      if (data?.shineon_submitted) {
+        setOrders(p => p.filter(o => o.id !== order.id));
+        toast.success("Order submitted to ShineOn — fulfilled");
+      } else if (data?.shineon_error) {
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
+        setOrders(p => p.map(o => o.id === order.id ? { ...o, status: "shineon_error" } : o));
+        toast.error(`ShineOn rejected the order: ${String(data.body || "").slice(0, 200)}`);
+      } else {
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
+        toast.warning(`ShineOn result: ${data?.reason || "no submission"}`);
+      }
+    } catch (e: any) {
+      toast.error(`ShineOn retry failed: ${e?.message}`);
+    } finally {
+      setTask(order.id, null);
+    }
+  };
+
+  const handleRenderAndSubmit = async (order: RecoveryOrder) => {
+    setTask(order.id, "both");
+    try {
+      let printUrl = order.print_image_url;
+      if (!printUrl) {
+        toast.info("Step 1/2 — Rendering engraving PNG…");
+        const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId: order.id } });
+        if (error || !data?.success) throw new Error(`PNG render failed: ${error?.message || data?.error}`);
+        printUrl = data.print_image_url;
+        setOrders(p => p.map(o => o.id === order.id ? { ...o, print_image_url: printUrl } : o));
+      }
+      toast.info("Step 2/2 — Submitting to ShineOn…");
+      const { error: resetErr } = await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", order.id);
+      if (resetErr) throw new Error(resetErr.message);
+
+      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", {
+        body: {
+          order_id: order.id,
+          status: "paid",
+          amount: order.amount,
+          client_email: order.customer_email,
+          client_name: order.customer_name,
+          docnum: order.icount_docnum,
+        },
+      });
+      if (error) throw new Error(error.message);
+
+      if (data?.shineon_submitted) {
+        setOrders(p => p.filter(o => o.id !== order.id));
+        toast.success("Render + Submit complete — order fulfilled");
+      } else if (data?.shineon_error) {
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
+        setOrders(p => p.map(o => o.id === order.id ? { ...o, status: "shineon_error" } : o));
+        toast.error(`ShineOn rejected the order: ${String(data.body || "").slice(0, 200)}`);
+      } else {
+        toast.warning(`ShineOn result: ${data?.reason || "unknown"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Render + Submit failed: ${e?.message}`);
+    } finally {
+      setTask(order.id, null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-6 py-20 flex justify-center">
+        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-6 py-10 max-w-7xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Recovery Station</h2>
+          <p className="text-xs mt-1" style={{ color: "#888" }}>
+            Orders with ShineOn errors or missing print PNG — use the panic buttons to recover
+          </p>
+        </div>
+        <button
+          onClick={fetchRecovery}
+          className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border transition-all"
+          style={{ borderColor: "rgba(255,255,255,0.1)", color: "#999" }}
+        >
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="rounded-sm border py-20 text-center text-sm" style={{ borderColor: "rgba(212,175,55,0.15)", color: "#888" }}>
+          All clear — no orders need recovery
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map(o => {
+            const busy = !!working[o.id];
+            const task = working[o.id];
+            const needsPng = !o.print_image_url;
+            const isShineOnError = o.status === "shineon_error";
+            return (
+              <div
+                key={o.id}
+                className="rounded-sm border p-5"
+                style={{
+                  backgroundColor: "#111",
+                  borderColor: isShineOnError ? "rgba(220,38,38,0.4)" : "rgba(212,175,55,0.25)",
+                }}
+              >
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  {/* PNG thumbnail */}
+                  <div className="shrink-0">
+                    {o.print_image_url ? (
+                      <a href={o.print_image_url} target="_blank" rel="noopener noreferrer" title="View full PNG">
+                        <img
+                          src={o.print_image_url}
+                          alt="Engraving PNG"
+                          className="w-16 h-16 object-cover rounded-sm border"
+                          style={{ borderColor: "rgba(212,175,55,0.25)" }}
+                        />
+                      </a>
+                    ) : (
+                      <div
+                        className="w-16 h-16 rounded-sm border flex items-center justify-center"
+                        style={{ borderColor: "rgba(220,38,38,0.35)", backgroundColor: "rgba(220,38,38,0.05)" }}
+                        title="No PNG — render required"
+                      >
+                        <ImageIcon className="w-5 h-5" style={{ color: "#dc2626" }} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Order info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium" style={{ color: "#F5F5F0" }}>
+                        {o.customer_name || "Unknown Customer"}
+                      </span>
+                      <span
+                        className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border"
+                        style={isShineOnError
+                          ? { borderColor: "rgba(220,38,38,0.5)", color: "#dc2626", backgroundColor: "rgba(220,38,38,0.1)" }
+                          : { borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37", backgroundColor: "rgba(212,175,55,0.07)" }
+                        }
+                      >
+                        {isShineOnError ? "ShineOn Error" : "Missing PNG"}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: "#888" }}>
+                      {o.customer_email || "—"} · {o.amount ? `$${o.amount}` : "—"}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#666" }}>
+                      {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {o.icount_docnum ? ` · #${o.icount_docnum}` : " · No docnum"}
+                    </p>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2 items-start shrink-0">
+                    {/* Primary panic button */}
+                    <button
+                      onClick={() => handleRenderAndSubmit(o)}
+                      disabled={busy}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 text-[10px] tracking-[0.2em] uppercase font-medium transition-all disabled:opacity-50"
+                      style={{ backgroundColor: "#D4AF37", color: "#0A0A0A" }}
+                    >
+                      {task === "both" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                      {task === "both" ? "Processing…" : "Render + Submit"}
+                    </button>
+
+                    {needsPng && (
+                      <button
+                        onClick={() => handleRenderPng(o.id)}
+                        disabled={busy}
+                        className="inline-flex items-center gap-1.5 px-3 py-2.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
+                        style={{ borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37" }}
+                      >
+                        {task === "render" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
+                        Render PNG
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleRetryShineOn(o)}
+                      disabled={busy || needsPng}
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
+                      style={{ borderColor: "rgba(220,38,38,0.4)", color: "#dc2626" }}
+                      title={needsPng ? "Render PNG first before retrying ShineOn" : "Retry ShineOn submission"}
+                    >
+                      {task === "shineon" ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+                      Retry ShineOn
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── Settings Tab ───────────────────────────────────────────────────
 const SettingsTab = () => {

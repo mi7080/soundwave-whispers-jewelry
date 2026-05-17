@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, MicOff, Upload, Play, Pause, X, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AudioRecorderProps {
   onAudioUrl?: (url: string) => void;
@@ -15,13 +16,13 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialUrl || null);
   const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [liveBarData, setLiveBarData] = useState<number[]>(() => Array.from({ length: 64 }, () => 0.08));
   const [recordingTime, setRecordingTime] = useState(0);
   const [fileName, setFileName] = useState<string | null>(initialUrl ? "Previously uploaded sound" : null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -34,6 +35,18 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
       if (audioContextRef.current) audioContextRef.current.close();
     };
   }, []);
+
+  // Animate placeholder bars while recording
+  useEffect(() => {
+    if (!isRecording) {
+      setLiveBarData(Array.from({ length: 64 }, () => 0.08));
+      return;
+    }
+    const id = setInterval(() => {
+      setLiveBarData(Array.from({ length: 64 }, () => Math.random() * 0.85 + 0.1));
+    }, 80);
+    return () => clearInterval(id);
+  }, [isRecording]);
 
   useEffect(() => {
     if (!initialUrl) return;
@@ -93,7 +106,7 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
     } catch {
-      alert("Please allow microphone access to record audio.");
+      toast.error("Please allow microphone access to record audio.");
     }
   };
 
@@ -161,7 +174,7 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
       }
     } catch (err) {
       console.error(err);
-      alert("Upload failed. Please try again.");
+      toast.error("Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -187,18 +200,16 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
                   }}
                 />
               ))
-            : Array.from({ length: 64 }).map((_, i) => (
+            : liveBarData.map((v, i) => (
                 <div
                   key={i}
-                  className={`rounded-full transition-all duration-300 ${
+                  className={`rounded-full transition-all duration-75 ${
                     isRecording
-                      ? "bg-red-500/60 animate-pulse"
+                      ? "bg-gradient-to-t from-red-700 via-red-500 to-red-300"
                       : "bg-muted-foreground/20"
                   }`}
                   style={{
-                    height: isRecording
-                      ? `${Math.random() * 80 + 10}%`
-                      : "8%",
+                    height: `${v * 100}%`,
                     width: "3px",
                   }}
                 />
@@ -208,17 +219,18 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
         {/* Status */}
         <div className="text-center mt-4">
           {isRecording && (
-            <p className="text-sm text-red-400 font-sans tracking-wide animate-pulse">
-              ● Recording — {formatTime(recordingTime)}
+            <p className="text-sm text-red-400 font-sans tracking-[0.15em] flex items-center justify-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Recording — {formatTime(recordingTime)}
             </p>
           )}
           {!isRecording && !audioUrl && (
-            <p className="text-xs text-muted-foreground/50 tracking-wide">
+            <p className="text-xs text-muted-foreground/50 tracking-widest uppercase font-sans">
               Record or upload a meaningful sound
             </p>
           )}
           {fileName && !isRecording && (
-            <p className="text-xs text-muted-foreground tracking-wide">
+            <p className="text-xs text-muted-foreground/70 tracking-wide font-sans truncate max-w-[240px] mx-auto">
               {fileName}
             </p>
           )}
@@ -281,23 +293,32 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
 
       {/* Upload to Supabase */}
       {audioUrl && !uploadedUrl && (
-        <button
-          onClick={uploadToSupabase}
-          disabled={isUploading}
-          className="w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Uploading Your Soul Sound…
-            </>
-          ) : (
-            <>
-              <Upload className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-              Upload Your Soul Sound
-            </>
+        <div className="space-y-2">
+          <button
+            onClick={uploadToSupabase}
+            disabled={isUploading}
+            className="w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preserving Your Sound…
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
+                Save This Sound
+              </>
+            )}
+            {/* shimmer sweep on hover */}
+            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          </button>
+          {isUploading && (
+            <p className="text-[10px] text-gold/70 text-center tracking-[0.2em] uppercase font-sans animate-pulse">
+              Encoding your memory into the pendant…
+            </p>
           )}
-        </button>
+        </div>
       )}
 
       {/* Success */}
@@ -313,8 +334,6 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
       )}
 
       {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
-
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 };

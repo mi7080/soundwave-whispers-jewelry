@@ -1,3 +1,7 @@
+// VideoUpload — video-to-audio extractor for the Soul Page customizer.
+// STATUS: Complete but not yet wired into ProductSection.
+// To integrate: import and render inside the "Upload Audio" step of ProductSection.tsx,
+// passing preOrderId as orderId, handleAudioUrl as onAudioUrl, and setWaveformData as onWaveform.
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2, Scissors, Video as VideoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,10 +25,17 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(MAX_CLIP_SEC);
   const [busy, setBusy] = useState(false);
-  const [busyMsg, setBusyMsg] = useState("");
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [processStage, setProcessStage] = useState(0); // 0=idle 1=video 2=extract 3=waveform 4=audio
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const STAGES = [
+    { label: "Upload Video" },
+    { label: "Extract Audio" },
+    { label: "Build Waveform" },
+    { label: "Save Sound" },
+  ];
 
   useEffect(() => {
     return () => {
@@ -70,9 +81,11 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
     if (!videoFile) return;
     setBusy(true);
     setProgress(0);
+    setProcessStage(0);
     try {
-      // 1. Upload full video to soul_videos
-      setBusyMsg("Uploading video…");
+      // Stage 1 — Upload full video to soul_videos (0 → 20%)
+      setProcessStage(1);
+      setProgress(0.05);
       const ext = (videoFile.name.split(".").pop() || "mp4").toLowerCase();
       const videoPath = `${orderId}/${Date.now()}.${ext}`;
       const { error: vidErr } = await supabase.storage
@@ -84,18 +97,24 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
       if (vidErr) throw new Error(`Video upload failed: ${vidErr.message}`);
       const { data: vidUrl } = supabase.storage.from("soul_videos").getPublicUrl(videoPath);
       onVideoUrl(vidUrl.publicUrl);
+      setProgress(0.2);
 
-      // 2. Extract audio segment
-      setBusyMsg("Extracting audio segment…");
-      const audioBlob = await extractAudioSegment(videoFile, start, end, (p) => setProgress(p));
+      // Stage 2 — Extract audio segment (20 → 70%)
+      setProcessStage(2);
+      const audioBlob = await extractAudioSegment(videoFile, start, end, (p) =>
+        setProgress(0.2 + p * 0.5)
+      );
+      setProgress(0.7);
 
-      // 3. Build waveform
-      setBusyMsg("Building waveform…");
+      // Stage 3 — Build waveform (70 → 85%)
+      setProcessStage(3);
+      setProgress(0.75);
       const wf = await blobToWaveform(audioBlob, 64);
       onWaveform(wf);
+      setProgress(0.85);
 
-      // 4. Upload audio to soul_assets
-      setBusyMsg("Uploading audio…");
+      // Stage 4 — Upload audio to soul_assets (85 → 100%)
+      setProcessStage(4);
       const audioPath = `${orderId}/audio-${Date.now()}.mp3`;
       const { error: audErr } = await supabase.storage
         .from("soul_assets")
@@ -103,15 +122,16 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
       if (audErr) throw new Error(`Audio upload failed: ${audErr.message}`);
       const { data: audUrl } = supabase.storage.from("soul_assets").getPublicUrl(audioPath);
       onAudioUrl(audUrl.publicUrl);
+      setProgress(1);
 
       setDone(true);
-      toast.success("Video processed and audio extracted!");
+      toast.success("Memory preserved — audio extracted successfully.");
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to process video");
     } finally {
       setBusy(false);
-      setBusyMsg("");
+      setProcessStage(0);
       setProgress(0);
     }
   }, [videoFile, start, end, orderId, onAudioUrl, onVideoUrl, onWaveform]);
@@ -203,11 +223,50 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
       )}
 
       {busy && (
-        <div className="space-y-1">
-          <p className="text-[10px] text-gold font-sans">{busyMsg} {progress > 0 ? `${Math.round(progress * 100)}%` : ""}</p>
-          <div className="h-1 bg-border/30 rounded-full overflow-hidden">
-            <div className="h-full bg-gold transition-all" style={{ width: `${progress * 100}%` }} />
+        <div className="space-y-3 pt-1">
+          {/* Stage dots */}
+          <div className="flex items-center gap-1">
+            {STAGES.map((s, i) => {
+              const stageNum = i + 1;
+              const isDone = processStage > stageNum;
+              const isActive = processStage === stageNum;
+              return (
+                <div key={s.label} className="flex-1 flex flex-col items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      isDone
+                        ? "bg-gold"
+                        : isActive
+                        ? "bg-gold animate-pulse scale-125"
+                        : "bg-border/40"
+                    }`}
+                  />
+                  <span
+                    className={`text-[9px] tracking-[0.15em] uppercase font-sans transition-colors duration-300 ${
+                      isDone ? "text-gold/70" : isActive ? "text-gold" : "text-muted-foreground/30"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+          {/* Shimmer progress bar */}
+          <div className="h-1 bg-border/30 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full relative overflow-hidden transition-all duration-500"
+              style={{
+                width: `${Math.round(progress * 100)}%`,
+                background: "linear-gradient(90deg, #b78e48 0%, #d4a849 50%, #f0d68a 100%)",
+              }}
+            >
+              <span className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            </div>
+          </div>
+          <p className="text-[10px] text-gold/80 text-center font-sans tracking-[0.15em]">
+            {Math.round(progress * 100)}% complete
+          </p>
         </div>
       )}
 

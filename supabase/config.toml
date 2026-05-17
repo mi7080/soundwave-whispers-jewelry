@@ -17,3 +17,5 @@ project_id = "gcqmkltyifgtuizencka"
     verify_jwt = false
   [functions.icount-payment-webhook]
     verify_jwt = false
+  [functions.generate-soul-waveform]
+    verify_jwt = false

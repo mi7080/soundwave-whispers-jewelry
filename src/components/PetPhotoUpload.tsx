@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, X, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface PetPhotoUploadProps {
   onPhotoUrl?: (url: string) => void;
@@ -54,7 +55,7 @@ const PetPhotoUpload = ({ onPhotoUrl, initialUrl }: PetPhotoUploadProps) => {
       }
     } catch (err) {
       console.error(err);
-      alert("Photo upload failed. Please try again.");
+      toast.error("Photo upload failed. Please try again.");
       setPreviewUrl(null);
     } finally {
       setIsUploading(false);
@@ -106,20 +107,24 @@ const PetPhotoUpload = ({ onPhotoUrl, initialUrl }: PetPhotoUploadProps) => {
             />
           </div>
           {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/60 z-20">
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-background/70 backdrop-blur-sm z-20 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-gold" />
+              <p className="text-[10px] tracking-[0.2em] uppercase text-gold font-sans animate-pulse">
+                Preserving your memory…
+              </p>
             </div>
           )}
           <button
             onClick={clearPhoto}
-            className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-card/90 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            disabled={isUploading}
+            className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-card/90 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-0"
           >
             <X className="w-3.5 h-3.5" />
           </button>
           {uploadedUrl && (
-            <div className="flex items-center justify-center gap-2 mt-3">
+            <div className="flex items-center justify-center gap-2 mt-3 animate-[step-pop_0.35s_ease-out]">
               <Check className="w-4 h-4 text-gold" />
-              <span className="text-xs text-gold font-sans">Photo uploaded</span>
+              <span className="text-xs text-gold font-sans tracking-[0.15em]">Memory photo saved</span>
             </div>
           )}
         </div>

@@ -1,3 +1,6 @@
+-- Ensure pgcrypto exists before using gen_random_bytes().
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- Add referral fields to waitlist_leads
 ALTER TABLE public.waitlist_leads
   ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
@@ -7,7 +10,7 @@ ALTER TABLE public.waitlist_leads
 
 -- Generate referral_code for any existing leads that don't have one
 UPDATE public.waitlist_leads
-SET referral_code = LOWER(REGEXP_REPLACE(encode(gen_random_bytes(6), 'base64'), '[^a-zA-Z0-9]', '', 'g'))
+SET referral_code = LOWER(REGEXP_REPLACE(encode(extensions.gen_random_bytes(6), 'base64'), '[^a-zA-Z0-9]', '', 'g'))
 WHERE referral_code IS NULL;
 
 -- Function to auto-generate referral_code on insert
@@ -23,7 +26,7 @@ DECLARE
 BEGIN
   IF NEW.referral_code IS NULL THEN
     LOOP
-      new_code := LOWER(REGEXP_REPLACE(encode(gen_random_bytes(6), 'base64'), '[^a-zA-Z0-9]', '', 'g'));
+      new_code := LOWER(REGEXP_REPLACE(encode(extensions.gen_random_bytes(6), 'base64'), '[^a-zA-Z0-9]', '', 'g'));
       new_code := SUBSTRING(new_code FROM 1 FOR 8);
       IF NOT EXISTS (SELECT 1 FROM public.waitlist_leads WHERE referral_code = new_code) THEN
         NEW.referral_code := new_code;

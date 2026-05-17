@@ -41,7 +41,7 @@ function AppContent() {
         <Route path="/" element={<PreOrderLanding />} />
         <Route path="/early-access-store" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<Navigate replace to="/admin/control" />} />
         <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/control" element={<AdminControl />} />
         <Route path="/admin-login" element={<AdminAuth />} />

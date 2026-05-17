@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  FINALIZED_STATUSES,
+  extractOrderId,
+  firstString,
+  isFailedPayment,
+  isSuccessfulPayment,
+  normalizeString,
+  pickShineOnPrintUrl,
+} from "./helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,10 +17,6 @@ const corsHeaders = {
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
 const SHINEON_SKU = "SO-15845645";
-const FINALIZED_STATUSES = new Set(["paid", "fulfilled", "shineon_error"]);
-const SUCCESS_STATUSES = new Set(["success", "approved", "paid", "completed", "complete", "authorized", "captured"]);
-const FAILURE_STATUSES = new Set(["failed", "failure", "declined", "cancelled", "canceled", "error", "void"]);
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,11 +25,43 @@ serve(async (req) => {
 
   try {
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
-    const receivedSecret = req.headers.get("X-iCount-Secret") || req.headers.get("x-icount-secret");
+    if (!webhookSecret) {
+      // Fail-closed: if the secret is not configured the endpoint must not process any request.
+      // Set ICOUNT_WEBHOOK_SECRET in the Supabase vault before deploying to production.
+      console.error("[iCount Webhook] ICOUNT_WEBHOOK_SECRET is not configured — rejecting request");
+      return json({ error: "Webhook secret not configured" }, 500);
+    }
 
-    if (webhookSecret && receivedSecret !== webhookSecret) {
-      console.error("[iCount Webhook] Invalid secret header");
-      return json({ error: "Unauthorized" }, 401);
+    const receivedSecret = req.headers.get("X-iCount-Secret") || req.headers.get("x-icount-secret");
+    if (receivedSecret !== webhookSecret) {
+      // Secret mismatch — allow admin-authenticated internal retries from the dashboard.
+      // supabase.functions.invoke() attaches the caller's JWT; verify it is an admin.
+      const authHeader = req.headers.get("Authorization") || "";
+      let isAdminRetry = false;
+      if (authHeader.startsWith("Bearer ")) {
+        try {
+          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          const userClient = createClient(supabaseUrl, anonKey, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const { data: { user } } = await userClient.auth.getUser();
+          if (user) {
+            const { data: hasRole } = await supabase.rpc("has_role", {
+              _user_id: user.id, _role: "admin",
+            });
+            if (hasRole) {
+              isAdminRetry = true;
+              console.log(`[iCount Webhook] Admin retry authorized (user: ${user.id})`);
+            }
+          }
+        } catch (authErr) {
+          console.warn("[iCount Webhook] Admin JWT check failed:", authErr);
+        }
+      }
+      if (!isAdminRetry) {
+        console.error("[iCount Webhook] Invalid or missing secret header and no valid admin JWT");
+        return json({ error: "Unauthorized" }, 401);
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -113,22 +150,29 @@ serve(async (req) => {
       if (orderUpdate[k] === null || orderUpdate[k] === undefined || orderUpdate[k] === "") delete orderUpdate[k];
     });
 
-    const { error: paidErr } = await supabase
+    const { data: paidRows, error: paidErr } = await supabase
       .from("animus_orders")
       .update(orderUpdate as any)
       .eq("id", orderId)
-      .not("status", "in", "(paid,fulfilled,shineon_error)");
+      .not("status", "in", "(paid,fulfilled,shineon_error)")
+      .select("id");
 
     if (paidErr) {
       console.error("[iCount Webhook] Failed marking order paid:", paidErr);
       return json({ success: false, error: "Failed to mark order as paid" }, 500);
     }
 
+    // If no rows updated, another concurrent webhook beat us to finalization — bail to preserve idempotency.
+    if (!paidRows || paidRows.length === 0) {
+      console.log(`[iCount Webhook] Order ${orderId} already finalized by concurrent webhook; skipping ShineOn`);
+      return json({ success: true, skipped: true, reason: "already_finalized_concurrent", orderId });
+    }
+
     console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly || "none"})`);
 
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, pet_name, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
+      .select("id, design_image_url, print_image_url, pet_name, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -137,8 +181,11 @@ serve(async (req) => {
       return json({ success: true, shineon_skipped: true, reason: "order_not_found", orderId });
     }
 
-    if (!freshOrder.design_image_url) {
-      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has no design_image_url — marked as shineon_error`);
+    // ShineOn requires a raster PNG. pickShineOnPrintUrl prefers print_image_url and hard-blocks SVG fallbacks.
+    const { url: printAssetUrl, source: printAssetSource } = pickShineOnPrintUrl(freshOrder as any);
+
+    if (!printAssetUrl) {
+      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has no print_image_url or design_image_url — marked as shineon_error`);
       await supabase
         .from("animus_orders")
         .update({ status: "shineon_error" } as any)
@@ -149,10 +196,10 @@ serve(async (req) => {
           template_name: "missing-design-url",
           recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
           status: "error",
-          error_message: `Order ${orderId} has no design_image_url — cannot submit to ShineOn`,
+          error_message: `Order ${orderId} has neither print_image_url nor design_image_url — cannot submit to ShineOn`,
           metadata: { orderId },
         } as any);
-      return json({ success: true, shineon_error: true, reason: "no_design_url", orderId });
+      return json({ success: true, shineon_error: true, reason: "no_print_asset", orderId });
     }
 
     const shineonApiKey = Deno.env.get("SHINEON_API_KEY");
@@ -199,12 +246,12 @@ serve(async (req) => {
         {
           sku: SHINEON_SKU,
           quantity: 1,
-          print_url: freshOrder.design_image_url,
+          print_url: printAssetUrl,
         },
       ],
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${freshOrder.design_image_url}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${printAssetUrl} (source: ${printAssetSource})`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -282,6 +329,26 @@ serve(async (req) => {
     return json({ success: true, shineon_submitted: true, orderId });
   } catch (err: any) {
     console.error("[iCount Webhook] Unexpected error:", err);
+    // Best-effort log to email_send_log so failures surface in the admin UI.
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && supabaseKey) {
+        const logger = createClient(supabaseUrl, supabaseKey);
+        await logger
+          .from("email_send_log")
+          .insert({
+            template_name: "icount-webhook-error",
+            recipient_email: "system@animuswave.com",
+            status: "error",
+            error_message: String(err?.message || err || "Unknown error").slice(0, 4000),
+            metadata: { stack: String(err?.stack || "").slice(0, 4000) },
+          } as any);
+      }
+    } catch (logErr) {
+      console.error("[iCount Webhook] Failed to write error log:", logErr);
+    }
+    // Return 200 so iCount doesn't retry storms — we already logged the failure.
     return json({ success: true, error: err?.message || "Unknown error" });
   }
 });
@@ -291,34 +358,6 @@ function json(payload: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-function normalizeString(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : value == null ? "" : String(value).trim().toLowerCase();
-}
-
-function firstString(...values: unknown[]): string | null {
-  for (const value of values) {
-    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
-  }
-  return null;
-}
-
-function isSuccessfulPayment(body: any, paymentStatus: string): boolean {
-  return SUCCESS_STATUSES.has(paymentStatus) || body.is_paid === true || body.paid === true || body.success === true || body.approved === true;
-}
-
-function isFailedPayment(body: any, paymentStatus: string): boolean {
-  return FAILURE_STATUSES.has(paymentStatus) || body.is_paid === false || body.paid === false || body.success === false;
-}
-
-function extractOrderId(body: any): string | null {
-  const candidates = [body.comment, body.custom, body.cs1, body.order_id, body.orderId, body.info];
-  for (const candidate of candidates) {
-    const value = typeof candidate === "string" ? candidate.trim() : String(candidate || "").trim();
-    if (UUID_RE.test(value)) return value;
-  }
-  return null;
 }
 
 async function fetchOrder(supabase: any, orderId: string) {

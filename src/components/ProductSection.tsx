@@ -77,9 +77,9 @@ const ProductSection = () => {
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
+  const [checkoutStage, setCheckoutStage] = useState("");
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [orderComplete, setOrderComplete] = useState(false);
   
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
@@ -188,6 +188,7 @@ const ProductSection = () => {
     } as any, { onConflict: "id" }).then(({ error }) => {
       if (error) {
         console.error("[ANIMUS] Draft save failed:", error);
+        toast.error("Could not save your design draft. Please check your connection and try again.");
       } else {
         console.log("[ANIMUS] ✓ Draft record created:", preOrderId);
         setDraftSaved(true);
@@ -206,10 +207,11 @@ const ProductSection = () => {
 
   const handleAudioUrl = useCallback((url: string) => {
     setAudioUrl(url);
+    let ctx: AudioContext | null = null;
     fetch(url)
       .then(r => r.arrayBuffer())
       .then(buf => {
-        const ctx = new AudioContext();
+        ctx = new AudioContext();
         return ctx.decodeAudioData(buf).then(audioBuffer => {
           const rawData = audioBuffer.getChannelData(0);
           const samples = 64;
@@ -222,10 +224,10 @@ const ProductSection = () => {
           }
           const max = Math.max(...filtered);
           setWaveformData(filtered.map(v => v / max));
-          ctx.close();
         });
       })
-      .catch(err => console.error("Waveform extraction failed:", err));
+      .catch(err => console.error("Waveform extraction failed:", err))
+      .finally(() => { ctx?.close(); });
   }, []);
 
   const variants = product?.variants?.edges || [];
@@ -238,11 +240,13 @@ const ProductSection = () => {
     if (!product || !selectedVariant) { toast.error("Product not loaded."); return; }
 
     setCartLoading(true);
+    setCheckoutStage("Saving your memory…");
     try {
       const soulPageUrl = generateSoulPageUrl();
       const petNameVal = backText.trim() || dedicatedText.trim() || "Memorial";
 
       // 1. Generate SVG content
+      setCheckoutStage("Generating your waveform design…");
       const svgContent = await generateProductionSvg({
         waveformData,
         petName: petNameVal,
@@ -250,6 +254,7 @@ const ProductSection = () => {
       });
 
       // 2. Save order to DB first
+      setCheckoutStage("Saving your memory…");
       const { data: orderData, error: dbError } = await supabase.from("animus_orders").upsert({
         id: preOrderId,
         pet_name: petNameVal,
@@ -277,13 +282,14 @@ const ProductSection = () => {
       }
 
       // 3. Upload production assets to Supabase Storage
+      setCheckoutStage("Uploading to your Soul Page…");
       let designImageUrl = "";
       if (orderData?.id) {
         const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        
+
         const MAX_RETRIES = 2;
         let uploadResult: any = null;
-        
+
         for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
           if (attempt > 0) {
             toast.info("Finalizing your memory... retrying upload");
@@ -327,6 +333,7 @@ const ProductSection = () => {
         
         console.log("[ANIMUS] ✓ All assets verified in Supabase Storage");
 
+        setCheckoutStage("Verifying your pendant…");
         const persistedOrder = await verifyPersistedOrder(orderData.id, soulPageUrl);
         console.log("[ANIMUS] Verified persisted Soul Page record:", persistedOrder);
       } else {
@@ -336,14 +343,15 @@ const ProductSection = () => {
       }
 
       // 4. Redirect to native checkout page
+      setCheckoutStage("Redirecting to checkout…");
       console.log("[ANIMUS] ✓ All data ready, redirecting to checkout");
-      setOrderComplete(true);
       navigate(`/checkout?order=${orderData.id}&variant=${selectedVariantIdx}`);
     } catch (err: any) {
       console.error("[ANIMUS] Checkout error:", err);
       toast.error(err?.message || "Checkout failed. Please try again.");
     } finally {
       setCartLoading(false);
+      setCheckoutStage("");
     }
   };
 
@@ -458,9 +466,13 @@ const ProductSection = () => {
 
 
           {/* Step 1: Audio Upload */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
+          <div className={`border rounded-sm p-6 bg-background/50 space-y-4 transition-colors duration-500 ${
+            audioUrl ? "border-gold/30 border-l-2 border-l-gold/60" : "border-border/50"
+          }`}>
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${audioUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border transition-all duration-300 ${
+                audioUrl ? "bg-gold/20 border-gold text-gold animate-[step-pop_0.35s_ease-out]" : "border-border/50 text-muted-foreground"
+              }`}>
                 {audioUrl ? "✓" : "1"}
               </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
@@ -478,9 +490,13 @@ const ProductSection = () => {
           </div>
 
           {/* Step 2: Photo / Media */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+          <div className={`border rounded-sm p-6 bg-background/50 space-y-3 transition-colors duration-500 ${
+            photoUrl ? "border-gold/30 border-l-2 border-l-gold/60" : "border-border/50"
+          }`}>
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${photoUrl ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border transition-all duration-300 ${
+                photoUrl ? "bg-gold/20 border-gold text-gold animate-[step-pop_0.35s_ease-out]" : "border-border/50 text-muted-foreground"
+              }`}>
                 {photoUrl ? "✓" : "2"}
               </span>
               <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
@@ -564,29 +580,33 @@ const ProductSection = () => {
           </div>
 
           {/* Buy Now */}
-          <button
-            onClick={handleAnimusCheckout}
-            disabled={cartLoading || !selectedVariant?.availableForSale}
-            className="w-full bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {cartLoading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Securing your sound…</>
-            ) : !selectedVariant?.availableForSale ? (
-              "Sold Out"
-            ) : (
-              `Buy Now — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
-            )}
-          </button>
-
-
-          {/* Order Confirmation */}
-          {orderComplete && (
-            <div className="border border-gold/30 rounded-sm p-6 bg-gold/5">
-              <p className="text-sm text-gold font-sans text-center">
-                ✓ Order submitted — checkout opened in new tab
+          <div className="space-y-2">
+            <button
+              onClick={handleAnimusCheckout}
+              disabled={cartLoading || !selectedVariant?.availableForSale}
+              className={`w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                allStepsComplete && !cartLoading ? "hover:bg-gold-light shadow-[0_0_24px_rgba(183,142,72,0.25)]" : ""
+              }`}
+            >
+              {cartLoading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+              ) : !selectedVariant?.availableForSale ? (
+                "Sold Out"
+              ) : (
+                `Buy Now — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
+              )}
+              {allStepsComplete && !cartLoading && (
+                <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+              )}
+            </button>
+            {cartLoading && checkoutStage && (
+              <p className="text-[10px] text-gold/80 text-center font-sans tracking-[0.2em] uppercase flex items-center justify-center gap-2 animate-pulse">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold" />
+                {checkoutStage}
               </p>
-            </div>
-          )}
+            )}
+          </div>
+
 
           {/* Preview Soul Page */}
           <button

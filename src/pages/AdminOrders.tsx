@@ -830,6 +830,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
               <th className="text-left px-4 py-3">Customer</th>
               <th className="text-left px-4 py-3">Email</th>
               <th className="text-right px-4 py-3">Amount</th>
+              <th className="text-left px-4 py-3">PNG</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-right px-4 py-3"></th>
             </tr>
@@ -873,6 +874,19 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
                   <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3">
+                    {o.print_image_url ? (
+                      <a href={o.print_image_url} target="_blank" rel="noopener noreferrer" title="View full engraving PNG">
+                        <img
+                          src={o.print_image_url}
+                          alt="Engraving PNG"
+                          className="w-10 h-10 object-cover rounded-sm border border-border/30 hover:border-gold/50 transition-colors"
+                        />
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground/40">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3"><StatusPill status={o.status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
