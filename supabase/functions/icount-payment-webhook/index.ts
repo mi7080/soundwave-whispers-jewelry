@@ -30,16 +30,63 @@ serve(async (req) => {
 
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      // Fail-closed: if the secret is not configured the endpoint must not process any request.
-      // Set ICOUNT_WEBHOOK_SECRET in the Supabase vault before deploying to production.
       console.error("[iCount Webhook] ICOUNT_WEBHOOK_SECRET is not configured — rejecting request");
       return json({ error: "Webhook secret not configured" }, 500);
     }
 
-    const receivedSecret = req.headers.get("X-iCount-Secret") || req.headers.get("x-icount-secret");
-    if (receivedSecret !== webhookSecret) {
-      // Secret mismatch — allow admin-authenticated internal retries from the dashboard.
-      // supabase.functions.invoke() attaches the caller's JWT; verify it is an admin.
+    // Read body once — used for both secret detection and payload processing below.
+    const rawBody = await req.text();
+    let body: any = {};
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      // iCount may send form-encoded data
+      try {
+        const params = new URLSearchParams(rawBody);
+        for (const [k, v] of params.entries()) body[k] = v;
+      } catch { /* ignore */ }
+    }
+
+    // --- Diagnostic: log every header (mask secret-like values) ---
+    const allHeaders = [...req.headers.entries()]
+      .map(([k, v]) => {
+        const lk = k.toLowerCase();
+        if (lk.includes("secret") || lk.includes("key") || lk === "authorization") {
+          return `${k}: ${v.length > 8 ? v.slice(0, 4) + "…" + v.slice(-4) : "****"}`;
+        }
+        return `${k}: ${v}`;
+      })
+      .join(" | ");
+    const url = new URL(req.url);
+    const queryKeys = [...url.searchParams.keys()].join(",");
+    console.log(`[iCount Webhook] Headers: ${allHeaders}`);
+    console.log(`[iCount Webhook] Query params: ${queryKeys || "(none)"}`);
+    console.log(`[iCount Webhook] Body keys: ${Object.keys(body).join(",") || "(none)"}`);
+
+    // --- Locate the secret from any of the places iCount might send it ---
+    // 1. HTTP headers (Headers.get is case-insensitive per spec)
+    const headerSecret =
+      req.headers.get("x-icount-secret") ||
+      req.headers.get("x-webhook-secret") ||
+      req.headers.get("x-secret") ||
+      req.headers.get("x-api-key");
+    // 2. URL query parameter
+    const querySecret =
+      url.searchParams.get("secret") ||
+      url.searchParams.get("key") ||
+      url.searchParams.get("webhook_secret");
+    // 3. Body field (some processors embed the secret in the payload)
+    const bodySecret =
+      body.secret || body.key || body.webhook_secret || body.icount_secret;
+
+    const receivedSecret = headerSecret || querySecret || bodySecret || "";
+    const receivedTrimmed = receivedSecret.trim();
+    const expectedTrimmed = webhookSecret.trim();
+
+    console.log(`[iCount Webhook] Secret source: ${headerSecret ? "header" : querySecret ? "query" : bodySecret ? "body" : "none"}, match: ${receivedTrimmed === expectedTrimmed}`);
+
+    if (receivedTrimmed !== expectedTrimmed) {
+      // Secret mismatch — allow admin-authenticated retries from the dashboard.
       const authHeader = req.headers.get("Authorization") || "";
       let isAdminRetry = false;
       if (authHeader.startsWith("Bearer ")) {
@@ -63,12 +110,12 @@ serve(async (req) => {
         }
       }
       if (!isAdminRetry) {
-        console.error("[iCount Webhook] Invalid or missing secret header and no valid admin JWT");
+        console.error(`[iCount Webhook] Unauthorized — secret source: ${headerSecret ? "header" : querySecret ? "query" : bodySecret ? "body" : "none"}`);
         return json({ error: "Unauthorized" }, 401);
       }
     }
 
-    const body = await req.json();
+    // body already parsed above — skip req.json()
     console.log("[iCount Webhook] Received payload:", JSON.stringify(body));
 
     const paymentStatus = normalizeString(body.status || body.payment_status || body.transaction_status || body.paymentStatus);
