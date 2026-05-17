@@ -24,6 +24,10 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
     if (!webhookSecret) {
       // Fail-closed: if the secret is not configured the endpoint must not process any request.
@@ -63,10 +67,6 @@ serve(async (req) => {
         return json({ error: "Unauthorized" }, 401);
       }
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
     console.log("[iCount Webhook] Received payload:", JSON.stringify(body));
