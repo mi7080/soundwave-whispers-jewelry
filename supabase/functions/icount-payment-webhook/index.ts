@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   FINALIZED_STATUSES,
+  SHINEON_MAX_RETRIES,
+  backoffMs,
+  classifyShineOnFailure,
   extractOrderId,
   firstString,
   isFailedPayment,
@@ -332,18 +335,42 @@ serve(async (req) => {
           },
         } as any);
 
+      // Auto-retry policy: transient failures (5xx/429/408/network) get scheduled
+      // for an automatic retry on a backoff; permanent failures (other 4xx) do not.
+      const kind = classifyShineOnFailure(shineonResponse.status, false);
+      const { data: rc } = await supabase
+        .from("animus_orders")
+        .select("shineon_retry_count")
+        .eq("id", orderId)
+        .maybeSingle();
+      const attempt = Number((rc as any)?.shineon_retry_count ?? 0);
+      const nextAttempt = attempt + 1;
+      const willRetry = kind === "transient" && nextAttempt < SHINEON_MAX_RETRIES;
+      const nextRetryAt = willRetry
+        ? new Date(Date.now() + backoffMs(attempt)).toISOString()
+        : null;
+
       await supabase
         .from("animus_orders")
-        .update({ status: "shineon_error" } as any)
+        .update({
+          status: "shineon_error",
+          shineon_retry_count: nextAttempt,
+          shineon_last_error: `ShineOn ${shineonResponse.status}: ${shineonResult}`.slice(0, 4000),
+          shineon_last_error_status: shineonResponse.status,
+          shineon_last_attempt_at: new Date().toISOString(),
+          shineon_next_retry_at: nextRetryAt,
+        } as any)
         .eq("id", orderId)
         .eq("status", "paid");
 
-      return json({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult, orderId });
+      console.log(`[iCount Webhook] ShineOn ${kind} failure for ${orderId} (attempt ${nextAttempt}/${SHINEON_MAX_RETRIES})${willRetry ? ` — auto-retry at ${nextRetryAt}` : " — no auto-retry"}`);
+
+      return json({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult, orderId, retry_kind: kind, will_retry: willRetry });
     }
 
     await supabase
       .from("animus_orders")
-      .update({ status: "fulfilled" } as any)
+      .update({ status: "fulfilled", shineon_next_retry_at: null } as any)
       .eq("id", orderId)
       .eq("status", "paid");
 

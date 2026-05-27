@@ -72,6 +72,38 @@ export function extractOrderId(body: any): string | null {
   return null;
 }
 
+// ── ShineOn auto-retry policy ───────────────────────────────────────
+// Transient failures (network/timeout, 408/429/5xx) are retried on a backoff
+// schedule by the shineon-retry-sweep cron. Permanent failures (other 4xx,
+// missing print asset) are NOT auto-retried — they surface in the admin
+// "Needs Attention" view for manual handling.
+
+export const SHINEON_MAX_RETRIES = 3;
+
+/** Backoff schedule between ShineOn retry attempts, in milliseconds. */
+const SHINEON_BACKOFF_MS = [5 * 60_000, 30 * 60_000, 120 * 60_000];
+
+/** Delay before the next retry given how many attempts have already happened. */
+export function backoffMs(attempt: number): number {
+  const i = attempt < 0 ? 0 : Math.min(attempt, SHINEON_BACKOFF_MS.length - 1);
+  return SHINEON_BACKOFF_MS[i];
+}
+
+/**
+ * Classify a ShineOn submission failure.
+ *  - transient: a thrown error (network/timeout) or HTTP 408 / 429 / 5xx
+ *  - permanent: any other 4xx (validation, auth, conflict)
+ */
+export function classifyShineOnFailure(
+  status: number | undefined,
+  threw: boolean,
+): "transient" | "permanent" {
+  if (threw) return "transient";
+  if (status === undefined) return "transient";
+  if (status === 408 || status === 429 || status >= 500) return "transient";
+  return "permanent";
+}
+
 /** Returns true for any URL that points to an unrendered SVG file. */
 function isSvgUrl(url: string): boolean {
   const lower = url.toLowerCase();

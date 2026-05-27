@@ -6,6 +6,9 @@ import {
   normalizeString,
   pickShineOnPrintUrl,
   FINALIZED_STATUSES,
+  backoffMs,
+  classifyShineOnFailure,
+  SHINEON_MAX_RETRIES,
 } from "../../supabase/functions/icount-payment-webhook/helpers";
 
 const ORDER_UUID = "11111111-1111-4111-8111-111111111111";
@@ -93,6 +96,43 @@ describe("pickShineOnPrintUrl", () => {
   });
   it("returns empty when neither is set", () => {
     expect(pickShineOnPrintUrl({})).toEqual({ url: "", source: "none" });
+  });
+});
+
+describe("backoffMs (ShineOn retry schedule)", () => {
+  it("grows across attempts then caps", () => {
+    expect(backoffMs(0)).toBe(5 * 60_000);
+    expect(backoffMs(1)).toBe(30 * 60_000);
+    expect(backoffMs(2)).toBe(120 * 60_000);
+  });
+  it("caps at the last delay for attempts beyond the schedule", () => {
+    expect(backoffMs(3)).toBe(120 * 60_000);
+    expect(backoffMs(99)).toBe(120 * 60_000);
+  });
+  it("treats negative attempts as the first delay", () => {
+    expect(backoffMs(-1)).toBe(5 * 60_000);
+  });
+  it("never schedules beyond the max retry count", () => {
+    expect(SHINEON_MAX_RETRIES).toBe(3);
+  });
+});
+
+describe("classifyShineOnFailure (transient vs permanent)", () => {
+  it("treats 5xx, 429 and 408 as transient", () => {
+    expect(classifyShineOnFailure(500, false)).toBe("transient");
+    expect(classifyShineOnFailure(503, false)).toBe("transient");
+    expect(classifyShineOnFailure(429, false)).toBe("transient");
+    expect(classifyShineOnFailure(408, false)).toBe("transient");
+  });
+  it("treats thrown errors / no-status (network, timeout) as transient", () => {
+    expect(classifyShineOnFailure(undefined, true)).toBe("transient");
+    expect(classifyShineOnFailure(undefined, false)).toBe("transient");
+  });
+  it("treats other 4xx (validation, auth, conflict) as permanent", () => {
+    expect(classifyShineOnFailure(400, false)).toBe("permanent");
+    expect(classifyShineOnFailure(401, false)).toBe("permanent");
+    expect(classifyShineOnFailure(409, false)).toBe("permanent");
+    expect(classifyShineOnFailure(422, false)).toBe("permanent");
   });
 });
 

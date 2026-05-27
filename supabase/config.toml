@@ -19,3 +19,5 @@ project_id = "gcqmkltyifgtuizencka"
     verify_jwt = false
   [functions.generate-soul-waveform]
     verify_jwt = false
+  [functions.shineon-retry-sweep]
+    verify_jwt = true
