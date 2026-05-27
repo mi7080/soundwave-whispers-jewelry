@@ -110,7 +110,7 @@ const AdminControl = () => {
         onSignOut={signOut}
         headerExtra={<DateRangePicker />}
       >
-        {tab === "dashboard" && <AdminOrders />}
+        {tab === "dashboard" && <AdminOrders embedded />}
         {tab === "finance" && <FinanceTab />}
         {tab === "crm" && <CrmTab />}
         {tab === "settings" && <SettingsTab />}

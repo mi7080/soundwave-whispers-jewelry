@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles,
+  AlertOctagon, Zap,
 } from "lucide-react";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 
@@ -67,12 +68,12 @@ interface Lead {
 }
 
 const STATUS_OPTIONS: { value: OrderStatus; label: string; tone: string }[] = [
-  { value: "payment_pending", label: "Payment Pending", tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" },
-  { value: "paid", label: "Paid", tone: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
+  { value: "payment_pending", label: "Payment Pending", tone: "bg-muted text-muted-foreground border-border" },
+  { value: "paid", label: "Paid", tone: "bg-gold/10 text-gold-dark border-gold/30" },
   { value: "shineon_error", label: "ShineOn Error", tone: "bg-destructive/10 text-destructive border-destructive/40" },
-  { value: "fulfilled", label: "Fulfilled", tone: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
-  { value: "shipped", label: "Shipped", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" },
-  { value: "payment_failed", label: "Payment Failed", tone: "bg-red-500/10 text-red-300 border-red-500/30" },
+  { value: "fulfilled", label: "Fulfilled", tone: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "shipped", label: "Shipped", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { value: "payment_failed", label: "Payment Failed", tone: "bg-red-50 text-red-700 border-red-200" },
 ];
 
 const csvEscape = (val: unknown) => {
@@ -81,12 +82,14 @@ const csvEscape = (val: unknown) => {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-const AdminOrders = () => {
+const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const navigate = useNavigate();
   const dr = useDateRangeOptional();
   const range = dr?.range;
-  const [authChecking, setAuthChecking] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+  // When embedded inside AdminShell, the parent has already gated access and
+  // renders the chrome — skip this page's own auth check + header.
+  const [authChecking, setAuthChecking] = useState(!embedded);
+  const [authorized, setAuthorized] = useState(embedded);
   const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
   const [retrying, setRetrying] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>(["paid", "shineon_error"]);
@@ -98,6 +101,7 @@ const AdminOrders = () => {
 
   // Auth gate: must be logged in AND have admin role
   useEffect(() => {
+    if (embedded) return;
     let mounted = true;
     const check = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -124,7 +128,7 @@ const AdminOrders = () => {
       if (!session) navigate("/admin-login", { replace: true });
     });
     return () => { mounted = false; subscription.unsubscribe(); };
-  }, [navigate]);
+  }, [navigate, embedded]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -433,6 +437,69 @@ const AdminOrders = () => {
     }
   };
 
+  // Recovery combo: render the print PNG if missing, then submit to ShineOn.
+  // Absorbs the old standalone Recovery tab's "panic" action.
+  const renderAndSubmit = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    setRetrying(orderId);
+    try {
+      let printUrl = order.print_image_url;
+      if (!printUrl) {
+        toast.info("Step 1/2 — rendering engraving PNG…");
+        const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId } });
+        if (error || !data?.success || !data.print_image_url) {
+          throw new Error(error?.message || data?.error || "PNG render failed");
+        }
+        printUrl = data.print_image_url;
+        setOrders(p => p.map(o => o.id === orderId ? { ...o, print_image_url: printUrl } : o));
+      }
+
+      toast.info("Step 2/2 — submitting to ShineOn…");
+      const { error: resetErr } = await supabase
+        .from("animus_orders")
+        .update({ status: "payment_pending" })
+        .eq("id", orderId);
+      if (resetErr) throw new Error(resetErr.message);
+
+      const body = {
+        order_id: orderId,
+        status: "paid",
+        amount: order.amount,
+        client_email: order.customer_email,
+        client_name: order.customer_name,
+        phone: order.customer_phone,
+        address: order.shipping_address1,
+        address2: order.shipping_address2,
+        city: order.shipping_city,
+        state: order.shipping_state,
+        zip: order.shipping_zip,
+        country_code: order.shipping_country_code,
+        docnum: order.icount_docnum,
+      };
+
+      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", { body });
+      if (error) throw new Error(error.message);
+
+      if (data?.shineon_error) {
+        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", orderId);
+        setOrders(p => p.map(o => o.id === orderId ? { ...o, status: "shineon_error", print_image_url: printUrl } : o));
+        toast.error(`ShineOn rejected the order: ${String(data.body || "").slice(0, 200)}`);
+        return;
+      }
+      if (data?.shineon_submitted) {
+        setOrders(p => p.map(o => o.id === orderId ? { ...o, status: "fulfilled", print_image_url: printUrl } : o));
+        toast.success("Render + Submit complete — order fulfilled");
+      } else {
+        toast.warning(`ShineOn result: ${data?.reason || "no submission"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Render + Submit failed: ${e?.message || "unknown"}`);
+    } finally {
+      setRetrying(null);
+    }
+  };
+
   const splitName = (full: string | null): [string, string] => {
     if (!full) return ["", ""];
     const parts = full.trim().split(/\s+/);
@@ -577,44 +644,61 @@ const AdminOrders = () => {
   );
   const incompleteCount = incompleteInRange.length;
   const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
-  const shineOnErrorOrders = orders.filter(o => o.status === "shineon_error" && (!range || inRange(o.created_at, range)));
-  const filteredShineOnErrors = (() => {
+  // "Needs Attention" = failed ShineOn submissions OR paid orders with no print PNG.
+  // This absorbs the old standalone Recovery tab.
+  const needsAttentionOrders = orders.filter(o =>
+    (o.status === "shineon_error" || (o.status === "paid" && !o.print_image_url)) &&
+    (!range || inRange(o.created_at, range))
+  );
+  const filteredNeedsAttention = (() => {
     const q = search.trim().toLowerCase();
-    if (!q) return shineOnErrorOrders;
-    return shineOnErrorOrders.filter(o =>
+    if (!q) return needsAttentionOrders;
+    return needsAttentionOrders.filter(o =>
       [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
   })();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className={embedded ? "" : "min-h-screen bg-background text-foreground"}>
       <div className="container mx-auto px-6 py-10 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-start sm:items-center justify-between gap-4 mb-8 flex-col sm:flex-row">
-          <div>
-            <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-gold transition-colors mb-3">
-              <ArrowLeft className="w-3 h-3" /> Store
-            </Link>
-            <h1 className="text-3xl font-serif text-foreground">ANIMUS Admin</h1>
-            <p className="text-xs text-muted-foreground mt-1 tracking-[0.15em] uppercase">Orders & Customer CRM</p>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* Header — full chrome only when standalone */}
+        {embedded ? (
+          <div className="flex items-center justify-end mb-6">
             <button
               onClick={fetchAll}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-[10px] tracking-[0.2em] uppercase border border-border text-muted-foreground hover:border-gold hover:text-gold transition-colors"
             >
               <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
             </button>
-            <button
-              onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-            >
-              <LogOut className="w-3 h-3" /> Sign Out
-            </button>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-start sm:items-center justify-between gap-4 mb-8 flex-col sm:flex-row">
+            <div>
+              <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-gold transition-colors mb-3">
+                <ArrowLeft className="w-3 h-3" /> Store
+              </Link>
+              <h1 className="text-3xl font-serif text-foreground">ANIMUS Admin</h1>
+              <p className="text-xs text-muted-foreground mt-1 tracking-[0.15em] uppercase">Orders & Customer CRM</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchAll}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold transition-colors"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+              </button>
+              <button
+                onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+              >
+                <LogOut className="w-3 h-3" /> Sign Out
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -629,11 +713,11 @@ const AdminOrders = () => {
           <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<Package className="w-3.5 h-3.5" />}>
             Orders <span className="opacity-60">({orders.length})</span>
           </TabButton>
-          <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<Package className="w-3.5 h-3.5" />}>
-            ShineOn Errors{" "}
-            {shineOnErrorOrders.length > 0 ? (
+          <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<AlertOctagon className="w-3.5 h-3.5" />}>
+            Needs Attention{" "}
+            {needsAttentionOrders.length > 0 ? (
               <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
-                {shineOnErrorOrders.length}
+                {needsAttentionOrders.length}
               </span>
             ) : (
               <span className="opacity-60">(0)</span>
@@ -669,7 +753,7 @@ const AdminOrders = () => {
               <button
                 onClick={syncAllIncomplete}
                 disabled={bulkSyncing || incompleteCount === 0}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-500/40 text-amber-400 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-amber-300 text-amber-700 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title={
                   incompleteWithDocnum > 0
                     ? `Re-fetch shipping & customer data from iCount for ${incompleteWithDocnum} flagged order(s)`
@@ -697,11 +781,12 @@ const AdminOrders = () => {
         ) : tab === "orders" ? (
           <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
         ) : tab === "errors" ? (
-          <ShineOnErrorsTable
-            orders={filteredShineOnErrors}
+          <NeedsAttentionTable
+            orders={filteredNeedsAttention}
             onSelect={setSelected}
             onRetry={retryShineOn}
-            retryingId={retrying}
+            onRenderAndSubmit={renderAndSubmit}
+            busyId={retrying}
           />
         ) : (
           <LeadsTable leads={filteredLeads} />
@@ -726,11 +811,11 @@ const AdminOrders = () => {
 // ─── Subcomponents ──────────────────────────────────────────────────
 
 const STATUS_FILTER_OPTIONS: { value: string; label: string; tone: string }[] = [
-  { value: "payment_pending", label: "Payment Pending", tone: "border-zinc-500/40 text-zinc-300 hover:bg-zinc-500/10" },
-  { value: "paid", label: "Paid", tone: "border-amber-500/40 text-amber-300 hover:bg-amber-500/10" },
+  { value: "payment_pending", label: "Payment Pending", tone: "border-border text-muted-foreground hover:bg-muted" },
+  { value: "paid", label: "Paid", tone: "border-gold/40 text-gold-dark hover:bg-gold/10" },
   { value: "shineon_error", label: "ShineOn Error", tone: "border-destructive/50 text-destructive hover:bg-destructive/10" },
-  { value: "fulfilled", label: "Fulfilled", tone: "border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10" },
-  { value: "payment_failed", label: "Payment Failed", tone: "border-red-500/40 text-red-300 hover:bg-red-500/10" },
+  { value: "fulfilled", label: "Fulfilled", tone: "border-emerald-300 text-emerald-700 hover:bg-emerald-50" },
+  { value: "payment_failed", label: "Payment Failed", tone: "border-red-300 text-red-700 hover:bg-red-50" },
 ];
 
 const StatusFilterBar = ({ orders, selected, onChange }: {
@@ -774,8 +859,8 @@ const StatusFilterBar = ({ orders, selected, onChange }: {
 
 
 const StatCard = ({ label, value, accent }: { label: string; value: number; accent?: "gold" | "emerald" }) => (
-  <div className="border border-border/30 rounded-sm p-4 bg-card">
-    <p className={`text-2xl font-serif ${accent === "gold" ? "text-gold" : accent === "emerald" ? "text-emerald-400" : "text-foreground"}`}>{value}</p>
+  <div className="border border-border rounded-xl p-4 bg-card shadow-[0_18px_40px_-24px_rgba(80,55,30,0.35)]">
+    <p className={`text-2xl font-serif tabular-nums ${accent === "gold" ? "text-gold" : accent === "emerald" ? "text-emerald-700" : "text-foreground"}`}>{value}</p>
     <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground mt-1">{label}</p>
   </div>
 );
@@ -792,7 +877,7 @@ const TabButton = ({ active, onClick, icon, children }: { active: boolean; onCli
 );
 
 const StatusPill = ({ status, onChange }: { status: string; onChange: (s: OrderStatus) => void }) => {
-  const opt = STATUS_OPTIONS.find(o => o.value === status) || { value: status, label: status, tone: "bg-zinc-500/10 text-zinc-300 border-zinc-500/30" };
+  const opt = STATUS_OPTIONS.find(o => o.value === status) || { value: status, label: status, tone: "bg-muted text-muted-foreground border-border" };
   return (
     <select
       value={status}
@@ -849,7 +934,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                         {o.icount_docnum}
                         {o.icount_docnum_auto_detected && (
                           <CheckCircle2
-                            className="w-3.5 h-3.5 text-emerald-400"
+                            className="w-3.5 h-3.5 text-emerald-600"
                             aria-label="Auto-detected from iCount"
                           />
                         )}
@@ -865,7 +950,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                             Data Incomplete
                           </span>
                         ) : (
-                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-amber-500/40 text-amber-400 bg-amber-500/5">
+                          <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-amber-300 text-amber-700 bg-amber-50">
                             Needs Docnum
                           </span>
                         )
@@ -893,7 +978,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                       {incomplete && !o.icount_docnum && o.customer_email && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
-                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-400 hover:text-emerald-300"
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-700 hover:text-emerald-800"
                           title="Search iCount by customer email and auto-link the most recent invoice/receipt"
                         >
                           <Sparkles className="w-3 h-3" /> Auto-detect
@@ -902,7 +987,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                       {incomplete && o.icount_docnum && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
-                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-400 hover:text-amber-300"
+                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-700 hover:text-amber-800"
                           title="Re-fetch shipping & customer details from iCount"
                         >
                           <RotateCw className="w-3 h-3" /> Sync iCount
@@ -923,20 +1008,21 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
   );
 };
 
-const ShineOnErrorsTable = ({ orders, onSelect, onRetry, retryingId }: {
+const NeedsAttentionTable = ({ orders, onSelect, onRetry, onRenderAndSubmit, busyId }: {
   orders: Order[];
   onSelect: (o: Order) => void;
   onRetry: (orderId: string) => Promise<void>;
-  retryingId: string | null;
+  onRenderAndSubmit: (orderId: string) => Promise<void>;
+  busyId: string | null;
 }) => {
   if (orders.length === 0) {
-    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No ShineOn errors — all clear</div>;
+    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">All clear — no orders need attention</div>;
   }
   return (
-    <div className="border-2 border-destructive/40 rounded-sm overflow-hidden bg-destructive/5">
+    <div className="border-2 border-destructive/40 rounded-xl overflow-hidden bg-destructive/[0.04]">
       <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/30">
         <p className="text-[11px] tracking-[0.2em] uppercase text-destructive font-medium">
-          {orders.length} order{orders.length === 1 ? "" : "s"} failed ShineOn submission — retry below
+          {orders.length} order{orders.length === 1 ? "" : "s"} need attention — ShineOn errors or missing print PNG. Use Render + Submit to recover.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -952,41 +1038,58 @@ const ShineOnErrorsTable = ({ orders, onSelect, onRetry, retryingId }: {
             </tr>
           </thead>
           <tbody>
-            {orders.map(o => (
-              <tr key={o.id} className="border-b border-destructive/20 hover:bg-background/30 border-l-4 border-l-destructive">
-                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </td>
-                <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || "—"}</td>
-                <td className="px-4 py-3 text-foreground">
-                  <div className="flex items-center gap-2">
-                    <span>{o.customer_name || o.pet_name}</span>
-                    <span className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border border-destructive/50 text-destructive bg-destructive/10">
-                      ShineOn Error
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
-                <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="inline-flex items-center gap-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onRetry(o.id); }}
-                      disabled={retryingId === o.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                    >
-                      {retryingId === o.id
-                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : <RotateCw className="w-3 h-3" />}
-                      Retry ShineOn
-                    </button>
-                    <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
-                      <Eye className="w-3 h-3" /> View
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {orders.map(o => {
+              const busy = busyId === o.id;
+              const needsPng = !o.print_image_url;
+              const isError = o.status === "shineon_error";
+              return (
+                <tr key={o.id} className="border-b border-destructive/20 hover:bg-background/30 border-l-4 border-l-destructive">
+                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || "—"}</td>
+                  <td className="px-4 py-3 text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{o.customer_name || o.pet_name}</span>
+                      <span className={
+                        "text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border " +
+                        (isError
+                          ? "border-destructive/50 text-destructive bg-destructive/10"
+                          : "border-gold/40 text-gold-dark bg-gold/10")
+                      }>
+                        {isError ? "ShineOn Error" : "Missing PNG"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
+                  <td className="px-4 py-3 text-right text-foreground font-medium tabular-nums">{o.amount ? `$${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRenderAndSubmit(o.id); }}
+                        disabled={busy}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase rounded-md bg-gold text-accent-foreground font-medium hover:bg-gold-light transition-colors disabled:opacity-50"
+                        title="Render the print PNG (if missing) and submit to ShineOn"
+                      >
+                        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                        {busy ? "Working…" : "Render + Submit"}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRetry(o.id); }}
+                        disabled={busy || needsPng}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase rounded-md border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
+                        title={needsPng ? "Render the PNG first" : "Re-submit to ShineOn"}
+                      >
+                        <RotateCw className="w-3 h-3" /> Retry
+                      </button>
+                      <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                        <Eye className="w-3 h-3" /> View
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
