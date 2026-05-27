@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Loader2, ArrowLeft, LogOut, RefreshCw, Package, Users, DollarSign,
-  Settings as SettingsIcon, TrendingUp, TrendingDown, AlertTriangle, Save,
-  Mail, Send, Sparkles, Image as ImageIcon, RotateCw, Zap, AlertOctagon,
+  Loader2, Package, Users, DollarSign,
+  Settings as SettingsIcon, AlertTriangle, Save, Mail, Send,
 } from "lucide-react";
 import AdminOrders from "./AdminOrders";
 import { DateRangeProvider, useDateRange, inRange } from "@/components/admin/DateRangeContext";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
+import { AdminShell, type AdminTab } from "@/components/admin/AdminShell";
+import { AdminCard, AdminKpi, AdminSectionHeader } from "@/components/admin/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 
@@ -40,22 +45,14 @@ interface LeadSummary {
   created_at: string;
 }
 
-interface RecoveryOrder {
-  id: string;
-  created_at: string;
-  customer_name: string | null;
-  customer_email: string | null;
-  customer_phone: string | null;
-  amount: number | null;
-  status: string;
-  print_image_url: string | null;
-  icount_docnum: string | null;
-  shipping_address1: string | null;
-  shipping_city: string | null;
-  shipping_country_code: string | null;
-}
+type TabKey = "dashboard" | "finance" | "crm" | "settings";
 
-type TabKey = "dashboard" | "finance" | "crm" | "recovery" | "settings";
+const TABS: AdminTab[] = [
+  { key: "dashboard", label: "Orders", icon: <Package className="w-3.5 h-3.5" /> },
+  { key: "finance", label: "Finance", icon: <DollarSign className="w-3.5 h-3.5" /> },
+  { key: "crm", label: "CRM", icon: <Users className="w-3.5 h-3.5" /> },
+  { key: "settings", label: "Settings", icon: <SettingsIcon className="w-3.5 h-3.5" /> },
+];
 
 const AdminControl = () => {
   const navigate = useNavigate();
@@ -95,94 +92,32 @@ const AdminControl = () => {
 
   if (authChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0A" }}>
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-gold" />
       </div>
     );
   }
   if (!authorized) return null;
 
+  const signOut = async () => { await supabase.auth.signOut(); navigate("/"); };
+
   return (
     <DateRangeProvider>
-      <div className="min-h-screen text-foreground" style={{ backgroundColor: "#0A0A0A" }}>
-        <header className="border-b sticky top-0 z-30 backdrop-blur-md" style={{ backgroundColor: "rgba(10,10,10,0.95)", borderColor: "rgba(212,175,55,0.15)" }}>
-          <div className="container mx-auto px-6 py-5 max-w-7xl">
-            <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-              <div>
-                <Link to="/" className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-muted-foreground hover:text-[#D4AF37] transition-colors mb-3">
-                  <ArrowLeft className="w-3 h-3" /> Exit Command Center
-                </Link>
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5" style={{ color: "#D4AF37" }} />
-                  <h1 className="font-serif text-3xl tracking-wide" style={{ color: "#F5F5F0" }}>
-                    ANIMUS Command Center
-                  </h1>
-                </div>
-                <p className="text-[10px] mt-2 tracking-[0.3em] uppercase" style={{ color: "#D4AF37" }}>
-                  Elite Operations · Founder Access
-                </p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <DateRangePicker />
-                <button
-                  onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
-                  className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.25em] uppercase border transition-all"
-                  style={{ borderColor: "rgba(255,255,255,0.1)", color: "#999" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#dc2626"; e.currentTarget.style.color = "#dc2626"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#999"; }}
-                >
-                  <LogOut className="w-3 h-3" /> Sign Out
-                </button>
-              </div>
-            </div>
-
-            <nav className="flex items-center gap-1 mt-6 -mb-5 border-b" style={{ borderColor: "rgba(212,175,55,0.1)" }}>
-              <CmdTab active={tab === "dashboard"} onClick={() => setTab("dashboard")} icon={<Package className="w-3.5 h-3.5" />}>Orders</CmdTab>
-              <CmdTab active={tab === "finance"} onClick={() => setTab("finance")} icon={<DollarSign className="w-3.5 h-3.5" />}>Finance</CmdTab>
-              <CmdTab active={tab === "crm"} onClick={() => setTab("crm")} icon={<Users className="w-3.5 h-3.5" />}>CRM</CmdTab>
-              <CmdTab active={tab === "recovery"} onClick={() => setTab("recovery")} icon={<AlertOctagon className="w-3.5 h-3.5" />}>Recovery</CmdTab>
-              <CmdTab active={tab === "settings"} onClick={() => setTab("settings")} icon={<SettingsIcon className="w-3.5 h-3.5" />}>Settings</CmdTab>
-            </nav>
-          </div>
-        </header>
-
-        <main>
-          {tab === "dashboard" && <DashboardTab />}
-          {tab === "finance" && <FinanceTab />}
-          {tab === "crm" && <CrmTab />}
-          {tab === "recovery" && <RecoveryTab />}
-          {tab === "settings" && <SettingsTab />}
-        </main>
-      </div>
+      <AdminShell
+        tabs={TABS}
+        active={tab}
+        onChange={(k) => setTab(k as TabKey)}
+        onSignOut={signOut}
+        headerExtra={<DateRangePicker />}
+      >
+        {tab === "dashboard" && <AdminOrders />}
+        {tab === "finance" && <FinanceTab />}
+        {tab === "crm" && <CrmTab />}
+        {tab === "settings" && <SettingsTab />}
+      </AdminShell>
     </DateRangeProvider>
   );
 };
-
-// ─── Tab Button ─────────────────────────────────────────────────────
-const CmdTab = ({ active, onClick, icon, children }: {
-  active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode;
-}) => (
-  <button
-    onClick={onClick}
-    className="flex items-center gap-2 px-5 py-3 text-[11px] tracking-[0.25em] uppercase transition-all border-b-2 -mb-px"
-    style={{
-      color: active ? "#D4AF37" : "#888",
-      borderColor: active ? "#D4AF37" : "transparent",
-      fontWeight: active ? 600 : 400,
-    }}
-    onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#F5F5F0"; }}
-    onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#888"; }}
-  >
-    {icon} {children}
-  </button>
-);
-
-// ─── Dashboard Tab — wraps the existing AdminOrders dashboard ───────
-const DashboardTab = () => (
-  <div style={{ backgroundColor: "#0A0A0A" }}>
-    <AdminOrders />
-  </div>
-);
 
 // ─── Finance Tab ────────────────────────────────────────────────────
 const FinanceTab = () => {
@@ -233,7 +168,6 @@ const FinanceTab = () => {
     const avgOrderValue = totalRevenue / orderCount;
     const avgProfit = totalProfit / orderCount;
 
-    // Cost alert: ad spend per order > 30% of avg order value
     const adAlert = avgOrderValue > 0 && (adSpendPerOrder / avgOrderValue) > 0.3;
     const productionAlert = avgOrderValue > 0 && (Number(costs.shineon_unit_cost) / avgOrderValue) > 0.4;
 
@@ -245,7 +179,7 @@ const FinanceTab = () => {
   }, [orders, costs, range]);
 
   if (loading) {
-    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} /></div>;
+    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>;
   }
   if (!costs) {
     return <div className="container mx-auto px-6 py-20 text-center text-muted-foreground">No cost settings found. Configure them in the Settings tab.</div>;
@@ -254,26 +188,22 @@ const FinanceTab = () => {
 
   return (
     <div className="container mx-auto px-6 py-10 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Financial Intelligence</h2>
-        <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: "#888" }}>
-          {range.label} · Live
-        </p>
-      </div>
+      <AdminSectionHeader
+        eyebrow="Financial Intelligence"
+        title="Profit & Margins"
+        right={<p className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground">{range.label} · Live</p>}
+      />
 
-      {/* Cost Alerts */}
       {(stats.adAlert || stats.productionAlert) && (
         <div className="mb-6 space-y-2">
           {stats.adAlert && (
             <CostAlert
-              level="warn"
               title="Ad spend is dominating margin"
               message={`Pro-rated ad cost (${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}/order) exceeds 30% of average order value. Review campaigns.`}
             />
           )}
           {stats.productionAlert && (
             <CostAlert
-              level="warn"
               title="Production cost ratio is high"
               message={`ShineOn unit cost is over 40% of avg order value (${costs.currency} ${stats.avgOrderValue.toFixed(2)}). Consider repricing.`}
             />
@@ -281,33 +211,31 @@ const FinanceTab = () => {
         </div>
       )}
 
-      {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Kpi label={`Revenue · ${range.label}`} value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
-        <Kpi label="Total Costs" value={`${costs.currency} ${stats.totalCost.toFixed(2)}`} negative />
-        <Kpi label="Net Profit" value={`${costs.currency} ${stats.totalProfit.toFixed(2)}`} accent positive={stats.totalProfit >= 0} />
-        <Kpi label="Margin" value={`${stats.margin.toFixed(1)}%`} accent />
-        <Kpi label="Avg Order Value" value={`${costs.currency} ${stats.avgOrderValue.toFixed(2)}`} />
-        <Kpi label="Avg Profit/Order" value={`${costs.currency} ${stats.avgProfit.toFixed(2)}`} positive={stats.avgProfit >= 0} />
-        <Kpi label="Ad Cost/Order" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
-        <Kpi label={`Orders · ${range.label}`} value={`${stats.monthOrderCount}`} />
+        <AdminKpi label={`Revenue · ${range.label}`} value={`${costs.currency} ${stats.totalRevenue.toFixed(2)}`} />
+        <AdminKpi label="Total Costs" value={`${costs.currency} ${stats.totalCost.toFixed(2)}`} negative />
+        <AdminKpi label="Net Profit" value={`${costs.currency} ${stats.totalProfit.toFixed(2)}`} tone={stats.totalProfit >= 0 ? "positive" : "negative"} />
+        <AdminKpi label="Margin" value={`${stats.margin.toFixed(1)}%`} tone="accent" />
+        <AdminKpi label="Avg Order Value" value={`${costs.currency} ${stats.avgOrderValue.toFixed(2)}`} />
+        <AdminKpi label="Avg Profit/Order" value={`${costs.currency} ${stats.avgProfit.toFixed(2)}`} tone={stats.avgProfit >= 0 ? "positive" : "negative"} />
+        <AdminKpi label="Ad Cost/Order" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
+        <AdminKpi label={`Orders · ${range.label}`} value={`${stats.monthOrderCount}`} />
       </div>
 
-      {/* Per-order profit table */}
-      <div className="rounded-sm border overflow-hidden" style={{ backgroundColor: "#111", borderColor: "rgba(212,175,55,0.15)" }}>
-        <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(212,175,55,0.1)" }}>
-          <h3 className="text-[11px] tracking-[0.25em] uppercase" style={{ color: "#D4AF37" }}>Per-Order Profit</h3>
-          <p className="text-[10px]" style={{ color: "#888" }}>{stats.paidOrders.length} paid orders</p>
+      <AdminCard className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h3 className="text-[11px] tracking-[0.25em] uppercase text-gold">Per-Order Profit</h3>
+          <p className="text-[10px] text-muted-foreground">{stats.paidOrders.length} paid orders</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ backgroundColor: "rgba(212,175,55,0.04)" }}>
-              <tr className="text-[10px] tracking-[0.2em] uppercase" style={{ color: "#888" }}>
-                <th className="text-left px-5 py-3">Date</th>
-                <th className="text-left px-5 py-3">Customer</th>
-                <th className="text-right px-5 py-3">Revenue</th>
-                <th className="text-right px-5 py-3">Costs</th>
-                <th className="text-right px-5 py-3">Net Profit</th>
+            <thead className="bg-muted/40">
+              <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+                <th className="text-left px-5 py-3 font-medium">Date</th>
+                <th className="text-left px-5 py-3 font-medium">Customer</th>
+                <th className="text-right px-5 py-3 font-medium">Revenue</th>
+                <th className="text-right px-5 py-3 font-medium">Costs</th>
+                <th className="text-right px-5 py-3 font-medium">Net Profit</th>
               </tr>
             </thead>
             <tbody>
@@ -316,52 +244,34 @@ const FinanceTab = () => {
                 const profit = stats.computeProfit(amt);
                 const cost = amt - profit;
                 return (
-                  <tr key={o.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#888" }}>{new Date(o.created_at).toLocaleDateString()}</td>
-                    <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || o.pet_name}</td>
-                    <td className="px-5 py-3 text-right" style={{ color: "#F5F5F0" }}>{costs.currency} {amt.toFixed(2)}</td>
-                    <td className="px-5 py-3 text-right text-xs" style={{ color: "#dc8a8a" }}>−{costs.currency} {cost.toFixed(2)}</td>
-                    <td className="px-5 py-3 text-right font-medium" style={{ color: profit >= 0 ? "#D4AF37" : "#dc2626" }}>
+                  <tr key={o.id} className="border-t border-border/60">
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</td>
+                    <td className="px-5 py-3 text-foreground">{o.customer_name || o.pet_name}</td>
+                    <td className="px-5 py-3 text-right text-foreground tabular-nums">{costs.currency} {amt.toFixed(2)}</td>
+                    <td className="px-5 py-3 text-right text-xs text-destructive tabular-nums">−{costs.currency} {cost.toFixed(2)}</td>
+                    <td className={cn("px-5 py-3 text-right font-medium tabular-nums", profit >= 0 ? "text-emerald-700" : "text-destructive")}>
                       {costs.currency} {profit.toFixed(2)}
                     </td>
                   </tr>
                 );
               })}
               {stats.paidOrders.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No paid orders yet</td></tr>
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-xs text-muted-foreground">No paid orders yet</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </AdminCard>
     </div>
   );
 };
 
-const Kpi = ({ label, value, accent, positive, negative }: { label: string; value: string; accent?: boolean; positive?: boolean; negative?: boolean }) => {
-  let color = "#F5F5F0";
-  if (accent) color = "#D4AF37";
-  if (positive === true) color = "#D4AF37";
-  if (positive === false) color = "#dc2626";
-  if (negative) color = "#dc8a8a";
-  return (
-    <div className="rounded-sm border p-4" style={{ backgroundColor: "#111", borderColor: "rgba(212,175,55,0.12)" }}>
-      <p className="font-serif text-2xl" style={{ color }}>{value}</p>
-      <p className="text-[10px] tracking-[0.2em] uppercase mt-1" style={{ color: "#888" }}>{label}</p>
-    </div>
-  );
-};
-
-const CostAlert = ({ level, title, message }: { level: "warn" | "info"; title: string; message: string }) => (
-  <div className="flex items-start gap-3 p-4 rounded-sm border"
-    style={{
-      backgroundColor: level === "warn" ? "rgba(220,38,38,0.05)" : "rgba(212,175,55,0.05)",
-      borderColor: level === "warn" ? "rgba(220,38,38,0.3)" : "rgba(212,175,55,0.3)",
-    }}>
-    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: level === "warn" ? "#dc2626" : "#D4AF37" }} />
+const CostAlert = ({ title, message }: { title: string; message: string }) => (
+  <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/[0.06]">
+    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
     <div>
-      <p className="text-sm font-medium" style={{ color: level === "warn" ? "#dc2626" : "#D4AF37" }}>{title}</p>
-      <p className="text-xs mt-1" style={{ color: "#aaa" }}>{message}</p>
+      <p className="text-sm font-medium text-destructive">{title}</p>
+      <p className="text-xs mt-1 text-muted-foreground">{message}</p>
     </div>
   </div>
 );
@@ -407,7 +317,6 @@ const CrmTab = () => {
       toast.error(`Failed: ${error?.message || data?.error || "unknown"}`);
     } else {
       toast.success(`Early access invitation sent to ${lead.email}`);
-      // Update lead status locally
       await supabase.from("waitlist_leads").update({ status: "invited", status_updated_at: new Date().toISOString() }).eq("id", lead.id);
       setLeads(p => p.map(l => l.id === lead.id ? { ...l, status: "invited" } : l));
     }
@@ -416,7 +325,6 @@ const CrmTab = () => {
   const sendCustomerUpdate = async (order: OrderSummary) => {
     if (!order.customer_email) { toast.error("No customer email on file"); return; }
     setSendingId(order.id);
-    // Fetch tracking number for this order
     const { data: full } = await supabase.from("animus_orders").select("tracking_number,pet_name,customer_name").eq("id", order.id).maybeSingle();
     const { data, error } = await supabase.functions.invoke("send-transactional-email", {
       body: {
@@ -439,97 +347,104 @@ const CrmTab = () => {
   };
 
   if (loading) {
-    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} /></div>;
+    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>;
   }
 
   return (
     <div className="container mx-auto px-6 py-10 max-w-7xl">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Elite CRM</h2>
-        <div className="flex items-center gap-1 border rounded-sm" style={{ borderColor: "rgba(212,175,55,0.2)" }}>
-          <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({filteredLeads.length})</CrmToggle>
-          <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({filteredOrders.length})</CrmToggle>
-        </div>
-      </div>
+      <AdminSectionHeader
+        eyebrow="Relationships"
+        title="Elite CRM"
+        right={
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1 bg-card">
+            <CrmToggle active={view === "leads"} onClick={() => setView("leads")}>Founders' Circle ({filteredLeads.length})</CrmToggle>
+            <CrmToggle active={view === "customers"} onClick={() => setView("customers")}>Customers ({filteredOrders.length})</CrmToggle>
+          </div>
+        }
+      />
 
       {view === "leads" ? (
-        <div className="rounded-sm border overflow-hidden" style={{ backgroundColor: "#111", borderColor: "rgba(212,175,55,0.15)" }}>
+        <AdminCard className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ backgroundColor: "rgba(212,175,55,0.04)" }}>
-                <tr className="text-[10px] tracking-[0.2em] uppercase" style={{ color: "#888" }}>
-                  <th className="text-left px-5 py-3">Email</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-left px-5 py-3">Joined</th>
-                  <th className="text-right px-5 py-3">Action</th>
+              <thead className="bg-muted/40">
+                <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+                  <th className="text-left px-5 py-3 font-medium">Email</th>
+                  <th className="text-left px-5 py-3 font-medium">Status</th>
+                  <th className="text-left px-5 py-3 font-medium">Joined</th>
+                  <th className="text-right px-5 py-3 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map(l => (
-                  <tr key={l.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-                    <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{l.email}</td>
-                    <td className="px-5 py-3 text-xs capitalize" style={{ color: l.status === "invited" ? "#D4AF37" : "#888" }}>{l.status}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#888" }}>{new Date(l.created_at).toLocaleDateString()}</td>
+                  <tr key={l.id} className="border-t border-border/60">
+                    <td className="px-5 py-3 text-foreground">{l.email}</td>
+                    <td className={cn("px-5 py-3 text-xs capitalize", l.status === "invited" ? "text-gold-dark" : "text-muted-foreground")}>{l.status}</td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString()}</td>
                     <td className="px-5 py-3 text-right">
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => sendLeadInvitation(l)}
                         disabled={sendingId === l.id}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
-                        style={{ borderColor: "#D4AF37", color: "#D4AF37" }}
+                        aria-label={`Send early access invite to ${l.email}`}
+                        className="text-[10px] tracking-[0.2em] uppercase border-gold/40 text-gold-dark hover:bg-gold/10"
                       >
                         {sendingId === l.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                         Send Invite
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
                 {filteredLeads.length === 0 && (
-                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No leads in {range.label.toLowerCase()}</td></tr>
+                  <tr><td colSpan={4} className="px-5 py-12 text-center text-xs text-muted-foreground">No leads in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
+        </AdminCard>
       ) : (
-        <div className="rounded-sm border overflow-hidden" style={{ backgroundColor: "#111", borderColor: "rgba(212,175,55,0.15)" }}>
+        <AdminCard className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ backgroundColor: "rgba(212,175,55,0.04)" }}>
-                <tr className="text-[10px] tracking-[0.2em] uppercase" style={{ color: "#888" }}>
-                  <th className="text-left px-5 py-3">Customer</th>
-                  <th className="text-left px-5 py-3">Email</th>
-                  <th className="text-left px-5 py-3">Pendant</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-right px-5 py-3">Action</th>
+              <thead className="bg-muted/40">
+                <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+                  <th className="text-left px-5 py-3 font-medium">Customer</th>
+                  <th className="text-left px-5 py-3 font-medium">Email</th>
+                  <th className="text-left px-5 py-3 font-medium">Pendant</th>
+                  <th className="text-left px-5 py-3 font-medium">Status</th>
+                  <th className="text-right px-5 py-3 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map(o => (
-                  <tr key={o.id} className="border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-                    <td className="px-5 py-3" style={{ color: "#F5F5F0" }}>{o.customer_name || "—"}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#aaa" }}>{o.customer_email}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#888" }}>{o.pet_name}</td>
-                    <td className="px-5 py-3 text-xs capitalize" style={{ color: "#888" }}>{o.status.replace(/_/g, " ")}</td>
+                  <tr key={o.id} className="border-t border-border/60">
+                    <td className="px-5 py-3 text-foreground">{o.customer_name || "—"}</td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{o.customer_email}</td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{o.pet_name}</td>
+                    <td className="px-5 py-3 text-xs capitalize text-muted-foreground">{o.status.replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-right">
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => sendCustomerUpdate(o)}
                         disabled={sendingId === o.id}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
-                        style={{ borderColor: "#D4AF37", color: "#D4AF37" }}
+                        aria-label={`Email update to ${o.customer_email}`}
+                        className="text-[10px] tracking-[0.2em] uppercase border-gold/40 text-gold-dark hover:bg-gold/10"
                       >
                         {sendingId === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
                         Email Update
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
                 {filteredOrders.length === 0 && (
-                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs" style={{ color: "#888" }}>No customers in {range.label.toLowerCase()}</td></tr>
+                  <tr><td colSpan={5} className="px-5 py-12 text-center text-xs text-muted-foreground">No customers in {range.label.toLowerCase()}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
+        </AdminCard>
       )}
     </div>
   );
@@ -538,279 +453,14 @@ const CrmTab = () => {
 const CrmToggle = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
     onClick={onClick}
-    className="px-4 py-2 text-[10px] tracking-[0.2em] uppercase transition-all"
-    style={{
-      backgroundColor: active ? "#D4AF37" : "transparent",
-      color: active ? "#0A0A0A" : "#888",
-      fontWeight: active ? 600 : 400,
-    }}
+    className={cn(
+      "px-4 py-2 rounded-md text-[10px] tracking-[0.2em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      active ? "bg-gold text-accent-foreground font-semibold" : "text-muted-foreground hover:text-foreground",
+    )}
   >
     {children}
   </button>
 );
-
-// ─── Recovery Tab ───────────────────────────────────────────────────
-const RecoveryTab = () => {
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<RecoveryOrder[]>([]);
-  const [working, setWorking] = useState<Record<string, string | null>>({});
-
-  const setTask = (id: string, task: string | null) =>
-    setWorking(w => ({ ...w, [id]: task }));
-
-  const fetchRecovery = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("animus_orders")
-      .select("id,created_at,customer_name,customer_email,customer_phone,amount,status,print_image_url,icount_docnum,shipping_address1,shipping_city,shipping_country_code")
-      .or("status.eq.shineon_error,and(status.eq.paid,print_image_url.is.null)")
-      .order("created_at", { ascending: false });
-    if (data) setOrders(data as RecoveryOrder[]);
-    if (error) toast.error("Failed to load recovery orders");
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchRecovery(); }, []);
-
-  const handleRenderPng = async (orderId: string) => {
-    setTask(orderId, "render");
-    try {
-      const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId } });
-      if (error || !data?.success) throw new Error(error?.message || data?.error || "Render failed");
-      setOrders(p => p.map(o => o.id === orderId ? { ...o, print_image_url: data.print_image_url } : o));
-      toast.success("PNG rendered — now click Retry ShineOn to submit");
-    } catch (e: any) {
-      toast.error(`Render failed: ${e?.message}`);
-    } finally {
-      setTask(orderId, null);
-    }
-  };
-
-  const handleRetryShineOn = async (order: RecoveryOrder) => {
-    setTask(order.id, "shineon");
-    try {
-      const { error: resetErr } = await supabase
-        .from("animus_orders")
-        .update({ status: "payment_pending" })
-        .eq("id", order.id);
-      if (resetErr) throw new Error(resetErr.message);
-
-      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", {
-        body: {
-          order_id: order.id,
-          status: "paid",
-          amount: order.amount,
-          client_email: order.customer_email,
-          client_name: order.customer_name,
-          docnum: order.icount_docnum,
-        },
-      });
-      if (error) throw new Error(error.message);
-
-      if (data?.shineon_submitted) {
-        setOrders(p => p.filter(o => o.id !== order.id));
-        toast.success("Order submitted to ShineOn — fulfilled");
-      } else if (data?.shineon_error) {
-        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
-        setOrders(p => p.map(o => o.id === order.id ? { ...o, status: "shineon_error" } : o));
-        toast.error(`ShineOn rejected the order: ${String(data.body || "").slice(0, 200)}`);
-      } else {
-        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
-        toast.warning(`ShineOn result: ${data?.reason || "no submission"}`);
-      }
-    } catch (e: any) {
-      toast.error(`ShineOn retry failed: ${e?.message}`);
-    } finally {
-      setTask(order.id, null);
-    }
-  };
-
-  const handleRenderAndSubmit = async (order: RecoveryOrder) => {
-    setTask(order.id, "both");
-    try {
-      let printUrl = order.print_image_url;
-      if (!printUrl) {
-        toast.info("Step 1/2 — Rendering engraving PNG…");
-        const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId: order.id } });
-        if (error || !data?.success) throw new Error(`PNG render failed: ${error?.message || data?.error}`);
-        printUrl = data.print_image_url;
-        setOrders(p => p.map(o => o.id === order.id ? { ...o, print_image_url: printUrl } : o));
-      }
-      toast.info("Step 2/2 — Submitting to ShineOn…");
-      const { error: resetErr } = await supabase
-        .from("animus_orders")
-        .update({ status: "payment_pending" })
-        .eq("id", order.id);
-      if (resetErr) throw new Error(resetErr.message);
-
-      const { data, error } = await supabase.functions.invoke("icount-payment-webhook", {
-        body: {
-          order_id: order.id,
-          status: "paid",
-          amount: order.amount,
-          client_email: order.customer_email,
-          client_name: order.customer_name,
-          docnum: order.icount_docnum,
-        },
-      });
-      if (error) throw new Error(error.message);
-
-      if (data?.shineon_submitted) {
-        setOrders(p => p.filter(o => o.id !== order.id));
-        toast.success("Render + Submit complete — order fulfilled");
-      } else if (data?.shineon_error) {
-        await supabase.from("animus_orders").update({ status: "shineon_error" }).eq("id", order.id);
-        setOrders(p => p.map(o => o.id === order.id ? { ...o, status: "shineon_error" } : o));
-        toast.error(`ShineOn rejected the order: ${String(data.body || "").slice(0, 200)}`);
-      } else {
-        toast.warning(`ShineOn result: ${data?.reason || "unknown"}`);
-      }
-    } catch (e: any) {
-      toast.error(`Render + Submit failed: ${e?.message}`);
-    } finally {
-      setTask(order.id, null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-6 py-20 flex justify-center">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-6 py-10 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-serif text-2xl" style={{ color: "#F5F5F0" }}>Recovery Station</h2>
-          <p className="text-xs mt-1" style={{ color: "#888" }}>
-            Orders with ShineOn errors or missing print PNG — use the panic buttons to recover
-          </p>
-        </div>
-        <button
-          onClick={fetchRecovery}
-          className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border transition-all"
-          style={{ borderColor: "rgba(255,255,255,0.1)", color: "#999" }}
-        >
-          <RefreshCw className="w-3 h-3" /> Refresh
-        </button>
-      </div>
-
-      {orders.length === 0 ? (
-        <div className="rounded-sm border py-20 text-center text-sm" style={{ borderColor: "rgba(212,175,55,0.15)", color: "#888" }}>
-          All clear — no orders need recovery
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map(o => {
-            const busy = !!working[o.id];
-            const task = working[o.id];
-            const needsPng = !o.print_image_url;
-            const isShineOnError = o.status === "shineon_error";
-            return (
-              <div
-                key={o.id}
-                className="rounded-sm border p-5"
-                style={{
-                  backgroundColor: "#111",
-                  borderColor: isShineOnError ? "rgba(220,38,38,0.4)" : "rgba(212,175,55,0.25)",
-                }}
-              >
-                <div className="flex flex-col md:flex-row gap-4 items-start">
-                  {/* PNG thumbnail */}
-                  <div className="shrink-0">
-                    {o.print_image_url ? (
-                      <a href={o.print_image_url} target="_blank" rel="noopener noreferrer" title="View full PNG">
-                        <img
-                          src={o.print_image_url}
-                          alt="Engraving PNG"
-                          className="w-16 h-16 object-cover rounded-sm border"
-                          style={{ borderColor: "rgba(212,175,55,0.25)" }}
-                        />
-                      </a>
-                    ) : (
-                      <div
-                        className="w-16 h-16 rounded-sm border flex items-center justify-center"
-                        style={{ borderColor: "rgba(220,38,38,0.35)", backgroundColor: "rgba(220,38,38,0.05)" }}
-                        title="No PNG — render required"
-                      >
-                        <ImageIcon className="w-5 h-5" style={{ color: "#dc2626" }} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Order info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium" style={{ color: "#F5F5F0" }}>
-                        {o.customer_name || "Unknown Customer"}
-                      </span>
-                      <span
-                        className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded-sm border"
-                        style={isShineOnError
-                          ? { borderColor: "rgba(220,38,38,0.5)", color: "#dc2626", backgroundColor: "rgba(220,38,38,0.1)" }
-                          : { borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37", backgroundColor: "rgba(212,175,55,0.07)" }
-                        }
-                      >
-                        {isShineOnError ? "ShineOn Error" : "Missing PNG"}
-                      </span>
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: "#888" }}>
-                      {o.customer_email || "—"} · {o.amount ? `$${o.amount}` : "—"}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "#666" }}>
-                      {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      {o.icount_docnum ? ` · #${o.icount_docnum}` : " · No docnum"}
-                    </p>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex flex-wrap gap-2 items-start shrink-0">
-                    {/* Primary panic button */}
-                    <button
-                      onClick={() => handleRenderAndSubmit(o)}
-                      disabled={busy}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 text-[10px] tracking-[0.2em] uppercase font-medium transition-all disabled:opacity-50"
-                      style={{ backgroundColor: "#D4AF37", color: "#0A0A0A" }}
-                    >
-                      {task === "both" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-                      {task === "both" ? "Processing…" : "Render + Submit"}
-                    </button>
-
-                    {needsPng && (
-                      <button
-                        onClick={() => handleRenderPng(o.id)}
-                        disabled={busy}
-                        className="inline-flex items-center gap-1.5 px-3 py-2.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
-                        style={{ borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37" }}
-                      >
-                        {task === "render" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
-                        Render PNG
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleRetryShineOn(o)}
-                      disabled={busy || needsPng}
-                      className="inline-flex items-center gap-1.5 px-3 py-2.5 text-[10px] tracking-[0.2em] uppercase border transition-all disabled:opacity-50"
-                      style={{ borderColor: "rgba(220,38,38,0.4)", color: "#dc2626" }}
-                      title={needsPng ? "Render PNG first before retrying ShineOn" : "Retry ShineOn submission"}
-                    >
-                      {task === "shineon" ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
-                      Retry ShineOn
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ─── Settings Tab ───────────────────────────────────────────────────
 const SettingsTab = () => {
@@ -864,17 +514,17 @@ const SettingsTab = () => {
   };
 
   if (loading) {
-    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} /></div>;
+    return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>;
   }
 
   return (
     <div className="container mx-auto px-6 py-10 max-w-3xl">
-      <h2 className="font-serif text-2xl mb-2" style={{ color: "#F5F5F0" }}>Cost Settings</h2>
-      <p className="text-xs mb-8" style={{ color: "#888" }}>
+      <AdminSectionHeader eyebrow="Configuration" title="Cost Settings" />
+      <p className="text-xs mb-8 text-muted-foreground -mt-4">
         Edit any value and save. The Finance tab updates immediately.
       </p>
 
-      <div className="rounded-sm border p-6 space-y-5" style={{ backgroundColor: "#111", borderColor: "rgba(212,175,55,0.15)" }}>
+      <AdminCard className="p-6 space-y-5">
         <SettingField
           label="ShineOn Unit Cost"
           hint="What each pendant costs you from the ShineOn manufacturer"
@@ -911,21 +561,16 @@ const SettingsTab = () => {
           isText
         />
 
-        <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-          <p className="text-[10px]" style={{ color: "#666" }}>
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <p className="text-[10px] text-muted-foreground">
             {costs?.updated_at && `Last saved ${new Date(costs.updated_at).toLocaleString()}`}
           </p>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-3 text-[11px] tracking-[0.25em] uppercase font-medium transition-all disabled:opacity-50"
-            style={{ backgroundColor: "#D4AF37", color: "#0A0A0A" }}
-          >
+          <Button onClick={save} disabled={saving} className="text-[11px] tracking-[0.25em] uppercase">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Save Settings
-          </button>
+          </Button>
         </div>
-      </div>
+      </AdminCard>
     </div>
   );
 };
@@ -933,23 +578,27 @@ const SettingsTab = () => {
 const SettingField = ({ label, hint, value, onChange, prefix, suffix, isText }: {
   label: string; hint: string; value: string; onChange: (v: string) => void;
   prefix?: string; suffix?: string; isText?: boolean;
-}) => (
-  <div>
-    <label className="block text-[10px] tracking-[0.25em] uppercase mb-1.5" style={{ color: "#D4AF37" }}>{label}</label>
-    <p className="text-[11px] mb-2" style={{ color: "#777" }}>{hint}</p>
-    <div className="flex items-stretch border rounded-sm overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-      {prefix && <span className="px-3 py-2.5 text-xs flex items-center" style={{ backgroundColor: "rgba(212,175,55,0.08)", color: "#D4AF37" }}>{prefix}</span>}
-      <input
-        type={isText ? "text" : "number"}
-        step={isText ? undefined : "0.01"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 px-3 py-2.5 text-sm outline-none"
-        style={{ backgroundColor: "transparent", color: "#F5F5F0" }}
-      />
-      {suffix && <span className="px-3 py-2.5 text-xs flex items-center" style={{ backgroundColor: "rgba(212,175,55,0.08)", color: "#D4AF37" }}>{suffix}</span>}
+}) => {
+  const id = `setting-${label.replace(/[^a-z]/gi, "-").toLowerCase()}`;
+  return (
+    <div>
+      <Label htmlFor={id} className="block text-[10px] tracking-[0.25em] uppercase mb-1.5 text-gold-dark">{label}</Label>
+      <p className="text-[11px] mb-2 text-muted-foreground">{hint}</p>
+      <div className="flex items-stretch rounded-md border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+        {prefix && <span className="px-3 flex items-center text-xs bg-gold/[0.08] text-gold-dark">{prefix}</span>}
+        <Input
+          id={id}
+          type={isText ? "text" : "number"}
+          step={isText ? undefined : "0.01"}
+          inputMode={isText ? undefined : "decimal"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+        {suffix && <span className="px-3 flex items-center text-xs bg-gold/[0.08] text-gold-dark">{suffix}</span>}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default AdminControl;
