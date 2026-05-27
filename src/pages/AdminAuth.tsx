@@ -14,10 +14,10 @@ const AdminAuth = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) navigate("/admin-dashboard", { replace: true });
+      if (session) navigate("/admin/control", { replace: true });
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/admin-dashboard", { replace: true });
+      if (session) navigate("/admin/control", { replace: true });
       setChecking(false);
     });
     return () => subscription.unsubscribe();
@@ -31,7 +31,7 @@ const AdminAuth = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/admin-dashboard` },
+          options: { emailRedirectTo: `${window.location.origin}/admin/control` },
         });
         if (error) throw error;
         toast.success("Account created. Ask an existing admin to grant you access.");
