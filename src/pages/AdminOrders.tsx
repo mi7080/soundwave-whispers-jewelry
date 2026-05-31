@@ -15,7 +15,9 @@ import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeConte
 import { buildSoulPageUrl } from "@/lib/soulPage";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
-const DEFAULT_SKU = "SO-15845645";
+// Fallback SKU for legacy orders with no resolved shineon_sku (steel + engraving).
+// Kept in sync with SHINEON_SKU_FALLBACK in the icount-payment-webhook function.
+const DEFAULT_SKU = "SO-15845643";
 
 type OrderStatus =
   | "pending"
@@ -620,7 +622,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       const bCC = useShipForBill ? sCC : (o.billing_country_code || "");
 
       return [
-        sourceId, `${sourceId}-1`, DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
+        sourceId, `${sourceId}-1`, o.shineon_sku || DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
         engraving1, printUrl, engraving1, "", "",
         bFirst, bLast, bName, bAddr1, bAddr2, phone,
         bCity, bZip, "", bCC, bState, bState,

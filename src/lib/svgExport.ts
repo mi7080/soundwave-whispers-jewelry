@@ -82,10 +82,15 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   const height = 1788;
   const cx = width / 2;
 
+  // ShineOn Acrylic dog-tag template safe design area (notch at top, bleed margins
+  // all around). Artwork is composed to fill this central zone — waveform stacked
+  // above the QR, both vertically centered around the tag's mid-line (~y 900).
+  // Keep everything inside SAFE_X 140–860 and SAFE_Y 330–1470.
+
   // --- Waveform as vertical bars (chronological L→R) ---
-  const waveY = 550;
-  const waveWidth = 800;
-  const maxBarHeight = 300;
+  const waveY = 640;
+  const waveWidth = 720;
+  const maxBarHeight = 440;
   const startX = (width - waveWidth) / 2;
   const samples = waveformData.length || 1;
   const barWidth = Math.max(2, waveWidth / samples - 1);
@@ -104,10 +109,10 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   const qrSegments = await QRCode.create(soulPageUrl, { errorCorrectionLevel: "M" });
   const qrModules = qrSegments.modules;
   const qrSize = qrModules.size;
-  const qrPixelSize = 300;
+  const qrPixelSize = 420;
   const qrBlockSize = qrPixelSize / qrSize;
   const qrOffsetX = cx - qrPixelSize / 2;
-  const qrOffsetY = 800;
+  const qrOffsetY = 1010;
 
   let qrRects = "";
   for (let row = 0; row < qrSize; row++) {

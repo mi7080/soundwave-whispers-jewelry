@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, ArrowRight, Lock, Check } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
-import { PRODUCT_CONFIG } from "@/config/product";
+import { PRODUCT_CONFIG, resolveShineonSku } from "@/config/product";
 
 const COUNTRIES = [
   { code: "US", name: "United States" },
@@ -154,7 +154,7 @@ const Checkout = () => {
     }
     supabase
       .from("animus_orders")
-      .select("id, pet_name, design_image_url, pet_photo_url, status, customer_name, customer_email, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
+      .select("id, pet_name, add_name_to_back, design_image_url, pet_photo_url, status, customer_name, customer_email, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -256,6 +256,9 @@ const Checkout = () => {
         billing_same_as_shipping: values.billingSame,
         amount: total,
         status: "shipping_captured",
+        // Resolve the ShineOn variant SKU from the selected finish + back engraving
+        // so fulfillment submits the correct variant (steel/gold × engraving yes/no).
+        shineon_sku: resolveShineonSku(variant.finish, !!order?.add_name_to_back),
       };
       if (!values.billingSame) {
         update.billing_name = values.billingName;

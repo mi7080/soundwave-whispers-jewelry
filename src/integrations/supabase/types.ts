@@ -50,6 +50,7 @@ export type Database = {
           shipping_country_code: string | null
           shipping_state: string | null
           shipping_zip: string | null
+          shineon_sku: string | null
           soul_page_url: string
           soul_video_url: string | null
           status: string
@@ -96,6 +97,7 @@ export type Database = {
           shipping_country_code?: string | null
           shipping_state?: string | null
           shipping_zip?: string | null
+          shineon_sku?: string | null
           soul_page_url: string
           soul_video_url?: string | null
           status?: string
@@ -142,6 +144,7 @@ export type Database = {
           shipping_country_code?: string | null
           shipping_state?: string | null
           shipping_zip?: string | null
+          shineon_sku?: string | null
           soul_page_url?: string
           soul_video_url?: string | null
           status?: string

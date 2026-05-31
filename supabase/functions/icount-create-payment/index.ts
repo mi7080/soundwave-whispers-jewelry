@@ -55,7 +55,18 @@ serve(async (req) => {
       );
     }
 
-    const webhookUrl = `${supabaseUrl}/functions/v1/icount-payment-webhook`;
+    // Webhook URL carries the shared secret as a query param so iCount echoes it
+    // back on the IPN POST. The webhook accepts the secret from header, query, OR
+    // body — appending it here means fulfillment no longer depends on the iCount
+    // dashboard being configured to send an X-iCount-Secret header. Without a
+    // matching secret the webhook 401s and the order never reaches ShineOn.
+    const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
+    const webhookUrl = webhookSecret
+      ? `${supabaseUrl}/functions/v1/icount-payment-webhook?secret=${encodeURIComponent(webhookSecret)}`
+      : `${supabaseUrl}/functions/v1/icount-payment-webhook`;
+    if (!webhookSecret) {
+      console.warn("[iCount] ICOUNT_WEBHOOK_SECRET not set — ipn_url has no secret; webhook may reject the IPN");
+    }
     const encodedName = encodeURIComponent(fullName || "");
     const finalSuccess = successUrl || `${siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
     const finalFailure = failureUrl || `${siteUrl || ""}/checkout?order=${orderId}&status=failed`;

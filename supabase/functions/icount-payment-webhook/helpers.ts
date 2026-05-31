@@ -117,24 +117,30 @@ function isSvgUrl(url: string): boolean {
 /**
  * Decide which asset URL to send to ShineOn as `print_url`.
  *
+ * ShineOn's Acrylic dog-tag template requires a 1000x1788 SVG (RGB, solid black) —
+ * confirmed with the client. The vector SVG is the file ShineOn prints from.
+ *
  * Priority:
- *   1. print_image_url  — always a rendered PNG from upload-production-assets.
- *   2. design_image_url — raster PNG only; SVG values are hard-blocked because
- *      ShineOn cannot process vector files and produces a blank print.
- *   3. none             — caller must treat this as a hard error and mark the
- *      order as shineon_error rather than submitting a broken payload.
+ *   1. design_image_url — the production SVG (final_engraving_design.svg).
+ *   2. print_image_url  — legacy rasterized PNG, kept only as a fallback so an
+ *      order never hard-fails if the SVG url is somehow missing.
+ *   3. none             — caller marks the order shineon_error rather than
+ *      submitting a broken payload.
  */
 export function pickShineOnPrintUrl(order: {
   print_image_url?: string | null;
   design_image_url?: string | null;
-}): { url: string; source: "print_image_url" | "design_image_url" | "none" } {
+}): { url: string; source: "design_image_url" | "print_image_url" | "none" } {
+  const svgUrl = order.design_image_url?.trim() || "";
+  if (svgUrl && isSvgUrl(svgUrl)) {
+    return { url: svgUrl, source: "design_image_url" };
+  }
   const printUrl = order.print_image_url?.trim() || "";
   if (printUrl) {
     return { url: printUrl, source: "print_image_url" };
   }
-  const fallback = order.design_image_url?.trim() || "";
-  if (fallback && !isSvgUrl(fallback)) {
-    return { url: fallback, source: "design_image_url" };
+  if (svgUrl) {
+    return { url: svgUrl, source: "design_image_url" };
   }
   return { url: "", source: "none" };
 }

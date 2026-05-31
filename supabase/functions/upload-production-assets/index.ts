@@ -49,10 +49,12 @@ serve(async (req) => {
     const { data: svgUrlData } = supabase.storage.from("production_assets").getPublicUrl(svgPath);
     const frontEngravingUrl = svgUrlData?.publicUrl || "";
 
-    // ── 2. Render SVG → PNG and save as print_image_url (pre-emptive) ────────
+    // ── 2. Render SVG → PNG and save as print_image_url (legacy fallback) ────
     // Non-blocking: a render failure must not prevent checkout from completing.
-    // The webhook's pickShineOnPrintUrl will find this URL first and skip any
-    // SVG fallback, making ShineOn submission instant and fail-safe.
+    // ShineOn's Acrylic template prints from the 1000x1788 SVG, so the webhook's
+    // pickShineOnPrintUrl now prefers design_image_url (the SVG) and only falls
+    // back to this PNG if the SVG url is somehow missing. The PNG is still useful
+    // for admin preview and the manual CSV-export path.
     // If all retries fail we log to email_send_log so the admin UI surfaces it
     // and an operator can manually re-render via render-engraving-png.
     let printImageUrl = "";

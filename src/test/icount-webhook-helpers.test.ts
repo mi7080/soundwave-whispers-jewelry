@@ -67,32 +67,33 @@ describe("extractOrderId", () => {
 });
 
 describe("pickShineOnPrintUrl", () => {
-  it("prefers print_image_url (the rendered PNG)", () => {
+  it("prefers the design_image_url SVG (the file ShineOn prints from) over the legacy PNG", () => {
     const r = pickShineOnPrintUrl({
       print_image_url: "https://cdn/example.png",
       design_image_url: "https://cdn/example.svg",
     });
-    expect(r).toEqual({ url: "https://cdn/example.png", source: "print_image_url" });
+    expect(r).toEqual({ url: "https://cdn/example.svg", source: "design_image_url" });
   });
-  it("falls back to design_image_url when it is a raster (non-SVG) asset", () => {
+  it("matches SVG urls even with a query string", () => {
     const r = pickShineOnPrintUrl({
       print_image_url: null,
-      design_image_url: "https://cdn/example.png",
+      design_image_url: "https://cdn/design.svg?v=2",
     });
-    expect(r).toEqual({ url: "https://cdn/example.png", source: "design_image_url" });
+    expect(r).toEqual({ url: "https://cdn/design.svg?v=2", source: "design_image_url" });
   });
-  it("blocks SVG design_image_url and returns none (prevents raw vectors reaching ShineOn)", () => {
-    expect(pickShineOnPrintUrl({ print_image_url: null, design_image_url: "https://cdn/design.svg" }))
-      .toEqual({ url: "", source: "none" });
-    expect(pickShineOnPrintUrl({ print_image_url: null, design_image_url: "https://cdn/design.svg?v=2" }))
-      .toEqual({ url: "", source: "none" });
+  it("falls back to print_image_url PNG when the SVG url is missing", () => {
+    const r = pickShineOnPrintUrl({
+      print_image_url: "https://cdn/example.png",
+      design_image_url: null,
+    });
+    expect(r).toEqual({ url: "https://cdn/example.png", source: "print_image_url" });
   });
-  it("ignores whitespace-only print_image_url and falls back to raster design_image_url", () => {
+  it("uses a non-SVG design_image_url when nothing else is available", () => {
     const r = pickShineOnPrintUrl({
       print_image_url: "   ",
       design_image_url: "https://cdn/example.png",
     });
-    expect(r.source).toBe("design_image_url");
+    expect(r).toEqual({ url: "https://cdn/example.png", source: "design_image_url" });
   });
   it("returns empty when neither is set", () => {
     expect(pickShineOnPrintUrl({})).toEqual({ url: "", source: "none" });

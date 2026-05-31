@@ -19,11 +19,14 @@ const corsHeaders = {
 };
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
-// Order SKU — must match the SKU in your ShineOn catalog. Kept in sync with
-// DEFAULT_SKU in src/pages/AdminOrders.tsx (the manual CSV-export fulfillment path).
-// NOTE: PT-2151 in src/config/product.ts is the *artwork template*, not the order SKU.
-// ⚠️ Confirm this value in fulfillment.shineon.com → Catalog before going live.
-const SHINEON_SKU = "SO-15845645";
+// Fallback ShineOn SKU for orders created before per-variant SKUs were stored
+// (animus_orders.shineon_sku is null). Normal orders carry their resolved variant
+// SKU, set at checkout from finish × back engraving — see resolveShineonSku in
+// src/config/product.ts. This fallback is steel + engraving on "The ANIMUS Soulwave
+// Pendant" (Partner CSV/API store). Kept in sync with DEFAULT_SKU in
+// src/pages/AdminOrders.tsx (the manual CSV-export fulfillment path).
+//   steel/no SO-15845642 · steel/yes SO-15845643 · gold/no SO-15845644 · gold/yes SO-15845645
+const SHINEON_SKU_FALLBACK = "SO-15845643";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -226,7 +229,7 @@ serve(async (req) => {
 
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, print_image_url, pet_name, add_name_to_back, right_side_engraving, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
+      .select("id, design_image_url, print_image_url, pet_name, add_name_to_back, right_side_engraving, shineon_sku, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -235,7 +238,8 @@ serve(async (req) => {
       return json({ success: true, shineon_skipped: true, reason: "order_not_found", orderId });
     }
 
-    // ShineOn requires a raster PNG. pickShineOnPrintUrl prefers print_image_url and hard-blocks SVG fallbacks.
+    // ShineOn's Acrylic template prints from a 1000x1788 SVG. pickShineOnPrintUrl prefers the
+    // design_image_url SVG and only falls back to the legacy print_image_url PNG if it's missing.
     const { url: printAssetUrl, source: printAssetSource } = pickShineOnPrintUrl(freshOrder as any);
 
     if (!printAssetUrl) {
@@ -305,6 +309,10 @@ serve(async (req) => {
       properties["Engraving Line 1"] = String(freshOrder.pet_name);
     }
 
+    // Variant SKU resolved at checkout (finish × engraving). Fall back for legacy
+    // orders created before the shineon_sku column existed.
+    const lineItemSku = (freshOrder as any).shineon_sku || SHINEON_SKU_FALLBACK;
+
     // ShineOn Orders API: everything is nested under an "order" object.
     // source_id = our unique order ref; store_line_item_id = per-line ref.
     const shineonPayload = {
@@ -314,7 +322,7 @@ serve(async (req) => {
         line_items: [
           {
             store_line_item_id: `${sourceId}-1`,
-            sku: SHINEON_SKU,
+            sku: lineItemSku,
             quantity: 1,
             properties,
           },
@@ -323,7 +331,7 @@ serve(async (req) => {
       },
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — source_id: ${sourceId}, sku: ${SHINEON_SKU}, print_url: ${printAssetUrl} (source: ${printAssetSource}), back_engraving: ${properties["Engraving Line 1"] ? "yes" : "no"}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — source_id: ${sourceId}, sku: ${lineItemSku}${(freshOrder as any).shineon_sku ? "" : " (fallback)"}, print_url: ${printAssetUrl} (source: ${printAssetSource}), back_engraving: ${properties["Engraving Line 1"] ? "yes" : "no"}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
