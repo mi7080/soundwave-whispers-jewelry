@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from "lucide-react";
 import {
-  useDateRange, presetToday, presetYesterday, presetLast7, presetCurrentMonth,
+  useDateRange, presetToday, presetYesterday, presetLast7, presetCurrentMonth, presetAllTime,
   shiftDay, isSingleDay, DateRange,
 } from "./DateRangeContext";
 
@@ -12,13 +12,16 @@ const presets: { label: string; build: () => DateRange }[] = [
   { label: "Yesterday", build: presetYesterday },
   { label: "Last 7 Days", build: presetLast7 },
   { label: "Current Month", build: presetCurrentMonth },
+  { label: "All Time", build: presetAllTime },
 ];
 
 export const DateRangePicker = () => {
   const { range, setRange } = useDateRange();
   const [open, setOpen] = useState(false);
 
-  const display = isSingleDay(range) ? fmt(range.from) : `${fmt(range.from)} → ${fmt(range.to)}`;
+  const display = range.label === "All Time"
+    ? `through ${fmt(range.to)}`
+    : isSingleDay(range) ? fmt(range.from) : `${fmt(range.from)} → ${fmt(range.to)}`;
 
   return (
     <div className="relative flex items-center gap-1">

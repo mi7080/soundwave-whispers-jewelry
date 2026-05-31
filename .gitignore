@@ -37,6 +37,9 @@ supabase/functions/.env
 supabase/.branches
 supabase/.temp
 
+# Superpowers brainstorm scratch
+.superpowers/
+
 # Test / build artifacts
 coverage
 test-results

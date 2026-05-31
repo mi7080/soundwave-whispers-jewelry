@@ -1,16 +1,13 @@
-import { Truck, Shield, Lock, Loader2, Eye, Info } from "lucide-react";
+import { Loader2, Eye, ArrowRight } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPresets from "@/components/AudioPresets";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
-import FourSideGuide from "@/components/FourSideGuide";
-import DogTagPreview from "@/components/DogTagPreview";
 import SoulPage from "@/pages/SoulPage";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { generateProductionSvg } from "@/lib/svgExport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import QRCode from "qrcode";
 import { buildSoulPageUrl } from "@/lib/soulPage";
 import { PRODUCT_CONFIG } from "@/config/product";
 
@@ -79,11 +76,9 @@ const ProductSection = () => {
   const [cartLoading, setCartLoading] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState("");
   const [waveformData, setWaveformData] = useState<number[]>([]);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  
+
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
-  const [showBackPreview, setShowBackPreview] = useState(false);
   const [preOrderId] = useState(() => resumeOrderId || crypto.randomUUID());
   const [resumed, setResumed] = useState(false);
   const [initialAudioUrl, setInitialAudioUrl] = useState<string | null>(null);
@@ -196,15 +191,6 @@ const ProductSection = () => {
     });
   }, [audioUrl, photoUrl, draftSaved, preOrderId, generateSoulPageUrl, dedicatedText, backText, addTextToBack]);
 
-  // Generate QR only after draft is persisted
-  useEffect(() => {
-    if (!audioUrl || !draftSaved) { setQrDataUrl(null); return; }
-    const url = generateSoulPageUrl();
-    QRCode.toDataURL(url, { margin: 1, width: 200, color: { dark: "#B78E48", light: "#00000000" } })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null));
-  }, [audioUrl, draftSaved, dedicatedText, photoUrl, generateSoulPageUrl]);
-
   const handleAudioUrl = useCallback((url: string) => {
     setAudioUrl(url);
     let ctx: AudioContext | null = null;
@@ -295,7 +281,7 @@ const ProductSection = () => {
             toast.info("Finalizing your memory... retrying upload");
             await new Promise(r => setTimeout(r, 2000));
           }
-          
+
           const uploadResp = await fetch(`https://${projId}.supabase.co/functions/v1/upload-production-assets`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -316,12 +302,12 @@ const ProductSection = () => {
             console.error("[ANIMUS] Upload function error:", uploadResult);
             continue;
           }
-          
+
           if (uploadResult?.verified && uploadResult?.frontUrl) {
             break;
           }
         }
-        
+
         designImageUrl = uploadResult?.frontUrl || "";
 
         if (!designImageUrl || !uploadResult?.verified) {
@@ -330,7 +316,7 @@ const ProductSection = () => {
           setCartLoading(false);
           return;
         }
-        
+
         console.log("[ANIMUS] ✓ All assets verified in Supabase Storage");
 
         setCheckoutStage("Verifying your pendant…");
@@ -358,7 +344,7 @@ const ProductSection = () => {
 
   if (loading) {
     return (
-      <section id="customize" className="py-28 md:py-36 bg-card">
+      <section id="customize" className="py-24 md:py-32 bg-background">
         <div className="container mx-auto px-6 flex justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-gold" />
         </div>
@@ -368,7 +354,7 @@ const ProductSection = () => {
 
   if (!product) {
     return (
-      <section id="customize" className="py-28 md:py-36 bg-card">
+      <section id="customize" className="py-24 md:py-32 bg-background">
         <div className="container mx-auto px-6 text-center">
           <p className="text-muted-foreground">Product not found.</p>
         </div>
@@ -376,58 +362,38 @@ const ProductSection = () => {
     );
   }
 
+  const priceLabel = `$${parseFloat(selectedVariant?.price.amount || "89").toFixed(2)}`;
+
   return (
-    <section id="customize" className="py-28 md:py-36 bg-card">
+    <section id="customize" className="py-24 md:py-32 bg-background">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-16 space-y-4">
-          <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-            Create Your Keepsake
+        <div className="text-center mb-14 space-y-4">
+          <p className="text-[13px] tracking-[0.2em] text-gold font-sans">
+            Create your keepsake
           </p>
-          <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Design Your Memory Pendant
+          <h2 className="font-serif font-medium text-foreground text-4xl md:text-5xl">
+            Design your pendant
           </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto font-light">
-            A first laugh, a heartbeat, a whispered "I love you" — any meaningful sound, engraved forever on a luxury pendant with a scannable QR Soul Page.
+          <p className="text-muted-foreground max-w-xl mx-auto font-sans font-light text-[17px] leading-relaxed">
+            A first laugh, a heartbeat, a whispered I love you, or any sound that matters, kept
+            forever on a pendant with its own private Soul Page.
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-5">
 
-          {/* Live Pendant Preview */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Live Preview
-              </label>
-              <button
-                onClick={() => setShowBackPreview(v => !v)}
-                className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-gold transition-colors font-sans"
-              >
-                {showBackPreview ? "View Front" : "View Back"}
-              </button>
-            </div>
-            <DogTagPreview
-              waveformData={waveformData}
-              petName={dedicatedText.trim() || backText.trim() || ""}
-              qrDataUrl={qrDataUrl}
-              showBack={showBackPreview}
-              backText={backText}
-              material={selectedVariant?.title?.toLowerCase().includes("gold") ? "gold" : "silver"}
-            />
-          </div>
-
-          {/* Variant Picker — luxury swatch selector */}
+          {/* Finish selector */}
           {variants.length > 0 && (
-            <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-4">
+            <div className="rounded-2xl bg-card ring-1 ring-border p-6 md:p-7 space-y-5 shadow-[0_24px_60px_-40px_rgba(90,60,30,0.35)]">
               <div className="flex items-center justify-between">
-                <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                  Select Finish
-                </label>
-                <span className="text-sm font-serif text-foreground">
-                  ${parseFloat(selectedVariant?.price.amount || "89").toFixed(2)}
+                <span className="text-[13px] tracking-[0.2em] text-gold font-sans">
+                  Choose your finish
+                </span>
+                <span className="text-xl font-serif text-foreground">
+                  {priceLabel}
                 </span>
               </div>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-8 sm:gap-10 pt-2">
+              <div className="flex flex-wrap items-center gap-9 sm:gap-12 pt-1">
                 {variants.map((v, i) => {
                   const isGold = v.node.title.toLowerCase().includes("gold");
                   const isSelected = selectedVariantIdx === i;
@@ -442,8 +408,8 @@ const ProductSection = () => {
                       <span
                         className={`relative w-16 h-16 sm:w-[68px] sm:h-[68px] rounded-full transition-all duration-200 ${
                           isSelected
-                            ? "ring-2 ring-gold ring-offset-4 ring-offset-background scale-105"
-                            : "ring-1 ring-border/40 hover:ring-gold/50"
+                            ? "ring-2 ring-gold ring-offset-4 ring-offset-card scale-105"
+                            : "ring-1 ring-border hover:ring-gold/50"
                         }`}
                         style={{
                           background: isGold
@@ -452,8 +418,8 @@ const ProductSection = () => {
                           boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)",
                         }}
                       />
-                      <span className={`text-[11px] tracking-[0.2em] uppercase font-sans transition-colors ${
-                        isSelected ? "text-gold" : "text-muted-foreground group-hover:text-foreground"
+                      <span className={`text-[13px] font-sans transition-colors ${
+                        isSelected ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                       }`}>
                         {isGold ? "Gold" : "Silver"}
                       </span>
@@ -464,149 +430,121 @@ const ProductSection = () => {
             </div>
           )}
 
-
-          {/* Step 1: Audio Upload */}
-          <div className={`border rounded-sm p-6 bg-background/50 space-y-4 transition-colors duration-500 ${
-            audioUrl ? "border-gold/30 border-l-2 border-l-gold/60" : "border-border/50"
+          {/* Step 1: Audio */}
+          <div className={`rounded-2xl bg-card ring-1 p-6 md:p-7 space-y-4 transition-colors duration-500 shadow-[0_24px_60px_-40px_rgba(90,60,30,0.35)] ${
+            audioUrl ? "ring-gold/50" : "ring-border"
           }`}>
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border transition-all duration-300 ${
-                audioUrl ? "bg-gold/20 border-gold text-gold animate-[step-pop_0.35s_ease-out]" : "border-border/50 text-muted-foreground"
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-sans transition-all duration-300 ${
+                audioUrl ? "bg-gold/15 text-gold ring-1 ring-gold animate-[step-pop_0.35s_ease-out]" : "ring-1 ring-border text-muted-foreground"
               }`}>
                 {audioUrl ? "✓" : "1"}
               </span>
-              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Upload Audio
-              </label>
-              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
-                Required
-              </span>
+              <span className="text-base font-sans font-medium text-foreground">Upload a sound</span>
+              <span className="text-xs text-muted-foreground font-sans ml-auto">Required</span>
             </div>
-            <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
-              A loved one's voice, a baby's laugh, a heartbeat, or any meaningful sound
+            <p className="text-[13px] text-muted-foreground font-sans font-light pl-11">
+              A loved one's voice, a baby's laugh, a heartbeat, or any meaningful sound.
             </p>
             <AudioRecorder onAudioUrl={handleAudioUrl} initialUrl={initialAudioUrl} />
             <AudioPresets />
           </div>
 
-          {/* Step 2: Photo / Media */}
-          <div className={`border rounded-sm p-6 bg-background/50 space-y-3 transition-colors duration-500 ${
-            photoUrl ? "border-gold/30 border-l-2 border-l-gold/60" : "border-border/50"
+          {/* Step 2: Photo */}
+          <div className={`rounded-2xl bg-card ring-1 p-6 md:p-7 space-y-3 transition-colors duration-500 shadow-[0_24px_60px_-40px_rgba(90,60,30,0.35)] ${
+            photoUrl ? "ring-gold/50" : "ring-border"
           }`}>
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border transition-all duration-300 ${
-                photoUrl ? "bg-gold/20 border-gold text-gold animate-[step-pop_0.35s_ease-out]" : "border-border/50 text-muted-foreground"
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-sans transition-all duration-300 ${
+                photoUrl ? "bg-gold/15 text-gold ring-1 ring-gold animate-[step-pop_0.35s_ease-out]" : "ring-1 ring-border text-muted-foreground"
               }`}>
                 {photoUrl ? "✓" : "2"}
               </span>
-              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Upload Photo / Media
-              </label>
-              <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/80 border border-gold/30 rounded-sm px-2 py-0.5 font-sans bg-gold/10">
-                Required
-              </span>
+              <span className="text-base font-sans font-medium text-foreground">Add a photo</span>
+              <span className="text-xs text-muted-foreground font-sans ml-auto">Required</span>
             </div>
-            <p className="text-[10px] text-muted-foreground/60 font-light pl-10">
-              This photo will appear on your personal Soul Page
+            <p className="text-[13px] text-muted-foreground font-sans font-light pl-11">
+              This photo lives on your private Soul Page, alongside the recording.
             </p>
             <PetPhotoUpload onPhotoUrl={(url) => setPhotoUrl(url || null)} initialUrl={initialPhotoUrl} />
           </div>
 
-          {/* Step 3: Name / Dedicated Text */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+          {/* Step 3: Name */}
+          <div className="rounded-2xl bg-card ring-1 ring-border p-6 md:p-7 space-y-3 shadow-[0_24px_60px_-40px_rgba(90,60,30,0.35)]">
             <div className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans border ${dedicatedText.trim() ? "bg-gold/20 border-gold text-gold" : "border-border/50 text-muted-foreground"}`}>
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-sans ${dedicatedText.trim() ? "bg-gold/15 text-gold ring-1 ring-gold" : "ring-1 ring-border text-muted-foreground"}`}>
                 {dedicatedText.trim() ? "✓" : "3"}
               </span>
-              <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                Name / Dedicated Text
-              </label>
-              <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
-                Optional
-              </span>
+              <span className="text-base font-sans font-medium text-foreground">Name or dedication</span>
+              <span className="text-xs text-muted-foreground font-sans ml-auto">Optional</span>
             </div>
             <input
               type="text"
-              placeholder="e.g. Mom, Grandpa, Baby Luna, Forever Loved"
+              placeholder="e.g. Mom, Grandpa, Baby Luna, Forever loved"
               value={dedicatedText}
               onChange={(e) => setDedicatedText(e.target.value)}
-              className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/60 transition-colors"
             />
-            <p className="text-[10px] text-muted-foreground/50 font-light">
-              Displayed on the Soul Page and optionally engraved on the back
+            <p className="text-[13px] text-muted-foreground font-sans font-light">
+              Shown on the Soul Page, and optionally engraved on the back.
             </p>
           </div>
 
-          {/* Back Engraving Toggle */}
-          <div className="border border-border/50 rounded-sm p-6 bg-background/50 space-y-3">
+          {/* Back engraving */}
+          <div className="rounded-2xl bg-card ring-1 ring-border p-6 md:p-7 space-y-3 shadow-[0_24px_60px_-40px_rgba(90,60,30,0.35)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <label className="text-xs tracking-[0.3em] uppercase text-gold font-sans">
-                  Engrave Text on Back
-                </label>
-                <span className="text-[9px] tracking-[0.2em] uppercase text-gold/70 border border-gold/20 rounded-sm px-2 py-0.5 font-sans">
-                  Optional
-                </span>
+                <span className="text-base font-sans font-medium text-foreground">Engrave text on the back</span>
+                <span className="text-xs text-muted-foreground font-sans">Optional</span>
               </div>
               <button
                 onClick={() => setAddTextToBack(!addTextToBack)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${addTextToBack ? "bg-gold" : "bg-border/50"}`}
+                aria-label="Toggle back engraving"
+                className={`relative w-12 h-6 rounded-full transition-colors ${addTextToBack ? "bg-gold" : "bg-border"}`}
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${addTextToBack ? "translate-x-6" : "translate-x-0"}`} />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card transition-transform ${addTextToBack ? "translate-x-6" : "translate-x-0"}`} />
               </button>
             </div>
             {addTextToBack && (
               <div className="space-y-3 pt-2">
                 <input
                   type="text"
-                  placeholder="e.g. Buddy 2015-2024, Forever in my heart"
+                  placeholder="e.g. Buddy 2015 to 2024, Forever in my heart"
                   value={backText}
                   onChange={(e) => setBackText(e.target.value)}
-                  className="w-full bg-transparent border border-border/50 rounded-sm px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/50 transition-colors"
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/60 transition-colors"
                 />
-                <p className="text-[10px] text-gold/70 font-light">
-                  This text will be engraved on the back in elegant serif lettering.
+                <p className="text-[13px] text-muted-foreground font-sans font-light">
+                  Engraved on the back in an elegant serif.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Guidance Note */}
-          <div className="flex items-start gap-3 border border-gold/15 rounded-sm p-4 bg-gold/5">
-            <Info className="w-4 h-4 text-gold/60 flex-shrink-0 mt-0.5" />
-            <p className="text-[10px] text-muted-foreground/70 font-light leading-relaxed">
-              <span className="text-gold/80 font-medium">For best results:</span> Record in a quiet area for crisp waveforms. Use high-resolution photos with natural lighting for the Soul Page.
-            </p>
-          </div>
-
-          {/* Buy Now */}
-          <div className="space-y-2">
+          {/* Buy */}
+          <div className="space-y-3 pt-1">
             <button
               onClick={handleAnimusCheckout}
               disabled={cartLoading || !selectedVariant?.availableForSale}
-              className={`w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                allStepsComplete && !cartLoading ? "hover:bg-gold-light shadow-[0_0_24px_rgba(183,142,72,0.25)]" : ""
+              className={`group w-full rounded-full bg-primary text-primary-foreground px-10 py-5 text-sm font-sans font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                allStepsComplete && !cartLoading ? "hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)]" : ""
               }`}
             >
               {cartLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
               ) : !selectedVariant?.availableForSale ? (
-                "Sold Out"
+                "Sold out"
               ) : (
-                `Buy Now — $${parseFloat(selectedVariant.price.amount).toFixed(2)}`
-              )}
-              {allStepsComplete && !cartLoading && (
-                <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+                <>Create your keepsake · {priceLabel}<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /></>
               )}
             </button>
             {cartLoading && checkoutStage && (
-              <p className="text-[10px] text-gold/80 text-center font-sans tracking-[0.2em] uppercase flex items-center justify-center gap-2 animate-pulse">
+              <p className="text-[13px] text-gold text-center font-sans flex items-center justify-center gap-2 animate-pulse">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold" />
                 {checkoutStage}
               </p>
             )}
           </div>
-
 
           {/* Preview Soul Page */}
           <button
@@ -614,23 +552,21 @@ const ProductSection = () => {
               if (!audioUrl) { toast.info("Record or upload a sound first to preview your Soul Page."); return; }
               setShowPreview(true);
             }}
-            className="w-full border border-gold/30 text-gold px-10 py-4 text-xs tracking-[0.3em] uppercase hover:bg-gold/5 hover:border-gold/50 transition-all flex items-center justify-center gap-3"
+            className="w-full rounded-full border border-gold/40 text-foreground px-10 py-4 text-sm font-sans hover:bg-gold/5 hover:border-gold/60 transition-all flex items-center justify-center gap-3"
           >
-            <Eye className="w-4 h-4" />
-            Preview Your Digital Soul Page
+            <Eye className="w-4 h-4 text-gold" />
+            Preview your Soul Page
           </button>
 
           {!allStepsComplete && (
-            <p className="text-[10px] text-muted-foreground/50 text-center">
-              {!audioUrl && "① Upload sound · "}
-              {!photoUrl && "② Upload photo"}
+            <p className="text-[13px] text-muted-foreground/70 text-center font-sans">
+              {!audioUrl && "Add a sound to continue. "}
+              {!photoUrl && "A photo finishes your Soul Page."}
             </p>
           )}
 
-          <FourSideGuide inline />
-
           {showPreview && (
-            <div className="fixed inset-0 z-[100] bg-background animate-fade-in">
+            <div className="fixed inset-0 z-[100] bg-background animate-fade-in overflow-y-auto">
               <SoulPage
                 previewMode
                 previewData={{
@@ -643,24 +579,8 @@ const ProductSection = () => {
             </div>
           )}
 
-          {/* Trust Badges */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-t border-border/30">
-            <div className="flex items-center justify-center gap-3 py-3">
-              <Truck className="w-4 h-4 text-gold flex-shrink-0" />
-              <span className="text-xs text-muted-foreground tracking-wide">Fast US Shipping (7-14 Days)</span>
-            </div>
-            <div className="flex items-center justify-center gap-3 py-3">
-              <Shield className="w-4 h-4 text-gold flex-shrink-0" />
-              <span className="text-xs text-muted-foreground tracking-wide">Lifetime Soundwave Guarantee</span>
-            </div>
-            <div className="flex items-center justify-center gap-3 py-3">
-              <Lock className="w-4 h-4 text-gold flex-shrink-0" />
-              <span className="text-xs text-muted-foreground tracking-wide">Secure SSL Checkout</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground text-center tracking-wide">
-            Free US shipping · 30-day satisfaction guarantee
+          <p className="text-[13px] text-muted-foreground text-center font-sans font-light pt-4">
+            Free US shipping. 30 day promise. Your recording stays private.
           </p>
         </div>
       </div>

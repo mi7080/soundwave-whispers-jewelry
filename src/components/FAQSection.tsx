@@ -36,26 +36,30 @@ const FAQSection = () => {
   return (
     <section id="faq" className="py-24 md:py-32 bg-card">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-16 space-y-4">
-          <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
-            Questions
-          </p>
-          <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Frequently Asked
-          </h2>
-        </div>
-        <div className="max-w-2xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
+        <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+          <div className="lg:sticky lg:top-32 lg:self-start space-y-5">
+            <p className="text-xs tracking-[0.2em] text-gold font-sans">
+              Questions
+            </p>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-medium leading-tight text-foreground">
+              The things you may be wondering
+            </h2>
+            <p className="text-muted-foreground font-light leading-relaxed max-w-sm">
+              A few quiet answers about how a recording becomes a keepsake you can carry. If something is left unsaid, we are always close by.
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="space-y-3">
             {faqs.map((faq, i) => (
               <AccordionItem
                 key={i}
                 value={`item-${i}`}
-                className="border border-border/50 rounded-sm px-6 bg-background/50"
+                className="border-none rounded-2xl bg-background px-6 ring-1 ring-border shadow-[0_30px_70px_-35px_rgba(90,60,30,0.4)] transition-shadow hover:ring-gold/40"
               >
-                <AccordionTrigger className="text-left font-serif text-base hover:no-underline hover:text-gold transition-colors py-5">
+                <AccordionTrigger className="text-left font-serif font-medium text-lg leading-snug text-foreground hover:no-underline [&[data-state=open]]:text-gold transition-colors py-6">
                   {faq.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground font-light leading-relaxed pb-5">
+                <AccordionContent className="text-muted-foreground font-light leading-relaxed pb-6 pr-6">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>

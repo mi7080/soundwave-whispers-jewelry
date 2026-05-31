@@ -1,53 +1,57 @@
-import { Check, X } from "lucide-react";
+import { AudioWaveform, QrCode, Infinity as InfinityIcon } from "lucide-react";
 
-const features = [
-  { label: "Soundwave Engraving", animus: true, traditional: false },
-  { label: "Plays Audio via QR Code", animus: true, traditional: false },
-  { label: "Permanent Laser Etching", animus: true, traditional: false },
-  { label: "Fades Over Time", animus: false, traditional: true },
-  { label: "For All Loved Ones & Memories", animus: true, traditional: false },
-  { label: "Cloud-Hosted Audio Forever", animus: true, traditional: false },
-  { label: "Premium Metal Construction", animus: true, traditional: false },
+const reasons = [
+  {
+    icon: AudioWaveform,
+    title: "Their sound, made visible",
+    text: "We turn a real recording into a soundwave and etch it onto the pendant. No two are alike, because no two voices are.",
+  },
+  {
+    icon: QrCode,
+    title: "A Soul Page you can hear",
+    text: "Scan the pendant and the audio plays back through a private page. The laugh, the heartbeat, the words, always a touch away.",
+  },
+  {
+    icon: InfinityIcon,
+    title: "Etched to last a lifetime",
+    text: "Laser engraving into premium metal does not fade or wear. What you carry today will look the same in fifty years.",
+  },
 ];
 
 const ComparisonSection = () => {
   return (
     <section className="py-24 md:py-32 bg-background">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-16 space-y-4">
-          <p className="text-xs tracking-[0.4em] uppercase text-gold font-sans">
+        <div className="max-w-2xl mb-16 md:mb-20 space-y-5">
+          <p className="text-xs tracking-[0.2em] text-gold font-sans">
             The Difference
           </p>
-          <h2 className="text-3xl md:text-4xl font-serif text-foreground">
-            Why Animus?
+          <h2 className="text-4xl md:text-5xl font-serif font-medium text-foreground leading-tight">
+            Why ANIMUS
           </h2>
-          <p className="text-muted-foreground max-w-md mx-auto font-light">
-            See how our laser-engraved Memory Pendant compares to traditional memorials.
+          <p className="text-base text-muted-foreground font-light leading-relaxed">
+            A memorial that does more than remember. It keeps the sound of
+            someone loved within reach, kept in metal made to outlast us.
           </p>
         </div>
-        <div className="max-w-2xl mx-auto">
-          <div className="grid grid-cols-3 gap-0 border border-border/50 rounded-sm overflow-hidden">
-            <div className="p-4 md:p-6 bg-card border-b border-border/50" />
-            <div className="p-4 md:p-6 bg-gold/10 border-b border-border/50 text-center">
-              <p className="text-xs tracking-[0.3em] uppercase text-gold font-sans font-medium">Animus</p>
-            </div>
-            <div className="p-4 md:p-6 bg-card border-b border-border/50 text-center">
-              <p className="text-xs tracking-[0.3em] uppercase text-muted-foreground font-sans">Traditional</p>
-            </div>
-            {features.map((f, i) => (
-              <div key={i} className="contents">
-                <div className="p-4 md:p-6 border-b border-border/30 flex items-center">
-                  <span className="text-sm text-foreground font-light">{f.label}</span>
-                </div>
-                <div className="p-4 md:p-6 border-b border-border/30 bg-gold/5 flex items-center justify-center">
-                  {f.animus ? <Check className="w-5 h-5 text-gold" /> : <X className="w-5 h-5 text-muted-foreground/30" />}
-                </div>
-                <div className="p-4 md:p-6 border-b border-border/30 flex items-center justify-center">
-                  {f.traditional ? <Check className="w-5 h-5 text-muted-foreground/50" /> : <X className="w-5 h-5 text-muted-foreground/30" />}
-                </div>
+
+        <div className="grid md:grid-cols-3 gap-8 md:gap-12 max-w-5xl">
+          {reasons.map((r) => {
+            const Icon = r.icon;
+            return (
+              <div key={r.title} className="space-y-5">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-[hsl(24_47%_47%)]">
+                  <Icon className="h-5 w-5" strokeWidth={1.5} />
+                </span>
+                <h3 className="text-2xl font-serif font-medium text-foreground leading-tight">
+                  {r.title}
+                </h3>
+                <p className="text-base text-muted-foreground font-light leading-relaxed">
+                  {r.text}
+                </p>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </section>

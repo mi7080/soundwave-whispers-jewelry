@@ -138,7 +138,8 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: 
       {previewMode && onClose && (
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground hover:text-gold hover:border-gold/50 transition-all duration-300"
+          aria-label="Close preview"
+          className="fixed top-4 right-4 z-[120] w-12 h-12 rounded-full bg-card ring-1 ring-border shadow-[0_10px_30px_-12px_rgba(80,55,30,0.6)] flex items-center justify-center text-foreground hover:text-gold transition-colors"
         >
           <X className="w-5 h-5" />
         </button>

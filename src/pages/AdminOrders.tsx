@@ -5,9 +5,14 @@ import { toast } from "sonner";
 import {
   Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
   Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles,
-  AlertOctagon, Zap,
+  AlertOctagon, Zap, Trash2, ArchiveRestore, Archive,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
+import { buildSoulPageUrl } from "@/lib/soulPage";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 const DEFAULT_SKU = "SO-15845645";
@@ -57,6 +62,7 @@ interface Order {
   audio_url: string;
   pet_photo_url: string | null;
   exported_at: string | null;
+  archived_at: string | null;
 }
 
 interface Lead {
@@ -65,6 +71,7 @@ interface Lead {
   status: string;
   created_at: string;
   status_updated_at: string | null;
+  archived_at: string | null;
 }
 
 const STATUS_OPTIONS: { value: OrderStatus; label: string; tone: string }[] = [
@@ -92,12 +99,13 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const [authorized, setAuthorized] = useState(embedded);
   const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
   const [retrying, setRetrying] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string[]>(["paid", "shineon_error"]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Order | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Auth gate: must be logged in AND have admin role
   useEffect(() => {
@@ -147,19 +155,19 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = orders;
+    let list = orders.filter(o => showArchived ? !!o.archived_at : !o.archived_at);
     if (range) list = list.filter(o => inRange(o.created_at, range));
-    if (statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.status));
+    if (!showArchived && statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.status));
     if (!q) return list;
     return list.filter(o =>
       [o.pet_name, o.customer_name, o.customer_email, o.icount_docnum, o.id, o.tracking_number]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
-  }, [orders, search, range, statusFilter]);
+  }, [orders, search, range, statusFilter, showArchived]);
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = leads;
+    let list = leads.filter(l => !l.archived_at);
     if (range) list = list.filter(l => inRange(l.created_at, range));
     if (!q) return list;
     return list.filter(l => l.email.toLowerCase().includes(q));
@@ -177,6 +185,23 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       toast.error("Failed to update status");
     } else {
       toast.success(`Marked as ${STATUS_OPTIONS.find(s => s.value === status)?.label || status}`);
+    }
+  };
+
+  const setArchived = async (order: Order, archived: boolean) => {
+    const archived_at = archived ? new Date().toISOString() : null;
+    const prev = orders;
+    setOrders(p => p.map(o => o.id === order.id ? { ...o, archived_at } : o));
+    if (selected?.id === order.id) setSelected(null);
+    const { error } = await supabase
+      .from("animus_orders")
+      .update({ archived_at })
+      .eq("id", order.id);
+    if (error) {
+      setOrders(prev);
+      toast.error(archived ? "Failed to archive" : "Failed to restore");
+    } else {
+      toast.success(archived ? "Order archived" : "Order restored");
     }
   };
 
@@ -263,6 +288,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const syncAllIncomplete = async () => {
     // Include orders that are either missing shipping OR missing the print PNG
     const allIncomplete = orders.filter(o =>
+      !o.archived_at &&
       (isIncompleteShipping(o) || !o.print_image_url) &&
       (!range || inRange(o.created_at, range))
     );
@@ -515,7 +541,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     !o.shipping_address1 || !o.shipping_city || !o.shipping_country_code;
 
   const exportShineOnBatch = async () => {
-    const batch = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range)));
+    const batch = orders.filter(o => isArtReady(o) && !o.archived_at && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
     // Reliability check — block orders missing email or shipping address
@@ -637,8 +663,13 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   }
   if (!authorized) return null;
 
-  const paidPending = orders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
-  const incompleteInRange = orders.filter(o =>
+  // Archived orders are hidden from all live views, stats, and batch actions.
+  const liveOrders = orders.filter(o => !o.archived_at);
+  const archivedCount = orders.length - liveOrders.length;
+  const ordersInRange = liveOrders.filter(o => !range || inRange(o.created_at, range));
+  const leadsInRange = leads.filter(l => !l.archived_at && (!range || inRange(l.created_at, range)));
+  const paidPending = liveOrders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
+  const incompleteInRange = liveOrders.filter(o =>
     (isIncompleteShipping(o) || !o.print_image_url) &&
     (!range || inRange(o.created_at, range))
   );
@@ -646,7 +677,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
   // "Needs Attention" = failed ShineOn submissions OR paid orders with no print PNG.
   // This absorbs the old standalone Recovery tab.
-  const needsAttentionOrders = orders.filter(o =>
+  const needsAttentionOrders = liveOrders.filter(o =>
     (o.status === "shineon_error" || (o.status === "paid" && !o.print_image_url)) &&
     (!range || inRange(o.created_at, range))
   );
@@ -702,16 +733,16 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard label="Total Orders" value={orders.length} />
+          <StatCard label="Total Orders" value={ordersInRange.length} />
           <StatCard label="Paid (Pending)" value={paidPending} accent="gold" />
-          <StatCard label="Fulfilled" value={orders.filter(o => o.status === "fulfilled" || o.status === "shipped").length} accent="emerald" />
-          <StatCard label="Waitlist Leads" value={leads.length} />
+          <StatCard label="Fulfilled" value={ordersInRange.filter(o => o.status === "fulfilled" || o.status === "shipped").length} accent="emerald" />
+          <StatCard label="Waitlist Leads" value={leadsInRange.length} />
         </div>
 
         {/* Tabs */}
         <div className="flex items-center gap-1 mb-4 border-b border-border/30">
           <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<Package className="w-3.5 h-3.5" />}>
-            Orders <span className="opacity-60">({orders.length})</span>
+            Orders <span className="opacity-60">({ordersInRange.length})</span>
           </TabButton>
           <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<AlertOctagon className="w-3.5 h-3.5" />}>
             Needs Attention{" "}
@@ -724,17 +755,34 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
             )}
           </TabButton>
           <TabButton active={tab === "leads"} onClick={() => setTab("leads")} icon={<Users className="w-3.5 h-3.5" />}>
-            Leads <span className="opacity-60">({leads.length})</span>
+            Leads <span className="opacity-60">({leadsInRange.length})</span>
           </TabButton>
         </div>
 
         {/* Status filter (Orders tab only) */}
-        {tab === "orders" && (
+        {tab === "orders" && !showArchived && (
           <StatusFilterBar
-            orders={orders.filter(o => !range || inRange(o.created_at, range))}
+            orders={ordersInRange}
             selected={statusFilter}
             onChange={setStatusFilter}
           />
+        )}
+        {tab === "orders" && (
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <span className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground">
+              {showArchived ? `Archived orders (${archivedCount})` : ""}
+            </span>
+            <button
+              onClick={() => setShowArchived(s => !s)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-border/50 text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground hover:border-gold transition-colors shrink-0"
+            >
+              {showArchived ? (
+                <><ArrowLeft className="w-3 h-3" /> Back to active</>
+              ) : (
+                <><Archive className="w-3 h-3" /> Archived ({archivedCount})</>
+              )}
+            </button>
+          </div>
         )}
 
         {/* Toolbar */}
@@ -748,7 +796,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
               className="w-full pl-10 pr-4 py-2.5 bg-card border border-border/40 rounded-sm text-sm focus:border-gold outline-none"
             />
           </div>
-          {tab === "orders" && (
+          {tab === "orders" && !showArchived && (
             <>
               <button
                 onClick={syncAllIncomplete}
@@ -779,7 +827,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
-          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} />
+          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} archived={showArchived} onArchive={(o) => setArchived(o, true)} onRestore={(o) => setArchived(o, false)} />
         ) : tab === "errors" ? (
           <NeedsAttentionTable
             orders={filteredNeedsAttention}
@@ -895,14 +943,17 @@ const StatusPill = ({ status, onChange }: { status: string; onChange: (s: OrderS
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect, archived, onArchive, onRestore }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: OrderStatus) => void;
   isIncomplete: (o: Order) => boolean;
   onSyncIcount: (orderId: string) => Promise<void>;
   onAutoDetect: (orderId: string) => Promise<void>;
+  archived?: boolean;
+  onArchive: (o: Order) => void;
+  onRestore: (o: Order) => void;
 }) => {
   if (orders.length === 0) {
-    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No orders found</div>;
+    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">{archived ? "No archived orders" : "No orders found"}</div>;
   }
   return (
     <div className="border border-border/30 rounded-sm overflow-hidden bg-card">
@@ -975,27 +1026,62 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                   <td className="px-4 py-3"><StatusPill status={o.status} onChange={(s) => onStatusChange(o, s)} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-3">
-                      {incomplete && !o.icount_docnum && o.customer_email && (
+                      {archived ? (
                         <button
-                          onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
+                          onClick={(e) => { e.stopPropagation(); onRestore(o); }}
                           className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-700 hover:text-emerald-800"
-                          title="Search iCount by customer email and auto-link the most recent invoice/receipt"
+                          title="Restore this order to active"
                         >
-                          <Sparkles className="w-3 h-3" /> Auto-detect
+                          <ArchiveRestore className="w-3 h-3" /> Restore
                         </button>
+                      ) : (
+                        <>
+                          {incomplete && !o.icount_docnum && o.customer_email && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
+                              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-700 hover:text-emerald-800"
+                              title="Search iCount by customer email and auto-link the most recent invoice/receipt"
+                            >
+                              <Sparkles className="w-3 h-3" /> Auto-detect
+                            </button>
+                          )}
+                          {incomplete && o.icount_docnum && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
+                              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-700 hover:text-amber-800"
+                              title="Re-fetch shipping & customer details from iCount"
+                            >
+                              <RotateCw className="w-3 h-3" /> Sync iCount
+                            </button>
+                          )}
+                          <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
+                            <Eye className="w-3 h-3" /> View
+                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-destructive"
+                                title="Archive this order"
+                              >
+                                <Trash2 className="w-3 h-3" /> Archive
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Archive this order?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {(o.customer_name || o.pet_name)} · {o.icount_docnum || o.id.slice(0, 8)} will be hidden from all lists, stats, and exports. You can restore it anytime from the Archived view.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => onArchive(o)}>Archive</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
                       )}
-                      {incomplete && o.icount_docnum && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
-                          className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-700 hover:text-amber-800"
-                          title="Re-fetch shipping & customer details from iCount"
-                        >
-                          <RotateCw className="w-3 h-3" /> Sync iCount
-                        </button>
-                      )}
-                      <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
-                        <Eye className="w-3 h-3" /> View
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1222,7 +1308,7 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
                 </a>
               )}
               {order.soul_page_url && (
-                <a href={order.soul_page_url} target="_blank" rel="noopener noreferrer"
+                <a href={buildSoulPageUrl(order.id)} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold px-3 py-2 transition-colors">
                   Soul Page <ExternalLink className="w-2.5 h-2.5" />
                 </a>

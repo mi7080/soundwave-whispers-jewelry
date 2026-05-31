@@ -27,6 +27,10 @@ export const presetCurrentMonth = (): DateRange => {
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   return { from: startOfDay(from), to: endOfDay(now), label: "Current Month" };
 };
+export const presetAllTime = (): DateRange => {
+  // Epoch → end of today. Covers every order regardless of age.
+  return { from: new Date(0), to: endOfDay(new Date()), label: "All Time" };
+};
 
 export const isSingleDay = (r: DateRange) =>
   startOfDay(r.from).getTime() === startOfDay(r.to).getTime();
@@ -53,7 +57,7 @@ interface Ctx {
 const DateRangeCtx = createContext<Ctx | null>(null);
 
 export const DateRangeProvider = ({ children }: { children: ReactNode }) => {
-  const [range, setRangeState] = useState<DateRange>(() => presetToday());
+  const [range, setRangeState] = useState<DateRange>(() => presetAllTime());
   const setRange = useCallback((r: DateRange) => setRangeState(r), []);
   const value = useMemo(() => ({ range, setRange }), [range, setRange]);
   return <DateRangeCtx.Provider value={value}>{children}</DateRangeCtx.Provider>;

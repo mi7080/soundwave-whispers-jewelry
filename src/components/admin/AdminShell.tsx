@@ -58,7 +58,7 @@ export const AdminShell = ({ tabs, active, onChange, onSignOut, headerExtra, chi
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 mt-6 -mb-5 border-b border-border overflow-x-auto" aria-label="Admin sections">
+        <nav className="flex items-center gap-1 mt-6 -mb-5 border-b border-border overflow-x-auto overflow-y-hidden" aria-label="Admin sections">
           {tabs.map((t) => {
             const isActive = active === t.key;
             return (

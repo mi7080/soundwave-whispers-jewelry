@@ -1,18 +1,16 @@
 import { Helmet } from "react-helmet-async";
 import Navbar from "@/components/Navbar";
+import Reveal from "@/components/Reveal";
 import HeroSection from "@/components/HeroSection";
 import ExperienceSection from "@/components/ExperienceSection";
 import QRCardSection from "@/components/QRCardSection";
-import CraftsmanshipSection from "@/components/CraftsmanshipSection";
-import FourSideGuide from "@/components/FourSideGuide";
-import ProductGallery from "@/components/ProductGallery";
-import ProductSpecs from "@/components/ProductSpecs";
-import ComparisonSection from "@/components/ComparisonSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
 import ProductSection from "@/components/ProductSection";
+import CraftAndMaterials from "@/components/CraftAndMaterials";
+import ProductGallery from "@/components/ProductGallery";
+import TestimonialsSection from "@/components/TestimonialsSection";
+import ComparisonSection from "@/components/ComparisonSection";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
-import MobileStickyBar from "@/components/MobileStickyBar";
 import { PRODUCT_CONFIG } from "@/config/product";
 
 const productJsonLd = {
@@ -33,7 +31,7 @@ const productJsonLd = {
 
 const Index = () => {
   return (
-    <main className="pb-16 md:pb-0">
+    <main>
       <Helmet>
         <title>Shop the ANIMUS Memorial Pendant — Early Access</title>
         <meta name="description" content="Order the ANIMUS soundwave dog-tag pendant in 316L steel or 14K gold finish. Free US shipping, custom QR Soul Page included." />
@@ -45,18 +43,15 @@ const Index = () => {
       </Helmet>
       <Navbar />
       <HeroSection />
-      <ExperienceSection />
-      <QRCardSection />
-      <CraftsmanshipSection />
-      <FourSideGuide />
-      <ComparisonSection />
-      <TestimonialsSection />
-      <ProductGallery />
-      <ProductSpecs />
-      <ProductSection />
-      <FAQSection />
+      <Reveal><ExperienceSection /></Reveal>
+      <Reveal><QRCardSection /></Reveal>
+      <Reveal><ProductSection /></Reveal>
+      <Reveal><CraftAndMaterials /></Reveal>
+      <Reveal><ProductGallery /></Reveal>
+      <Reveal><TestimonialsSection /></Reveal>
+      <Reveal><ComparisonSection /></Reveal>
+      <Reveal><FAQSection /></Reveal>
       <Footer />
-      <MobileStickyBar />
     </main>
   );
 };

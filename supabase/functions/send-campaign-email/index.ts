@@ -1,6 +1,10 @@
 // Bulk campaign email sender via Resend
 // Triggered by admin from dashboard. Sends Email 1 (status update) or Email 2 (referral)
 // to all leads in waitlist_leads. Logs every send to campaign_sends.
+//
+// Body copy (subject + text fields) is editable from Admin → Settings → Campaign Emails
+// and stored in public.campaign_email_content. The layout/branding below stays in code;
+// any blank/missing field falls back to the DEFAULTS constant.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 
@@ -22,12 +26,64 @@ interface Lead {
   extra_discount_percent: number
 }
 
+interface CampaignContent {
+  subject: string
+  fields: Record<string, string>
+}
+
+// Fallback copy — mirrors the seed in 20260528000000_admin_archive_and_campaign_content.sql.
+const DEFAULTS: Record<'email1' | 'email2', CampaignContent> = {
+  email1: {
+    subject: "We're listening… and things are getting close 🕊️",
+    fields: {
+      heading: 'We hear you.',
+      body: "Over the past weeks, we've read every comment, every message, every quiet request you've sent us. The voice notes you've saved on old phones. The laugh on a video that you can't bring yourself to delete. The song that played the day they were born — or the day they left.\n\nWe're listening. And we're working — slowly, carefully — to make sure ANIMUS captures these moments with the reverence they deserve. Every soundwave engraving is being refined. Every detail of the Soul Page is being polished. We refuse to ship anything less than perfect.\n\nThe launch for our first 300 Founders is coming soon. You'll be the first to know — and you'll keep your 40% Founders discount, locked in.",
+      signature: 'Thank you for trusting us with this.\n— The ANIMUS Team',
+    },
+  },
+  email2: {
+    subject: 'Want your ANIMUS for free? (Or close to it…) 🎁',
+    fields: {
+      heading: "Your ANIMUS — for free.\nIt's possible.",
+      intro: "You already have 40% OFF as a Founder. Now we're giving you a way to make your second pendant — for a parent, a partner, a sibling — almost free.",
+      cta_label: 'Share Your Link',
+      closing: 'Each friend who joins unlocks an extra discount code, sent to you when launch day arrives.',
+      signature: '— The ANIMUS Team',
+    },
+  },
+}
+
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 }
 
-function buildEmail1(lead: Lead) {
-  const subject = "We're listening… and things are getting close 🕊️"
+// Split on blank lines → <p>; single newlines → <br/>.
+function paragraphs(text: string, style: string) {
+  return String(text || '')
+    .split(/\n{2,}/)
+    .map((p) => `<p style="${style}">${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
+    .join('\n')
+}
+
+// Single newlines → <br/> (for headings/signatures).
+function brLines(text: string) {
+  return escapeHtml(String(text || '')).replace(/\n/g, '<br/>')
+}
+
+// Merge stored fields over defaults so a blank field never produces empty copy.
+function resolveContent(campaign: 'email1' | 'email2', row: CampaignContent | null): CampaignContent {
+  const def = DEFAULTS[campaign]
+  const subject = row?.subject?.trim() || def.subject
+  const fields: Record<string, string> = { ...def.fields }
+  for (const [k, v] of Object.entries(row?.fields || {})) {
+    if (typeof v === 'string' && v.trim() !== '') fields[k] = v
+  }
+  return { subject, fields }
+}
+
+function buildEmail1(content: CampaignContent) {
+  const { subject } = content
+  const f = content.fields
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#ffffff;font-family:Georgia,serif;color:#1a1a1a;">
@@ -36,30 +92,14 @@ function buildEmail1(lead: Lead) {
     <div style="height:1px;background:#c9a84c;width:48px;margin:0 0 32px;"></div>
 
     <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:400;line-height:1.4;margin:0 0 24px;color:#1a1a1a;">
-      We hear you.
+      ${brLines(f.heading)}
     </h2>
 
-    <p style="font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 20px;">
-      Over the past weeks, we've read every comment, every message, every quiet request you've sent us.
-      The voice notes you've saved on old phones. The laugh on a video that you can't bring yourself to delete.
-      The song that played the day they were born — or the day they left.
-    </p>
-
-    <p style="font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 20px;">
-      We're listening. And we're working — slowly, carefully — to make sure ANIMUS captures these moments
-      with the reverence they deserve. Every soundwave engraving is being refined. Every detail of the
-      Soul Page is being polished. We refuse to ship anything less than perfect.
-    </p>
-
-    <p style="font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 32px;">
-      The launch for our first <strong style="color:#c9a84c;">300 Founders</strong> is coming soon.
-      You'll be the first to know — and you'll keep your <strong>40% Founders discount</strong>, locked in.
-    </p>
+    ${paragraphs(f.body, 'font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 20px;')}
 
     <div style="border-top:1px solid #e8e4dd;padding-top:24px;margin-top:32px;">
       <p style="font-size:14px;color:#7a7a7a;line-height:1.6;margin:0;">
-        Thank you for trusting us with this.<br/>
-        — The ANIMUS Team
+        ${brLines(f.signature)}
       </p>
     </div>
   </div>
@@ -67,9 +107,10 @@ function buildEmail1(lead: Lead) {
   return { subject, html }
 }
 
-function buildEmail2(lead: Lead, baseUrl: string) {
+function buildEmail2(lead: Lead, baseUrl: string, content: CampaignContent) {
   const refLink = lead.referral_code ? `${baseUrl}/?ref=${lead.referral_code}` : baseUrl
-  const subject = 'Want your ANIMUS for free? (Or close to it…) 🎁'
+  const { subject } = content
+  const f = content.fields
   const currentExtra = lead.extra_discount_percent
   const refCount = lead.referral_count
 
@@ -85,14 +126,10 @@ function buildEmail2(lead: Lead, baseUrl: string) {
     <div style="height:1px;background:#c9a84c;width:48px;margin:0 0 32px;"></div>
 
     <h2 style="font-family:Georgia,serif;font-size:24px;font-weight:400;line-height:1.4;margin:0 0 24px;color:#1a1a1a;">
-      Your ANIMUS — for free.<br/>
-      <span style="color:#c9a84c;">It's possible.</span>
+      ${brLines(f.heading)}
     </h2>
 
-    <p style="font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 20px;">
-      You already have <strong>40% OFF</strong> as a Founder. Now we're giving you a way to make your second
-      pendant — for a parent, a partner, a sibling — almost <em>free</em>.
-    </p>
+    ${paragraphs(f.intro, 'font-size:16px;line-height:1.7;color:#3a3a3a;margin:0 0 20px;')}
 
     <div style="background:#faf8f5;border-left:3px solid #c9a84c;padding:20px 24px;margin:24px 0;">
       <p style="font-size:15px;line-height:1.7;color:#1a1a1a;margin:0 0 12px;font-weight:600;">
@@ -112,7 +149,7 @@ function buildEmail2(lead: Lead, baseUrl: string) {
 
     <div style="text-align:center;margin:32px 0;">
       <a href="${escapeHtml(refLink)}" style="display:inline-block;background:#1a1a1a;color:#c9a84c;text-decoration:none;padding:16px 32px;font-family:Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;border:1px solid #c9a84c;">
-        Share Your Link
+        ${escapeHtml(f.cta_label)}
       </a>
     </div>
 
@@ -124,11 +161,11 @@ function buildEmail2(lead: Lead, baseUrl: string) {
     </div>
 
     <p style="font-size:13px;line-height:1.6;color:#7a7a7a;margin:32px 0 0;text-align:center;">
-      Each friend who joins unlocks an extra discount code, sent to you when launch day arrives.
+      ${brLines(f.closing)}
     </p>
 
     <div style="border-top:1px solid #e8e4dd;padding-top:24px;margin-top:32px;">
-      <p style="font-size:14px;color:#7a7a7a;line-height:1.6;margin:0;">— The ANIMUS Team</p>
+      <p style="font-size:14px;color:#7a7a7a;line-height:1.6;margin:0;">${brLines(f.signature)}</p>
     </div>
   </div>
 </body></html>`
@@ -186,7 +223,15 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Fetch leads (or single test lead)
+    // Load editable content for this campaign (falls back to DEFAULTS per-field)
+    const { data: contentRow } = await supabase
+      .from('campaign_email_content')
+      .select('subject, fields')
+      .eq('id', campaign)
+      .maybeSingle()
+    const content = resolveContent(campaign as 'email1' | 'email2', contentRow as CampaignContent | null)
+
+    // Fetch leads (or single test lead). Archived leads are excluded from bulk sends.
     let leads: Lead[] = []
     if (testEmail) {
       const { data } = await supabase
@@ -203,6 +248,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from('waitlist_leads')
         .select('id, email, referral_code, referral_count, extra_discount_percent')
+        .is('archived_at', null)
       if (error) throw error
       leads = (data as Lead[]) || []
     }
@@ -211,7 +257,7 @@ Deno.serve(async (req) => {
     const errors: string[] = []
 
     for (const lead of leads) {
-      const { subject, html } = campaign === 'email1' ? buildEmail1(lead) : buildEmail2(lead, baseUrl)
+      const { subject, html } = campaign === 'email1' ? buildEmail1(content) : buildEmail2(lead, baseUrl, content)
 
       try {
         const res = await fetch(RESEND_API_URL, {

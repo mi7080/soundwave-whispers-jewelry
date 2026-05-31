@@ -19,6 +19,10 @@ const corsHeaders = {
 };
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
+// Order SKU — must match the SKU in your ShineOn catalog. Kept in sync with
+// DEFAULT_SKU in src/pages/AdminOrders.tsx (the manual CSV-export fulfillment path).
+// NOTE: PT-2151 in src/config/product.ts is the *artwork template*, not the order SKU.
+// ⚠️ Confirm this value in fulfillment.shineon.com → Catalog before going live.
 const SHINEON_SKU = "SO-15845645";
 
 serve(async (req) => {
@@ -222,7 +226,7 @@ serve(async (req) => {
 
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, print_image_url, pet_name, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
+      .select("id, design_image_url, print_image_url, pet_name, add_name_to_back, right_side_engraving, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -259,7 +263,7 @@ serve(async (req) => {
     }
 
     const docnum = docnumEarly || `icount-${orderId}`;
-    const fullName = body.client_name || freshOrder.customer_name || "";
+    const sourceId = String(docnum);
     const customerEmailForShipping = body.client_email || body.email || freshOrder.customer_email || "";
     const pick = (...vals: any[]) => {
       for (const v of vals) {
@@ -267,41 +271,59 @@ serve(async (req) => {
       }
       return "";
     };
+    // ShineOn's order API uses a single `name` field, not first/last.
+    const recipientName = pick(
+      body.client_name,
+      freshOrder.customer_name,
+      [body.first_name, body.last_name].filter(Boolean).join(" "),
+    );
     const ship_city = pick(body.city, (freshOrder as any).shipping_city);
     const ship_country_code = pick(body.country_code, body.country, (freshOrder as any).shipping_country_code);
     let ship_state = pick(body.state, body.province, (freshOrder as any).shipping_state);
-    // Israel-specific: ShineOn requires province; Israel has none — fall back to city
+    // Israel-specific: ShineOn requires a province for some countries; Israel has none — fall back to city.
     if (ship_country_code.toUpperCase() === "IL" && !ship_state) {
       ship_state = ship_city;
     }
+    // Per ShineOn Orders API: name, address1, city, zip, country_code are required;
+    // province/address2/phone are accepted optional fields.
     const shippingAddress = {
-      first_name: fullName.split(" ")[0] || body.first_name || "",
-      last_name: fullName.split(" ").slice(1).join(" ") || body.last_name || "",
+      name: recipientName,
       address1: pick(body.address, body.street, (freshOrder as any).shipping_address1),
       address2: pick(body.address2, (freshOrder as any).shipping_address2),
       city: ship_city,
       province: ship_state,
-      province_code: body.province_code || "",
-      country: pick(body.country, (freshOrder as any).shipping_country_code),
-      country_code: ship_country_code,
       zip: pick(body.zip, body.postal_code, (freshOrder as any).shipping_zip),
+      country_code: ship_country_code,
       phone: pick(body.phone, (freshOrder as any).customer_phone),
-      email: customerEmailForShipping,
     };
 
+    // Personalization goes in line_item.properties. The front soundwave (print_url)
+    // is mandatory; the back engraving (the name) is sent only when the customer
+    // opted in via add_name_to_back.
+    const properties: Record<string, string> = { print_url: printAssetUrl };
+    if ((freshOrder as any).add_name_to_back && freshOrder.pet_name) {
+      properties["Engraving Line 1"] = String(freshOrder.pet_name);
+    }
+
+    // ShineOn Orders API: everything is nested under an "order" object.
+    // source_id = our unique order ref; store_line_item_id = per-line ref.
     const shineonPayload = {
-      order_number: String(docnum),
-      shipping_address: shippingAddress,
-      line_items: [
-        {
-          sku: SHINEON_SKU,
-          quantity: 1,
-          print_url: printAssetUrl,
-        },
-      ],
+      order: {
+        source_id: sourceId,
+        email: customerEmailForShipping,
+        line_items: [
+          {
+            store_line_item_id: `${sourceId}-1`,
+            sku: SHINEON_SKU,
+            quantity: 1,
+            properties,
+          },
+        ],
+        shipping_address: shippingAddress,
+      },
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — order_number: ${docnum}, sku: ${SHINEON_SKU}, print_url: ${printAssetUrl} (source: ${printAssetSource})`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 — source_id: ${sourceId}, sku: ${SHINEON_SKU}, print_url: ${printAssetUrl} (source: ${printAssetSource}), back_engraving: ${properties["Engraving Line 1"] ? "yes" : "no"}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -309,7 +331,6 @@ serve(async (req) => {
         "Content-Type": "application/json",
         Accept: "application/json",
         Authorization: `Bearer ${shineonApiKey}`,
-        "X-API-KEY": shineonApiKey,
       },
       body: JSON.stringify(shineonPayload),
     });
@@ -374,11 +395,16 @@ serve(async (req) => {
       .eq("id", orderId)
       .eq("status", "paid");
 
-    console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn successfully`);
+    // Parse the ShineOn order ref for traceability. NOTE: the synchronous create
+    // response has NO tracking number — it returns status "on_hold"; tracking is
+    // delivered later via the shipment_notification_url callback (TASKS.md A4).
+    let shineonOrder: any = null;
+    try { shineonOrder = JSON.parse(shineonResult)?.order ?? null; } catch { /* non-JSON body */ }
+    console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn (shineon: ${shineonOrder?.name || shineonOrder?.id || "?"}, status: ${shineonOrder?.status || "?"})`);
 
     const shipEmail = body.client_email || body.email;
     const shipName = body.client_name || body.first_name || "";
-    const trackingUrl = shineonResult ? (() => { try { return JSON.parse(shineonResult)?.order?.tracking_url; } catch { return undefined; } })() : undefined;
+    const trackingUrl = shineonOrder?.tracking_url; // absent in create response; populated only once ShineOn ships (A4)
     if (shipEmail) {
       try {
         await supabase.functions.invoke("send-transactional-email", {

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..500&family=Inter:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,58 +6,60 @@
 
 @layer base {
   :root {
-    --background: 220 12% 5%;
-    --foreground: 40 8% 92%;
+    /* Warm Memorial palette — ivory ground, espresso ink, antique gold + terracotta */
+    --background: 37 44% 93%;
+    --foreground: 30 28% 14%;
 
-    --card: 220 10% 12%;
-    --card-foreground: 40 10% 90%;
+    --card: 38 56% 97%;
+    --card-foreground: 30 28% 14%;
 
-    --popover: 220 10% 10%;
-    --popover-foreground: 40 10% 90%;
+    --popover: 38 56% 97%;
+    --popover-foreground: 30 28% 14%;
 
-    --primary: 38 45% 58%;
-    --primary-foreground: 220 12% 5%;
+    --primary: 30 28% 14%;
+    --primary-foreground: 37 46% 95%;
 
-    --secondary: 220 8% 16%;
-    --secondary-foreground: 40 10% 80%;
+    --secondary: 36 45% 84%;
+    --secondary-foreground: 30 28% 14%;
 
-    --muted: 220 8% 14%;
-    --muted-foreground: 220 6% 55%;
+    --muted: 36 40% 88%;
+    --muted-foreground: 31 16% 42%;
 
-    --accent: 40 40% 55%;
-    --accent-foreground: 220 10% 8%;
+    --accent: 35 39% 48%;
+    --accent-foreground: 38 56% 97%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 38 56% 97%;
 
-    --border: 220 8% 20%;
-    --input: 220 8% 20%;
-    --ring: 40 40% 55%;
+    --border: 36 33% 80%;
+    --input: 36 33% 80%;
+    --ring: 35 39% 48%;
 
-    --radius: 0.25rem;
+    --radius: 0.625rem;
 
-    /* Custom tokens — Champagne Gold */
-    --gold: 38 45% 58%;
-    --gold-light: 38 38% 72%;
-    --gold-dark: 38 50% 42%;
-    --deep-grey: 220 10% 8%;
-    --light-grey: 220 6% 55%;
-    --cream: 220 8% 12%;
-    --warm-white: 40 10% 90%;
-    --surface: 220 10% 10%;
-    --surface-elevated: 220 8% 14%;
+    /* Custom tokens */
+    --gold: 35 39% 48%;
+    --gold-light: 35 46% 60%;
+    --gold-dark: 24 47% 42%;
+    --terracotta: 24 47% 47%;
+    --deep-grey: 30 28% 14%;
+    --light-grey: 31 16% 42%;
+    --cream: 38 56% 97%;
+    --warm-white: 37 46% 96%;
+    --surface: 38 56% 97%;
+    --surface-elevated: 36 40% 92%;
 
-    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-serif: 'Fraunces', Georgia, serif;
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    --sidebar-background: 220 10% 10%;
-    --sidebar-foreground: 40 10% 80%;
-    --sidebar-primary: 40 40% 55%;
-    --sidebar-primary-foreground: 220 10% 8%;
-    --sidebar-accent: 220 8% 16%;
-    --sidebar-accent-foreground: 40 10% 80%;
-    --sidebar-border: 220 8% 20%;
-    --sidebar-ring: 40 40% 55%;
+    --sidebar-background: 38 56% 97%;
+    --sidebar-foreground: 30 24% 22%;
+    --sidebar-primary: 35 39% 48%;
+    --sidebar-primary-foreground: 38 56% 97%;
+    --sidebar-accent: 36 45% 90%;
+    --sidebar-accent-foreground: 30 28% 14%;
+    --sidebar-border: 36 33% 80%;
+    --sidebar-ring: 35 39% 48%;
   }
 }
 
@@ -66,13 +68,22 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    /* faint warm paper wash for heirloom depth */
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, hsl(38 52% 96% / 0.9) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
+    font-optical-sizing: auto;
   }
 }
 
@@ -101,6 +112,11 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes soundbar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
 .animate-fade-up {
   animation: fade-up 0.8s ease-out forwards;
 }
@@ -116,9 +132,10 @@
 }
 
 .gold-shimmer {
-  background: linear-gradient(90deg, hsl(40 45% 55%), hsl(40 35% 70%), hsl(40 45% 55%));
+  background: linear-gradient(90deg, hsl(35 39% 48%), hsl(35 48% 62%), hsl(24 47% 47%));
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }

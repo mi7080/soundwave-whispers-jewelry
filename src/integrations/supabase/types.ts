@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           add_name_to_back: boolean
           amount: number | null
+          archived_at: string | null
           audio_url: string
           billing_address1: string | null
           billing_address2: string | null
@@ -63,6 +64,7 @@ export type Database = {
         Insert: {
           add_name_to_back?: boolean
           amount?: number | null
+          archived_at?: string | null
           audio_url: string
           billing_address1?: string | null
           billing_address2?: string | null
@@ -108,6 +110,7 @@ export type Database = {
         Update: {
           add_name_to_back?: boolean
           amount?: number | null
+          archived_at?: string | null
           audio_url?: string
           billing_address1?: string | null
           billing_address2?: string | null
@@ -149,6 +152,27 @@ export type Database = {
           updated_at?: string
           waveform_data?: Json | null
           workflow_status?: string
+        }
+        Relationships: []
+      }
+      campaign_email_content: {
+        Row: {
+          fields: Json
+          id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          fields?: Json
+          id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          fields?: Json
+          id?: string
+          subject?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -405,6 +429,7 @@ export type Database = {
       }
       waitlist_leads: {
         Row: {
+          archived_at: string | null
           created_at: string
           email: string
           extra_discount_percent: number
@@ -416,6 +441,7 @@ export type Database = {
           status_updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           email: string
           extra_discount_percent?: number
@@ -427,6 +453,7 @@ export type Database = {
           status_updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           email?: string
           extra_discount_percent?: number

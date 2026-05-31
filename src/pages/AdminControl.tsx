@@ -6,9 +6,11 @@ import {
   Loader2, Package, Users, DollarSign,
   Settings as SettingsIcon, AlertTriangle, Save, Mail, Send,
   Boxes, Music, FileText, Image as ImageIcon, FolderOpen, ExternalLink, CheckCircle2, Circle,
+  Trash2, ArchiveRestore,
 } from "lucide-react";
 import AdminOrders from "./AdminOrders";
 import { DateRangeProvider, useDateRange, inRange } from "@/components/admin/DateRangeContext";
+import { computeFinanceStats } from "@/lib/financeStats";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
 import { AdminShell, type AdminTab } from "@/components/admin/AdminShell";
 import { AdminCard, AdminKpi, AdminSectionHeader, AdminEmpty } from "@/components/admin/ui";
@@ -20,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { buildSoulPageUrl } from "@/lib/soulPage";
 
 const ADMIN_EMAIL = "mi7080@gmail.com";
 
@@ -48,6 +51,7 @@ interface LeadSummary {
   email: string;
   status: string;
   created_at: string;
+  archived_at: string | null;
 }
 
 type TabKey = "dashboard" | "production" | "finance" | "crm" | "settings";
@@ -146,44 +150,10 @@ const FinanceTab = () => {
     load();
   }, []);
 
-  const stats = useMemo(() => {
-    if (!costs) return null;
-    const paidOrders = orders.filter(o => ["paid","fulfilled","shipped","shineon_error"].includes(o.status) && o.amount && inRange(o.created_at, range));
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-    const orderCount = paidOrders.length || 1;
-
-    // Pro-rated ad spend per order (monthly / count of paid orders this month)
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthOrders = paidOrders.filter(o => new Date(o.created_at) >= monthStart);
-    const monthOrderCount = monthOrders.length || 1;
-    const adSpendPerOrder = Number(costs.monthly_ad_spend) / monthOrderCount;
-
-    const computeProfit = (amount: number) => {
-      const fees = (amount * Number(costs.transaction_fee_percent) / 100) + Number(costs.transaction_fee_fixed);
-      return amount - Number(costs.shineon_unit_cost) - fees - adSpendPerOrder;
-    };
-
-    const totalCost = paidOrders.reduce((sum, o) => {
-      const amt = Number(o.amount) || 0;
-      const fees = (amt * Number(costs.transaction_fee_percent) / 100) + Number(costs.transaction_fee_fixed);
-      return sum + Number(costs.shineon_unit_cost) + fees + adSpendPerOrder;
-    }, 0);
-
-    const totalProfit = totalRevenue - totalCost;
-    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-    const avgOrderValue = totalRevenue / orderCount;
-    const avgProfit = totalProfit / orderCount;
-
-    const adAlert = avgOrderValue > 0 && (adSpendPerOrder / avgOrderValue) > 0.3;
-    const productionAlert = avgOrderValue > 0 && (Number(costs.shineon_unit_cost) / avgOrderValue) > 0.4;
-
-    return {
-      totalRevenue, totalCost, totalProfit, margin, avgOrderValue, avgProfit,
-      adSpendPerOrder, monthOrderCount, paidOrders, computeProfit,
-      adAlert, productionAlert,
-    };
-  }, [orders, costs, range]);
+  const stats = useMemo(
+    () => (costs ? computeFinanceStats(orders, costs, range) : null),
+    [orders, costs, range],
+  );
 
   if (loading) {
     return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>;
@@ -206,7 +176,7 @@ const FinanceTab = () => {
           {stats.adAlert && (
             <CostAlert
               title="Ad spend is dominating margin"
-              message={`Pro-rated ad cost (${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}/order) exceeds 30% of average order value. Review campaigns.`}
+              message={`Pro-rated ad cost (${costs.currency} ${stats.avgAdPerOrder.toFixed(2)}/order) exceeds 30% of average order value. Review campaigns.`}
             />
           )}
           {stats.productionAlert && (
@@ -225,8 +195,8 @@ const FinanceTab = () => {
         <AdminKpi label="Margin" value={`${stats.margin.toFixed(1)}%`} tone="accent" />
         <AdminKpi label="Avg Order Value" value={`${costs.currency} ${stats.avgOrderValue.toFixed(2)}`} />
         <AdminKpi label="Avg Profit/Order" value={`${costs.currency} ${stats.avgProfit.toFixed(2)}`} tone={stats.avgProfit >= 0 ? "positive" : "negative"} />
-        <AdminKpi label="Ad Cost/Order" value={`${costs.currency} ${stats.adSpendPerOrder.toFixed(2)}`} />
-        <AdminKpi label={`Orders · ${range.label}`} value={`${stats.monthOrderCount}`} />
+        <AdminKpi label="Avg Ad Cost/Order" value={`${costs.currency} ${stats.avgAdPerOrder.toFixed(2)}`} />
+        <AdminKpi label={`Orders · ${range.label}`} value={`${stats.orderCount}`} />
       </div>
 
       <AdminCard className="overflow-hidden">
@@ -248,7 +218,7 @@ const FinanceTab = () => {
             <tbody>
               {stats.paidOrders.slice(0, 50).map(o => {
                 const amt = Number(o.amount) || 0;
-                const profit = stats.computeProfit(amt);
+                const profit = stats.profitFor(o);
                 const cost = amt - profit;
                 return (
                   <tr key={o.id} className="border-t border-border/60">
@@ -292,8 +262,14 @@ const CrmTab = () => {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [view, setView] = useState<"leads" | "customers">("leads");
   const [sendingCampaign, setSendingCampaign] = useState<"email1" | "email2" | null>(null);
+  const [showArchivedLeads, setShowArchivedLeads] = useState(false);
 
-  const filteredLeads = useMemo(() => leads.filter(l => inRange(l.created_at, range)), [leads, range]);
+  const liveLeads = useMemo(() => leads.filter(l => !l.archived_at), [leads]);
+  const archivedLeadCount = leads.length - liveLeads.length;
+  const filteredLeads = useMemo(
+    () => leads.filter(l => (showArchivedLeads ? !!l.archived_at : !l.archived_at) && inRange(l.created_at, range)),
+    [leads, range, showArchivedLeads],
+  );
   const filteredOrders = useMemo(() => orders.filter(o => inRange(o.created_at, range)), [orders, range]);
 
   useEffect(() => {
@@ -381,6 +357,19 @@ const CrmTab = () => {
     toast.success(`Marked ${lead.email} as contacted`);
   };
 
+  const setLeadArchived = async (lead: LeadSummary, archived: boolean) => {
+    const archived_at = archived ? new Date().toISOString() : null;
+    const prev = leads;
+    setLeads(p => p.map(l => l.id === lead.id ? { ...l, archived_at } : l));
+    const { error } = await supabase.from("waitlist_leads").update({ archived_at }).eq("id", lead.id);
+    if (error) {
+      setLeads(prev);
+      toast.error(archived ? "Failed to archive" : "Failed to restore");
+    } else {
+      toast.success(archived ? `Archived ${lead.email}` : `Restored ${lead.email}`);
+    }
+  };
+
   if (loading) {
     return <div className="container mx-auto px-6 py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>;
   }
@@ -403,7 +392,7 @@ const CrmTab = () => {
           <CampaignCard
             title="Status Update"
             subtitle={'"We\'re listening… 🕊️"'}
-            leadCount={leads.length}
+            leadCount={liveLeads.length}
             sending={sendingCampaign === "email1"}
             anySending={sendingCampaign !== null}
             onTest={(t) => sendCampaign("email1", t)}
@@ -412,12 +401,26 @@ const CrmTab = () => {
           <CampaignCard
             title="Referral Program"
             subtitle={'"ANIMUS for free? 🎁"'}
-            leadCount={leads.length}
+            leadCount={liveLeads.length}
             sending={sendingCampaign === "email2"}
             anySending={sendingCampaign !== null}
             onTest={(t) => sendCampaign("email2", t)}
             onSendAll={() => sendCampaign("email2")}
           />
+        </div>
+      )}
+
+      {view === "leads" && (
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <span className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground">
+            {showArchivedLeads ? `Archived leads (${archivedLeadCount})` : ""}
+          </span>
+          <button
+            onClick={() => setShowArchivedLeads(s => !s)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/50 text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground hover:border-gold transition-colors shrink-0"
+          >
+            {showArchivedLeads ? "Back to active" : `Archived (${archivedLeadCount})`}
+          </button>
         </div>
       )}
 
@@ -441,28 +444,66 @@ const CrmTab = () => {
                     <td className="px-5 py-3 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString()}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="inline-flex items-center gap-1.5">
-                        {l.status !== "contacted" && (
+                        {showArchivedLeads ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => markContacted(l)}
-                            aria-label={`Mark ${l.email} as contacted`}
-                            className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground"
+                            onClick={() => setLeadArchived(l, false)}
+                            aria-label={`Restore ${l.email}`}
+                            className="text-[10px] tracking-[0.2em] uppercase text-emerald-700 hover:text-emerald-800"
                           >
-                            <CheckCircle2 className="w-3 h-3" /> Contacted
+                            <ArchiveRestore className="w-3 h-3" /> Restore
                           </Button>
+                        ) : (
+                          <>
+                            {l.status !== "contacted" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => markContacted(l)}
+                                aria-label={`Mark ${l.email} as contacted`}
+                                className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Contacted
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => sendLeadInvitation(l)}
+                              disabled={sendingId === l.id}
+                              aria-label={`Send early access invite to ${l.email}`}
+                              className="text-[10px] tracking-[0.2em] uppercase border-gold/40 text-gold-dark hover:bg-gold/10"
+                            >
+                              {sendingId === l.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              Send Invite
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label={`Archive ${l.email}`}
+                                  className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Archive
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Archive this email?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {l.email} will be hidden from the CRM and excluded from campaign sends. You can restore it anytime from the Archived view.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => setLeadArchived(l, true)}>Archive</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => sendLeadInvitation(l)}
-                          disabled={sendingId === l.id}
-                          aria-label={`Send early access invite to ${l.email}`}
-                          className="text-[10px] tracking-[0.2em] uppercase border-gold/40 text-gold-dark hover:bg-gold/10"
-                        >
-                          {sendingId === l.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                          Send Invite
-                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -707,7 +748,7 @@ const ProductionTab = () => {
               </div>
               <div className="p-5 flex flex-wrap gap-2">
                 <AssetLink href={o.audio_url} icon={<Music className="w-3 h-3" />} label="Audio" />
-                <AssetLink href={o.soul_page_url} icon={<FileText className="w-3 h-3" />} label="Soul Page" />
+                <AssetLink href={buildSoulPageUrl(o.id)} icon={<FileText className="w-3 h-3" />} label="Soul Page" />
                 <AssetLink href={o.pet_photo_url} icon={<ImageIcon className="w-3 h-3" />} label="Photo" />
                 <AssetLink href={o.print_image_url} icon={<ImageIcon className="w-3 h-3" />} label="Print PNG" />
                 <AssetLink href={o.design_image_url} icon={<ImageIcon className="w-3 h-3" />} label="Design" />
@@ -849,6 +890,171 @@ const SettingsTab = () => {
           </Button>
         </div>
       </AdminCard>
+
+      <div className="mt-12">
+        <AdminSectionHeader eyebrow="Marketing" title="Campaign Emails" />
+        <p className="text-xs mb-8 text-muted-foreground -mt-4">
+          Edit the copy for the two waitlist campaign emails. Layout and branding stay fixed; dynamic bits
+          (referral link, discount, counts) fill in automatically. Leave a field blank to keep its default.
+        </p>
+        <CampaignEmailEditor />
+      </div>
+    </div>
+  );
+};
+
+// ─── Campaign Email Editor ──────────────────────────────────────────
+type CampaignFieldDef = { key: string; label: string; type: "input" | "textarea"; hint?: string };
+
+const CAMPAIGN_EMAILS: { id: "email1" | "email2"; title: string; fields: CampaignFieldDef[] }[] = [
+  {
+    id: "email1",
+    title: "Email 1 — Status Update",
+    fields: [
+      { key: "heading", label: "Heading", type: "input" },
+      { key: "body", label: "Body", type: "textarea", hint: "Leave a blank line between paragraphs." },
+      { key: "signature", label: "Signature", type: "textarea", hint: "Line breaks are kept." },
+    ],
+  },
+  {
+    id: "email2",
+    title: "Email 2 — Referral Program",
+    fields: [
+      { key: "heading", label: "Heading", type: "input", hint: "Use a line break for a second line." },
+      { key: "intro", label: "Intro paragraph", type: "textarea" },
+      { key: "cta_label", label: "Button label", type: "input" },
+      { key: "closing", label: "Closing note", type: "textarea" },
+      { key: "signature", label: "Signature", type: "textarea" },
+    ],
+  },
+];
+
+type CampaignRow = { subject: string; fields: Record<string, string> };
+
+const CampaignEmailEditor = () => {
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [rows, setRows] = useState<Record<string, CampaignRow>>({});
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from("campaign_email_content").select("id, subject, fields");
+      const map: Record<string, CampaignRow> = {};
+      for (const def of CAMPAIGN_EMAILS) map[def.id] = { subject: "", fields: {} };
+      for (const r of data || []) {
+        map[r.id] = { subject: r.subject || "", fields: (r.fields as Record<string, string>) || {} };
+      }
+      setRows(map);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const setSubject = (id: string, v: string) =>
+    setRows(p => ({ ...p, [id]: { ...p[id], subject: v } }));
+  const setField = (id: string, key: string, v: string) =>
+    setRows(p => ({ ...p, [id]: { ...p[id], fields: { ...p[id].fields, [key]: v } } }));
+
+  const save = async (id: string) => {
+    setSavingId(id);
+    const row = rows[id];
+    const { error } = await supabase.from("campaign_email_content").upsert({
+      id,
+      subject: row.subject,
+      fields: row.fields,
+      updated_at: new Date().toISOString(),
+    });
+    setSavingId(null);
+    if (error) toast.error(`Save failed: ${error.message}`);
+    else toast.success("Campaign email saved");
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-gold" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {CAMPAIGN_EMAILS.map(def => {
+        const row = rows[def.id] || { subject: "", fields: {} };
+        return (
+          <AdminCard key={def.id} className="p-6 space-y-4">
+            <p className="text-[11px] tracking-[0.25em] uppercase text-gold">{def.title}</p>
+
+            <div>
+              <Label className="block text-[10px] tracking-[0.25em] uppercase mb-1.5 text-gold-dark">Subject</Label>
+              <Input
+                value={row.subject}
+                onChange={(e) => setSubject(def.id, e.target.value)}
+                placeholder="Email subject line"
+              />
+            </div>
+
+            {def.fields.map(f => (
+              <div key={f.key}>
+                <Label className="block text-[10px] tracking-[0.25em] uppercase mb-1.5 text-gold-dark">{f.label}</Label>
+                {f.hint && <p className="text-[11px] mb-2 text-muted-foreground">{f.hint}</p>}
+                {f.type === "textarea" ? (
+                  <textarea
+                    value={row.fields[f.key] || ""}
+                    onChange={(e) => setField(def.id, f.key, e.target.value)}
+                    rows={f.key === "body" ? 8 : 3}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                ) : (
+                  <Input
+                    value={row.fields[f.key] || ""}
+                    onChange={(e) => setField(def.id, f.key, e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+
+            <CampaignPreview row={row} />
+
+            <div className="flex justify-end pt-2 border-t border-border">
+              <Button
+                onClick={() => save(def.id)}
+                disabled={savingId === def.id}
+                className="text-[11px] tracking-[0.25em] uppercase"
+              >
+                {savingId === def.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Save {def.title.split(" — ")[0]}
+              </Button>
+            </div>
+          </AdminCard>
+        );
+      })}
+    </div>
+  );
+};
+
+// Lightweight, read-only approximation of the sent email (text blocks only).
+const CampaignPreview = ({ row }: { row: CampaignRow }) => {
+  const f = row.fields;
+  const lines = (t?: string) => (t || "").split("\n").map((l, i) => <span key={i}>{l}<br /></span>);
+  const paras = (t?: string) =>
+    (t || "").split(/\n{2,}/).filter(Boolean).map((p, i) => (
+      <p key={i} style={{ margin: "0 0 12px" }}>{lines(p)}</p>
+    ));
+  return (
+    <div className="rounded-md border border-border bg-white text-[#1a1a1a] p-5" style={{ fontFamily: "Georgia, serif" }}>
+      <p className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-3" style={{ fontFamily: "inherit" }}>
+        Preview · Subject: <span className="text-foreground">{row.subject || "(default)"}</span>
+      </p>
+      <div style={{ fontSize: 22, lineHeight: 1.4, marginBottom: 16 }}>{lines(f.heading)}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.7, color: "#3a3a3a" }}>
+        {paras(f.body || f.intro)}
+      </div>
+      {f.cta_label && (
+        <div style={{ margin: "16px 0", textAlign: "center" }}>
+          <span style={{ display: "inline-block", background: "#1a1a1a", color: "#c9a84c", padding: "12px 28px", fontSize: 11, letterSpacing: 3, textTransform: "uppercase" }}>
+            {f.cta_label}
+          </span>
+        </div>
+      )}
+      {f.closing && <p style={{ fontSize: 12, color: "#7a7a7a", textAlign: "center", margin: "16px 0 0" }}>{lines(f.closing)}</p>}
+      {f.signature && <p style={{ fontSize: 13, color: "#7a7a7a", marginTop: 16 }}>{lines(f.signature)}</p>}
     </div>
   );
 };

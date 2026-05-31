@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Lock } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Lock, Check } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { PRODUCT_CONFIG } from "@/config/product";
-import logo from "@/assets/logo.png";
 
 const COUNTRIES = [
   { code: "US", name: "United States" },
@@ -59,6 +58,8 @@ const shippingSchema = z.object({
 
 type ShippingForm = z.infer<typeof shippingSchema>;
 
+const STEPS = ["Contact", "Shipping"];
+
 const Checkout = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -70,6 +71,7 @@ const Checkout = () => {
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState(0);
 
   // Discount code state
   const [discountInput, setDiscountInput] = useState("");
@@ -89,7 +91,7 @@ const Checkout = () => {
 
   const applyDiscount = async () => {
     if (paymentLinkCreated) {
-      toast.error("Payment link already created — discount is locked.");
+      toast.error("Payment link already created. Discount is locked.");
       return;
     }
     if (discountCode) return; // already applied — locked until payment link is created
@@ -123,7 +125,7 @@ const Checkout = () => {
 
   const removeDiscount = () => {
     if (paymentLinkCreated) {
-      toast.error("Payment link already created — discount cannot be removed.");
+      toast.error("Payment link already created. Discount cannot be removed.");
       return;
     }
     setDiscountCode(null);
@@ -221,8 +223,23 @@ const Checkout = () => {
     };
   }, [orderId, navigate]);
 
+  // Validate the current step's fields before advancing (only the Contact step
+  // gates; the final Shipping step submits and zod validates everything).
+  const stepFields: (keyof ShippingForm)[][] = [
+    ["fullName", "email", "phone"],
+  ];
+
+  const goNext = async () => {
+    const fields = stepFields[step];
+    const ok = fields ? await form.trigger(fields) : true;
+    if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+
+  const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
   const onSubmit = async (values: ShippingForm) => {
     if (!orderId) return;
+    if (step !== STEPS.length - 1) return; // only the final step pays
     setSubmitting(true);
     try {
       // 1. Save shipping/billing/customer info to Supabase
@@ -265,7 +282,7 @@ const Checkout = () => {
       if (updErr) {
         console.error("[Checkout] Order update failed:", updErr);
         throw new Error(
-          `Could not save your details (${updErr.code || "DB"}): ${updErr.message}${updErr.hint ? ` — ${updErr.hint}` : ""}`
+          `Could not save your details (${updErr.code || "DB"}): ${updErr.message}${updErr.hint ? `. ${updErr.hint}` : ""}`
         );
       }
 
@@ -328,260 +345,290 @@ const Checkout = () => {
         <meta property="og:description" content="Complete your ANIMUS Memorial Pendant order securely." />
         <meta property="og:url" content="https://animuswave.com/checkout" />
       </Helmet>
-      <nav className="w-full py-6 px-6 border-b border-border/30">
+
+      <nav className="w-full py-5 px-6 border-b border-border">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button
-            onClick={() => navigate(`/?order=${orderId}&variant=${variantIdx}#customize`)}
-            className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => navigate(`/early-access-store?order=${orderId}&variant=${variantIdx}#customize`)}
+            className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors font-sans"
             aria-label="Back to edit design"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Edit Design</span>
+            <span className="hidden sm:inline">Edit design</span>
           </button>
-          <img src={logo} alt="ANIMUS" className="h-12" />
-          <div className="w-[88px]" aria-hidden="true" />
+          <span className="font-serif text-xl font-semibold tracking-[0.06em] text-foreground">ANIMUS</span>
+          <div className="w-[96px]" aria-hidden="true" />
         </div>
       </nav>
 
-      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 lg:gap-12">
         {/* Form */}
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          onKeyDown={(e) => { if (e.key === "Enter" && step !== STEPS.length - 1) e.preventDefault(); }}
+          className="space-y-7"
+        >
           <div>
-            <h1 className="font-serif text-2xl sm:text-3xl text-white mb-1">Shipping & Billing</h1>
-            <p className="text-white/60 text-sm">Enter your details — payment is the final step.</p>
+            <h1 className="font-serif text-3xl sm:text-4xl font-medium text-foreground mb-1">Almost yours</h1>
+            <p className="text-muted-foreground text-sm font-sans">A few details, then the final step is payment.</p>
           </div>
 
+          {/* Stepper progress */}
+          <ol className="flex items-center gap-2">
+            {STEPS.map((label, i) => {
+              const done = i < step;
+              const active = i === step;
+              return (
+                <li key={label} className="flex items-center gap-2 flex-1 last:flex-none">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-sans transition-colors ${
+                      done ? "bg-gold text-primary-foreground" : active ? "bg-primary text-primary-foreground" : "ring-1 ring-border text-muted-foreground"
+                    }`}>
+                      {done ? <Check className="w-4 h-4" /> : i + 1}
+                    </span>
+                    <span className={`text-[13px] font-sans whitespace-nowrap ${active || done ? "text-foreground" : "text-muted-foreground"}`}>
+                      {label}
+                    </span>
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <span className={`hidden sm:block h-px flex-1 transition-colors ${i < step ? "bg-gold" : "bg-border"}`} />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+
           {failed && (
-            <div className="p-4 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+            <div className="p-4 rounded-xl ring-1 ring-destructive/30 bg-destructive/10 text-destructive text-sm font-sans">
               Payment was not successful. Please review your details and try again.
             </div>
           )}
 
           {(orderStatus === "payment_pending" || orderStatus === "paid") && (
-            <div className="p-4 rounded-md border border-gold/30 bg-gold/10 text-gold text-sm">
+            <div className="p-4 rounded-xl ring-1 ring-gold/30 bg-gold/10 text-gold text-sm font-sans">
               {orderStatus === "paid" ? "Payment confirmed. Redirecting…" : "Waiting for payment confirmation…"}
             </div>
           )}
 
-          {/* Contact */}
-          <fieldset className="border border-border/30 rounded-md p-5 space-y-4 bg-card/40">
-            <legend className="px-2 text-[10px] tracking-[0.3em] uppercase text-gold font-sans">Contact</legend>
-            <Field label="Full Name" name="fullName" form={form} />
+          {/* Step 0: Contact */}
+          <div className={step === 0 ? "block space-y-5" : "hidden"}>
+            <Field label="Full name" name="fullName" form={form} autoComplete="name" placeholder="Jordan Avery" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Email" name="email" type="email" form={form} />
-              <Field label="Phone" name="phone" type="tel" form={form} />
+              <Field label="Email" name="email" type="email" form={form} autoComplete="email" placeholder="you@email.com" />
+              <Field label="Phone" name="phone" type="tel" form={form} autoComplete="tel" placeholder="+1 555 000 0000" />
             </div>
-          </fieldset>
+            <p className="text-[13px] text-muted-foreground font-sans">We email your order confirmation and Soul Page link here.</p>
+          </div>
 
-          {/* Shipping */}
-          <fieldset className="border border-border/30 rounded-md p-5 space-y-4 bg-card/40">
-            <legend className="px-2 text-[10px] tracking-[0.3em] uppercase text-gold font-sans">Shipping Address</legend>
-            <Field label="Address Line 1" name="address1" form={form} />
-            <Field label="Address Line 2 (optional)" name="address2" form={form} />
+          {/* Step 1: Shipping + Billing */}
+          <div className={step === 1 ? "block space-y-5" : "hidden"}>
+            <Field label="Address" name="address1" form={form} autoComplete="address-line1" placeholder="123 Main Street" />
+            <Field label="Apartment, suite (optional)" name="address2" form={form} autoComplete="address-line2" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="City" name="city" form={form} />
-              <Field label="State / Region" name="state" form={form} />
+              <Field label="City" name="city" form={form} autoComplete="address-level2" />
+              <Field label="State / Region" name="state" form={form} autoComplete="address-level1" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="ZIP / Postal Code" name="zip" form={form} />
-              <SelectField label="Country" name="country" form={form} options={COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
+              <Field label="ZIP / Postal code" name="zip" form={form} autoComplete="postal-code" />
+              <SelectField label="Country" name="country" form={form} autoComplete="country" options={COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
             </div>
-          </fieldset>
 
-          {/* Billing */}
-          <fieldset className="border border-border/30 rounded-md p-5 space-y-4 bg-card/40">
-            <legend className="px-2 text-[10px] tracking-[0.3em] uppercase text-gold font-sans">Billing</legend>
-            <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
-              <input
-                type="checkbox"
-                {...form.register("billingSame")}
-                className="accent-gold w-4 h-4"
-              />
-              Billing address same as shipping
+            <label className="flex items-center gap-2.5 text-sm text-foreground/80 cursor-pointer font-sans pt-1">
+              <input type="checkbox" {...form.register("billingSame")} className="accent-[hsl(var(--gold))] w-4 h-4" />
+              Billing address is the same as shipping
             </label>
 
             {!billingSame && (
-              <div className="space-y-4 pt-2">
-                <Field label="Full Name (Billing)" name="billingName" form={form} />
-                <Field label="Address Line 1" name="billingAddress1" form={form} />
-                <Field label="Address Line 2 (optional)" name="billingAddress2" form={form} />
+              <div className="space-y-4 pt-1 border-t border-border">
+                <p className="text-[13px] tracking-[0.2em] text-gold font-sans pt-3">Billing address</p>
+                <Field label="Full name" name="billingName" form={form} autoComplete="billing name" />
+                <Field label="Address" name="billingAddress1" form={form} autoComplete="billing address-line1" />
+                <Field label="Apartment, suite (optional)" name="billingAddress2" form={form} autoComplete="billing address-line2" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="City" name="billingCity" form={form} />
-                  <Field label="State / Region" name="billingState" form={form} />
+                  <Field label="City" name="billingCity" form={form} autoComplete="billing address-level2" />
+                  <Field label="State / Region" name="billingState" form={form} autoComplete="billing address-level1" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="ZIP / Postal Code" name="billingZip" form={form} />
-                  <SelectField label="Country" name="billingCountry" form={form} options={COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
+                  <Field label="ZIP / Postal code" name="billingZip" form={form} autoComplete="billing postal-code" />
+                  <SelectField label="Country" name="billingCountry" form={form} autoComplete="billing country" options={COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
                 </div>
               </div>
             )}
-          </fieldset>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full min-h-[52px] py-3.5 px-4 bg-gold text-background text-xs sm:text-sm tracking-[0.2em] uppercase font-semibold hover:bg-gold-light transition-colors rounded-md flex items-center justify-center gap-2 shadow-lg shadow-gold/10 disabled:opacity-60"
-          >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            {submitting ? "Preparing payment…" : "Continue to Payment"}
-          </button>
-
-          <div className="flex items-center justify-center gap-3 text-white/40 text-[10px] tracking-widest uppercase pt-1">
-            <span>🔒 Secure</span>
-            <span>·</span>
-            <span>Free Shipping</span>
-            <span>·</span>
-            <span>30-Day Guarantee</span>
           </div>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-3 pt-1">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={goBack}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-sans text-foreground/80 ring-1 ring-border hover:text-foreground hover:ring-gold/50 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+            )}
+            {step < STEPS.length - 1 ? (
+              <button
+                type="button"
+                onClick={goNext}
+                className="group flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 text-sm font-sans font-medium transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)]"
+              >
+                Continue
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 text-sm font-sans font-medium transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)] disabled:opacity-60 disabled:translate-y-0"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                {submitting ? "Preparing payment…" : "Continue to payment"}
+              </button>
+            )}
+          </div>
+
+          {step === STEPS.length - 1 && (
+            <p className="text-center text-muted-foreground text-[12px] leading-relaxed font-sans">
+              The next screen is our secure payment page. By continuing, you agree to our{" "}
+              <Link to="/terms" className="text-gold hover:underline underline-offset-2">Terms of Service</Link>,{" "}
+              <Link to="/privacy" className="text-gold hover:underline underline-offset-2">Privacy Policy</Link>, and{" "}
+              <Link to="/refund" className="text-gold hover:underline underline-offset-2">Refund Policy</Link>.
+            </p>
+          )}
         </form>
 
         {/* Summary */}
         <aside className="lg:sticky lg:top-8 h-fit">
-          <div className="border border-gold/20 rounded-lg p-5 bg-[#1A1A1A] shadow-xl space-y-4">
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gold font-sans">Your Pendant</p>
+          <div className="rounded-2xl ring-1 ring-border bg-card p-5 shadow-[0_30px_70px_-40px_rgba(90,60,30,0.4)] space-y-4">
+            <p className="text-[13px] tracking-[0.2em] text-gold font-sans">Your pendant</p>
 
             {order?.design_image_url && (
               <div
-                className="rounded-md overflow-hidden border border-gold/20 flex items-center justify-center p-3 shadow-inner"
+                className="rounded-xl overflow-hidden ring-1 ring-border flex items-center justify-center p-3"
                 style={{
                   backgroundImage:
-                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0 1px, transparent 1px 2px), linear-gradient(135deg, hsl(0 0% 96%) 0%, hsl(30 8% 88%) 50%, hsl(0 0% 92%) 100%)",
+                    "linear-gradient(135deg, hsl(0 0% 97%) 0%, hsl(30 8% 90%) 50%, hsl(0 0% 94%) 100%)",
                 }}
               >
                 <img
                   src={order.design_image_url}
                   alt="Your soundwave pendant with QR engraving"
-                  className="w-full h-auto max-h-[260px] object-contain"
+                  className="w-full h-auto max-h-[240px] object-contain"
                 />
               </div>
             )}
 
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm font-sans">
               <Row k="Product" v="Memorial Pendant" />
               <Row k="Finish" v={variant.title} />
               {order?.pet_name && <Row k="Engraving" v={order.pet_name} truncate />}
-              <div className="border-t border-white/10 pt-2.5 mt-2">
+              <div className="border-t border-border pt-2.5 mt-2">
                 <Row k="Subtotal" v={`$${subtotal.toFixed(2)}`} />
-                <Row k="Shipping" v={<span className="text-gold text-xs tracking-widest uppercase">FREE</span>} />
+                <Row k="Shipping" v={<span className="text-gold">Free</span>} />
                 {discountCode && (
-                  <Row
-                    k={`Discount (${discountCode})`}
-                    v={<span className="text-gold">−${discountAmount.toFixed(2)}</span>}
-                  />
+                  <Row k={`Discount (${discountCode})`} v={<span className="text-gold">−${discountAmount.toFixed(2)}</span>} />
                 )}
               </div>
 
               {/* Discount code entry */}
-              <div className="border-t border-white/10 pt-3 mt-1">
+              <div className="border-t border-border pt-3 mt-1">
                 {!discountCode ? (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">
-                      Discount Code
-                    </label>
+                    <label className="text-[13px] text-muted-foreground font-sans">Discount code</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={discountInput}
                         onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
-                        placeholder="ENTER CODE"
+                        placeholder="Enter code"
                         disabled={paymentLinkCreated}
-                        className="flex-1 bg-background/60 border border-border/40 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:ring-gold focus:outline-none transition-shadow uppercase tracking-wider disabled:opacity-50"
                       />
                       <button
                         type="button"
                         onClick={applyDiscount}
                         disabled={validatingDiscount || !discountInput.trim() || paymentLinkCreated}
-                        className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/40 rounded-md hover:bg-gold/10 transition-colors disabled:opacity-50"
+                        className="px-4 py-2 text-[13px] text-gold ring-1 ring-gold/40 rounded-lg hover:bg-gold/10 transition-colors disabled:opacity-50"
                       >
                         {validatingDiscount ? "…" : "Apply"}
                       </button>
                     </div>
-                    {discountError && (
-                      <p className="text-[10px] text-red-400">{discountError}</p>
-                    )}
+                    {discountError && <p className="text-[12px] text-destructive">{discountError}</p>}
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">
-                      Discount Code
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={discountCode}
-                        readOnly
-                        disabled
-                        aria-label="Applied discount code (locked)"
-                        className="flex-1 bg-background/30 border border-gold/30 rounded-md px-3 py-2 text-sm text-gold/90 uppercase tracking-wider cursor-not-allowed opacity-80"
-                      />
-                      <span
-                        className="px-3 py-2 text-[10px] tracking-[0.2em] uppercase text-gold border border-gold/30 rounded-md flex items-center gap-1 bg-gold/5"
-                        aria-live="polite"
-                      >
-                        <Lock className="w-3 h-3" /> {discountPercent}% Off
+                    <label className="text-[13px] text-muted-foreground font-sans">Discount code</label>
+                    <div className="flex gap-2 items-center">
+                      <span className="flex-1 bg-background ring-1 ring-gold/30 rounded-lg px-3 py-2 text-sm text-gold uppercase tracking-wider">{discountCode}</span>
+                      <span className="px-3 py-2 text-[13px] text-gold ring-1 ring-gold/30 rounded-lg flex items-center gap-1 bg-gold/5">
+                        <Lock className="w-3 h-3" /> {discountPercent}% off
                       </span>
                     </div>
-                    <p className="text-[10px] text-white/40 tracking-wider">
-                      {paymentLinkCreated
-                        ? "Discount locked — payment link already created."
-                        : "Code locked. Continue to payment to redeem."}
-                    </p>
+                    {!paymentLinkCreated && (
+                      <button type="button" onClick={removeDiscount} className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+                        Remove code
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-white/10 pt-3 mt-1 flex justify-between items-baseline">
-                <span className="text-white font-serif text-lg">Total</span>
-                <span className="text-gold font-serif text-2xl">${total.toFixed(2)}</span>
+              <div className="border-t border-border pt-3 mt-1 flex justify-between items-baseline">
+                <span className="text-foreground font-serif text-lg">Total</span>
+                <span className="text-foreground font-serif text-2xl">${total.toFixed(2)}</span>
               </div>
-              <p className="text-[10px] tracking-[0.2em] uppercase text-gold/70 text-center pt-1">Founders Price</p>
+              <p className="text-[12px] text-muted-foreground text-center pt-1 font-sans">Free US shipping. 30 day promise.</p>
             </div>
           </div>
         </aside>
       </div>
 
-      <footer className="py-6 text-center text-muted-foreground/50 text-xs tracking-widest">
-        © {new Date().getFullYear()} ANIMUS — All Rights Reserved
+      <footer className="py-6 text-center text-muted-foreground/60 text-xs font-sans">
+        © {new Date().getFullYear()} ANIMUS. All rights reserved.
       </footer>
     </main>
   );
 };
 
-const Field = ({ label, name, type = "text", form }: any) => (
+const Field = ({ label, name, type = "text", form, autoComplete, placeholder }: any) => (
   <div className="space-y-1.5">
-    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">{label}</label>
+    <label className="text-[13px] text-muted-foreground font-sans">{label}</label>
     <input
       type={type}
+      autoComplete={autoComplete}
+      placeholder={placeholder}
       {...form.register(name)}
-      className="w-full bg-background/60 border border-border/40 rounded-md px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-gold focus:outline-none transition-colors"
+      className="w-full bg-card ring-1 ring-border rounded-xl px-4 py-3 text-[15px] text-foreground placeholder:text-muted-foreground/40 focus:ring-gold focus:outline-none transition-shadow font-sans"
     />
     {form.formState.errors[name] && (
-      <p className="text-[10px] text-red-400">{String(form.formState.errors[name]?.message || "")}</p>
+      <p className="text-[12px] text-destructive">{String(form.formState.errors[name]?.message || "")}</p>
     )}
   </div>
 );
 
-const SelectField = ({ label, name, form, options }: any) => (
+const SelectField = ({ label, name, form, options, autoComplete }: any) => (
   <div className="space-y-1.5">
-    <label className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-sans">{label}</label>
+    <label className="text-[13px] text-muted-foreground font-sans">{label}</label>
     <select
+      autoComplete={autoComplete}
       {...form.register(name)}
-      className="w-full bg-background/60 border border-border/40 rounded-md px-3 py-2.5 text-sm text-white focus:border-gold focus:outline-none transition-colors"
+      className="w-full bg-card ring-1 ring-border rounded-xl px-4 py-3 text-[15px] text-foreground focus:ring-gold focus:outline-none transition-shadow font-sans"
     >
       {options.map((o: any) => (
-        <option key={o.value} value={o.value} className="bg-background">{o.label}</option>
+        <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
     {form.formState.errors[name] && (
-      <p className="text-[10px] text-red-400">{String(form.formState.errors[name]?.message || "")}</p>
+      <p className="text-[12px] text-destructive">{String(form.formState.errors[name]?.message || "")}</p>
     )}
   </div>
 );
 
 const Row = ({ k, v, truncate }: { k: string; v: any; truncate?: boolean }) => (
   <div className="flex justify-between gap-4">
-    <span className="text-white/60">{k}</span>
-    <span className={`text-white text-right ${truncate ? "truncate max-w-[60%]" : ""}`}>{v}</span>
+    <span className="text-muted-foreground">{k}</span>
+    <span className={`text-foreground text-right ${truncate ? "truncate max-w-[60%]" : ""}`}>{v}</span>
   </div>
 );
 

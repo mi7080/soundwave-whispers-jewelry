@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, MicOff, Upload, Play, Pause, X, Check, Loader2 } from "lucide-react";
+import { Mic, Square, Upload, Play, Pause, X, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ interface AudioRecorderProps {
 
 const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(initialUrl || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -23,7 +22,6 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -81,6 +79,42 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
     setWaveformData(normalized);
   }, []);
 
+  // Auto-save: upload the moment a recording stops or a file is chosen.
+  const uploadBlob = useCallback(async (blob: Blob, name: string) => {
+    setIsUploading(true);
+    setUploadedUrl(null);
+    try {
+      const tempId = crypto.randomUUID();
+      const ext = name.split(".").pop() || "webm";
+      const filePath = `${tempId}/audio.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("soul_assets")
+        .upload(filePath, blob, {
+          contentType: blob.type || "audio/webm",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("soul_assets")
+        .getPublicUrl(filePath);
+
+      if (urlData?.publicUrl) {
+        setUploadedUrl(urlData.publicUrl);
+        onAudioUrl?.(urlData.publicUrl);
+      } else {
+        throw new Error("Failed to get public URL");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not save your sound. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onAudioUrl]);
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -94,11 +128,11 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         setFileName("Recording.webm");
         generateWaveformFromBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
+        void uploadBlob(blob, "recording.webm"); // auto-save
       };
 
       mediaRecorder.start();
@@ -119,11 +153,10 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAudioBlob(file);
     setAudioUrl(URL.createObjectURL(file));
     setFileName(file.name);
     generateWaveformFromBlob(file);
-    setUploadedUrl(null);
+    void uploadBlob(file, file.name); // auto-save
   };
 
   const togglePlayback = () => {
@@ -137,102 +170,53 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
   };
 
   const clearAudio = () => {
-    setAudioBlob(null);
     setAudioUrl(null);
     setWaveformData([]);
     setUploadedUrl(null);
     setFileName(null);
     setRecordingTime(0);
-  };
-
-  const uploadToSupabase = async () => {
-    if (!audioBlob) return;
-    setIsUploading(true);
-    try {
-      const tempId = crypto.randomUUID();
-      const ext = fileName?.split(".").pop() || "webm";
-      const filePath = `${tempId}/audio.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("soul_assets")
-        .upload(filePath, audioBlob, {
-          contentType: audioBlob.type || "audio/webm",
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("soul_assets")
-        .getPublicUrl(filePath);
-
-      if (urlData?.publicUrl) {
-        setUploadedUrl(urlData.publicUrl);
-        onAudioUrl?.(urlData.publicUrl);
-      } else {
-        throw new Error("Failed to get public URL");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Upload failed. Please try again.");
-    } finally {
-      setIsUploading(false);
-    }
+    onAudioUrl?.("");
   };
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
-    <div className="space-y-6">
-      {/* Waveform Display */}
-      <div className="border border-border/50 rounded-sm p-6 md:p-8 bg-background/50">
-        <div className="flex items-end justify-center gap-[3px] h-32 md:h-40">
+    <div className="space-y-5">
+      {/* Waveform display */}
+      <div className="rounded-2xl ring-1 ring-border bg-background p-6 md:p-8">
+        <div className="flex items-end justify-center gap-[3px] h-28 md:h-36">
           {waveformData.length > 0
             ? waveformData.map((v, i) => (
                 <div
                   key={i}
                   className="bg-gradient-to-t from-gold-dark via-gold to-gold-light rounded-full transition-all duration-300"
-                  style={{
-                    height: `${Math.max(v * 100, 4)}%`,
-                    width: "3px",
-                    opacity: 0.5 + v * 0.5,
-                  }}
+                  style={{ height: `${Math.max(v * 100, 4)}%`, width: "3px", opacity: 0.5 + v * 0.5 }}
                 />
               ))
             : liveBarData.map((v, i) => (
                 <div
                   key={i}
                   className={`rounded-full transition-all duration-75 ${
-                    isRecording
-                      ? "bg-gradient-to-t from-red-700 via-red-500 to-red-300"
-                      : "bg-muted-foreground/20"
+                    isRecording ? "bg-[hsl(24_47%_47%)]" : "bg-muted-foreground/20"
                   }`}
-                  style={{
-                    height: `${v * 100}%`,
-                    width: "3px",
-                  }}
+                  style={{ height: `${v * 100}%`, width: "3px" }}
                 />
               ))}
         </div>
 
-        {/* Status */}
-        <div className="text-center mt-4">
+        <div className="text-center mt-4 min-h-[20px]">
           {isRecording && (
-            <p className="text-sm text-red-400 font-sans tracking-[0.15em] flex items-center justify-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Recording — {formatTime(recordingTime)}
+            <p className="text-sm text-[hsl(24_47%_47%)] font-sans flex items-center justify-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[hsl(24_47%_47%)] animate-pulse" />
+              Recording {formatTime(recordingTime)}
             </p>
           )}
           {!isRecording && !audioUrl && (
-            <p className="text-xs text-muted-foreground/50 tracking-widest uppercase font-sans">
-              Record or upload a meaningful sound
-            </p>
+            <p className="text-[13px] text-muted-foreground font-sans">Record or upload a meaningful sound</p>
           )}
           {fileName && !isRecording && (
-            <p className="text-xs text-muted-foreground/70 tracking-wide font-sans truncate max-w-[240px] mx-auto">
-              {fileName}
-            </p>
+            <p className="text-[13px] text-muted-foreground font-sans truncate max-w-[240px] mx-auto">{fileName}</p>
           )}
         </div>
       </div>
@@ -243,93 +227,52 @@ const AudioRecorder = ({ onAudioUrl, initialUrl }: AudioRecorderProps) => {
           <>
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 text-xs tracking-[0.3em] uppercase transition-all ${
+              className={`flex-1 inline-flex items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-sans font-medium transition-all ${
                 isRecording
-                  ? "bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
-                  : "bg-gold text-background hover:bg-gold-light"
+                  ? "bg-[hsl(24_47%_47%)]/10 ring-1 ring-[hsl(24_47%_47%)]/40 text-[hsl(24_47%_47%)]"
+                  : "bg-primary text-primary-foreground hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)]"
               }`}
             >
-              {isRecording ? (
-                <MicOff className="w-4 h-4" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-              {isRecording ? "Stop Recording" : "Record Sound"}
+              {isRecording ? <Square className="w-4 h-4" fill="currentColor" /> : <Mic className="w-4 h-4" />}
+              {isRecording ? "Stop recording" : "Record sound"}
             </button>
-            <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 text-xs tracking-[0.3em] uppercase border border-foreground/30 text-foreground hover:border-gold hover:text-gold transition-colors cursor-pointer">
+            <label className="flex-1 inline-flex items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-sans ring-1 ring-border text-foreground hover:ring-gold/50 transition-colors cursor-pointer">
               <Upload className="w-4 h-4" />
-              Upload File
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+              Upload file
+              <input type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" />
             </label>
           </>
         ) : (
           <>
             <button
               onClick={togglePlayback}
-              className="flex-1 flex items-center justify-center gap-3 px-6 py-4 text-xs tracking-[0.3em] uppercase border border-foreground/30 text-foreground hover:border-gold hover:text-gold transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-sans ring-1 ring-border text-foreground hover:ring-gold/50 transition-colors"
             >
-              {isPlaying ? (
-                <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               {isPlaying ? "Pause" : "Preview"}
             </button>
             <button
               onClick={clearAudio}
-              className="flex items-center justify-center gap-2 px-4 py-4 text-xs tracking-[0.2em] uppercase text-muted-foreground hover:text-red-400 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-sans text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
-              Clear
+              Redo
             </button>
           </>
         )}
       </div>
 
-      {/* Upload to Supabase */}
-      {audioUrl && !uploadedUrl && (
-        <div className="space-y-2">
-          <button
-            onClick={uploadToSupabase}
-            disabled={isUploading}
-            className="w-full group relative overflow-hidden bg-gold text-background px-10 py-5 text-xs tracking-[0.3em] uppercase hover:bg-gold-light transition-all flex items-center justify-center gap-3 disabled:opacity-60"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Preserving Your Sound…
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                Save This Sound
-              </>
-            )}
-            {/* shimmer sweep on hover */}
-            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-          </button>
-          {isUploading && (
-            <p className="text-[10px] text-gold/70 text-center tracking-[0.2em] uppercase font-sans animate-pulse">
-              Encoding your memory into the pendant…
-            </p>
-          )}
-        </div>
+      {/* Auto-save status */}
+      {isUploading && (
+        <p className="text-[13px] text-gold text-center font-sans flex items-center justify-center gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Saving your sound…
+        </p>
       )}
-
-      {/* Success */}
-      {uploadedUrl && (
-        <div className="flex items-center gap-3 p-4 border border-gold/30 rounded-sm bg-gold/5">
-          <Check className="w-5 h-5 text-gold flex-shrink-0" />
-          <div>
-            <p className="text-sm text-foreground font-sans">
-              Sound uploaded successfully
-            </p>
-          </div>
+      {uploadedUrl && !isUploading && (
+        <div className="flex items-center justify-center gap-2 text-[13px] text-gold font-sans">
+          <Check className="w-4 h-4" />
+          Sound saved
         </div>
       )}
 
