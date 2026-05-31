@@ -104,6 +104,43 @@ export function classifyShineOnFailure(
   return "permanent";
 }
 
+// ── ShineOn line-item construction ("the correct item") ─────────────
+// The variant SKU is resolved at checkout (finish × back engraving) and stored
+// on the order. These helpers turn an order row into the exact ShineOn line item
+// so the "correct item" logic is unit-tested instead of living inline in the
+// request handler.
+
+/**
+ * The ShineOn SKU to submit for an order. Prefers the per-order variant SKU
+ * resolved at checkout; falls back for legacy rows created before the
+ * shineon_sku column existed. Whitespace-only SKUs are treated as absent.
+ */
+export function resolveLineItemSku(
+  order: { shineon_sku?: string | null },
+  fallbackSku: string,
+): string {
+  const sku = order.shineon_sku?.trim();
+  return sku ? sku : fallbackSku;
+}
+
+/**
+ * ShineOn line_item.properties for an order. The front soundwave (print_url) is
+ * mandatory. The back engraving (the name) is sent ONLY when the buyer opted in
+ * via add_name_to_back AND a name is present — keeping it consistent with the
+ * engraved-vs-plain SKU variant so an engraved item never ships blank.
+ */
+export function buildShineonProperties(
+  order: { add_name_to_back?: boolean | null; pet_name?: string | null },
+  printUrl: string,
+): Record<string, string> {
+  const properties: Record<string, string> = { print_url: printUrl };
+  const name = order.pet_name?.toString().trim();
+  if (order.add_name_to_back && name) {
+    properties["Engraving Line 1"] = name;
+  }
+  return properties;
+}
+
 /** Returns true for any URL that points to an unrendered SVG file. */
 function isSvgUrl(url: string): boolean {
   const lower = url.toLowerCase();

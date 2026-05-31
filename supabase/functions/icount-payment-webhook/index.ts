@@ -4,6 +4,7 @@ import {
   FINALIZED_STATUSES,
   SHINEON_MAX_RETRIES,
   backoffMs,
+  buildShineonProperties,
   classifyShineOnFailure,
   extractOrderId,
   firstString,
@@ -11,6 +12,7 @@ import {
   isSuccessfulPayment,
   normalizeString,
   pickShineOnPrintUrl,
+  resolveLineItemSku,
 } from "./helpers.ts";
 
 const corsHeaders = {
@@ -303,15 +305,12 @@ serve(async (req) => {
 
     // Personalization goes in line_item.properties. The front soundwave (print_url)
     // is mandatory; the back engraving (the name) is sent only when the customer
-    // opted in via add_name_to_back.
-    const properties: Record<string, string> = { print_url: printAssetUrl };
-    if ((freshOrder as any).add_name_to_back && freshOrder.pet_name) {
-      properties["Engraving Line 1"] = String(freshOrder.pet_name);
-    }
+    // opted in via add_name_to_back. (Unit-tested in helpers.ts.)
+    const properties = buildShineonProperties(freshOrder as any, printAssetUrl);
 
     // Variant SKU resolved at checkout (finish × engraving). Fall back for legacy
     // orders created before the shineon_sku column existed.
-    const lineItemSku = (freshOrder as any).shineon_sku || SHINEON_SKU_FALLBACK;
+    const lineItemSku = resolveLineItemSku(freshOrder as any, SHINEON_SKU_FALLBACK);
 
     // ShineOn Orders API: everything is nested under an "order" object.
     // source_id = our unique order ref; store_line_item_id = per-line ref.

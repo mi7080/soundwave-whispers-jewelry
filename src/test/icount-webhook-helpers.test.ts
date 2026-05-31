@@ -9,6 +9,8 @@ import {
   backoffMs,
   classifyShineOnFailure,
   SHINEON_MAX_RETRIES,
+  resolveLineItemSku,
+  buildShineonProperties,
 } from "../../supabase/functions/icount-payment-webhook/helpers";
 
 const ORDER_UUID = "11111111-1111-4111-8111-111111111111";
@@ -134,6 +136,50 @@ describe("classifyShineOnFailure (transient vs permanent)", () => {
     expect(classifyShineOnFailure(401, false)).toBe("permanent");
     expect(classifyShineOnFailure(409, false)).toBe("permanent");
     expect(classifyShineOnFailure(422, false)).toBe("permanent");
+  });
+});
+
+describe("resolveLineItemSku (correct ShineOn variant)", () => {
+  const FALLBACK = "SO-15845643";
+  it("uses the per-order shineon_sku when present", () => {
+    expect(resolveLineItemSku({ shineon_sku: "SO-15845644" }, FALLBACK)).toBe("SO-15845644");
+  });
+  it("falls back for legacy rows with no SKU", () => {
+    expect(resolveLineItemSku({ shineon_sku: null }, FALLBACK)).toBe(FALLBACK);
+    expect(resolveLineItemSku({}, FALLBACK)).toBe(FALLBACK);
+  });
+  it("treats a whitespace-only SKU as absent", () => {
+    expect(resolveLineItemSku({ shineon_sku: "   " }, FALLBACK)).toBe(FALLBACK);
+  });
+});
+
+describe("buildShineonProperties (correct item personalization)", () => {
+  const PRINT = "https://cdn/design.svg";
+  it("always includes the mandatory print_url", () => {
+    expect(buildShineonProperties({}, PRINT)).toEqual({ print_url: PRINT });
+  });
+  it("adds the back engraving only when opted in AND a name exists", () => {
+    expect(buildShineonProperties({ add_name_to_back: true, pet_name: "Rex" }, PRINT)).toEqual({
+      print_url: PRINT,
+      "Engraving Line 1": "Rex",
+    });
+  });
+  it("omits engraving when not opted in (plain SKU variant)", () => {
+    expect(buildShineonProperties({ add_name_to_back: false, pet_name: "Rex" }, PRINT)).toEqual({
+      print_url: PRINT,
+    });
+  });
+  it("omits engraving when opted in but the name is blank (never ships an engraved blank)", () => {
+    expect(buildShineonProperties({ add_name_to_back: true, pet_name: "   " }, PRINT)).toEqual({
+      print_url: PRINT,
+    });
+    expect(buildShineonProperties({ add_name_to_back: true, pet_name: null }, PRINT)).toEqual({
+      print_url: PRINT,
+    });
+  });
+  it("trims the engraved name", () => {
+    expect(buildShineonProperties({ add_name_to_back: true, pet_name: "  Bella  " }, PRINT))
+      .toEqual({ print_url: PRINT, "Engraving Line 1": "Bella" });
   });
 });
 
