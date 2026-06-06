@@ -10,10 +10,6 @@ const SITE_NAME = "ANIMUS"
 // It MUST match the verified sender subdomain - never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
 const SENDER_DOMAIN = "notify.animuswave.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// When display_from_root is enabled, this can be the root domain for cleaner branding,
-// even though actual sending uses the subdomain above.
-const FROM_DOMAIN = "animuswave.com"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -316,7 +312,7 @@ Deno.serve(async (req) => {
       // RESEND_FROM lets us point at any verified Resend sender (incl. the
       // onboarding@resend.dev test domain) without redeploying. Falls back to
       // the branded animuswave.com sender once that domain is verified in Resend.
-      from: Deno.env.get('RESEND_FROM') || `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: Deno.env.get('RESEND_FROM') || `${SITE_NAME} <onboarding@resend.dev>`,
       sender_domain: SENDER_DOMAIN,
       subject: resolvedSubject,
       html,
