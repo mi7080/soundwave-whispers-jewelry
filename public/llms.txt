@@ -6,8 +6,7 @@ ANIMUS pendants are made in 316L stainless steel or 14K gold finish, custom-engr
 
 ## Pages
 
-- [Home](/): Brand intro, the soundwave-to-pendant story, and pre-order access.
-- [Store](/early-access-store): Product details, materials, gallery, and checkout.
+- [Home](/): Brand intro, the soundwave-to-pendant story, product details, materials, gallery, and checkout.
 - [FAQ](/faq): How the QR code works, materials, shipping, and care.
 - [Shipping Policy](/shipping): US shipping times and carriers.
 - [Refund Policy](/refund): Custom-product return and replacement terms.

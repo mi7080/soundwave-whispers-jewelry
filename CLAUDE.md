@@ -27,7 +27,7 @@ Unit tests: Vitest, jsdom, `include: src/**/*.{test,spec}.{ts,tsx}`, setup `src/
 
 ## Layout
 
-- [src/pages/](src/pages/) - routes (see [src/App.tsx](src/App.tsx)). `/` = PreOrderLanding, `/early-access-store` = Index store, `/checkout`, `/thank-you`, `/soul/:id` = QR Soul Page, `/faq`, `/:slug` = PolicyPage (catch legal pages), admin under `/admin/control` + `/admin/orders` (`/admin` → control), `/admin-login` = AdminAuth.
+- [src/pages/](src/pages/) - routes (see [src/App.tsx](src/App.tsx)). `/` = Index store, `/checkout`, `/thank-you`, `/soul/:id` = QR Soul Page, `/faq`, `/:slug` = PolicyPage (catch legal pages), admin under `/admin/control` + `/admin/orders` (`/admin` → control), `/admin-login` = AdminAuth.
 - [src/components/](src/components/) - feature components; [src/components/ui/](src/components/ui/) is shadcn (generally don't hand-edit).
 - [src/components/admin/](src/components/admin/) - admin shell + UI.
 - [src/config/product.ts](src/config/product.ts) - single source of truth for price, variants, ShineOn product/template/SKUs, `resolveShineonSku()`.

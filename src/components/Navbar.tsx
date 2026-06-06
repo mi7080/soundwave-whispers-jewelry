@@ -40,7 +40,7 @@ const Navbar = () => {
       }`}
     >
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="/early-access-store" className="flex items-baseline gap-2 group">
+        <a href="/" className="flex items-baseline gap-2 group">
           <span className="font-serif text-2xl md:text-[28px] font-semibold tracking-[0.06em] text-foreground">
             ANIMUS
           </span>

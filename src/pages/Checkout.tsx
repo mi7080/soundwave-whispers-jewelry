@@ -279,7 +279,7 @@ const Checkout = () => {
       <nav className="w-full py-5 px-6 border-b border-border">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button
-            onClick={() => navigate(`/early-access-store?order=${orderId}&variant=${variantIdx}#customize`)}
+            onClick={() => navigate(`/?order=${orderId}&variant=${variantIdx}#customize`)}
             className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors font-sans"
             aria-label="Back to edit design"
           >

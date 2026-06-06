@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Index from "./pages/Index.tsx";
 import FAQ from "./pages/FAQ.tsx";
-import PreOrderLanding from "./pages/PreOrderLanding.tsx";
 import AdminAuth from "./pages/AdminAuth.tsx";
 import AdminOrders from "./pages/AdminOrders.tsx";
 import AdminControl from "./pages/AdminControl.tsx";
@@ -18,6 +17,7 @@ import Unsubscribe from "./pages/Unsubscribe.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import ThankYou from "./pages/ThankYou.tsx";
 import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 const PREVIEW_SOUL_TEST_ID = "ee8ee56f-d7d6-4f06-8cca-14ecab243a4e";
@@ -35,9 +35,9 @@ function LegacySoulPageRedirect() {
 function AppContent() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
-        <Route path="/" element={<PreOrderLanding />} />
-        <Route path="/early-access-store" element={<Index />} />
+        <Route path="/" element={<Index />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/admin" element={<Navigate replace to="/admin/control" />} />
         <Route path="/admin/orders" element={<AdminOrders />} />

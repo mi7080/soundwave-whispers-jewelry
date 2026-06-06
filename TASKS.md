@@ -18,7 +18,7 @@
 
 ## שלב B - Quick wins (אפשר למקבל בין עצמם 🔀)
 - [~] **B1. ניתוק Lovable** 🔍 - בוצע בקוד: הוסר `lovable-tagger` (vite+package.json), Playwright עבר ל-`@playwright/test`. נמחקו 3 פונקציות Lovable-only: `handle-email-suppression` (מת), `preview-transactional-email`, ו-`auth-email-hook` (+ תבניות `_shared/email-templates/`). מיילי אימות (signup confirm / password reset של אדמין) עוברים עכשיו ל-Supabase Auth native. הוסרו `LOVABLE_API_KEY` + `AUTH_EMAIL_HOOK_SECRET`. **נותר (לא קוד):** (1) בדאשבורד Supabase לוודא ש-"Confirm email" + מיילי auth מוגדרים כרצוי (ברירת מחדל: Supabase שולח לבד; אופציונלי custom SMTP→Resend); (2) DNS `notify.animuswave.com` מופנה ל-Lovable nameservers - להעביר; (3) `bun.lock` מושך מ-registry של Lovable (`lovable-core-prod`) - לחדש עם npm/registry ציבורי. (#9, #10)
-- [ ] **B2. הסרת Waitlist** 🆕 - כיום `/` = `PreOrderLanding`. להפוך את החנות לעמוד הבית. (#2)
+- [x] **B2. הסרת Waitlist** ✅ - `/` = `Index` (החנות). `PreOrderLanding` נמחק. `/early-access-store` הוסר לגמרי (בלי redirect). עודכנו לינקים פנימיים (Navbar, Checkout), canonical/og, sitemap, llms.txt, תבנית מייל. (#2)
 - [ ] **B3. הסרת live preview** 🆕 - הסרת `src/components/LiveDemoModule.tsx`. (#14)
 - [ ] **B4. אנליטיקס** 🆕 - Google Analytics + Microsoft Clarity + Google Search Console verification. Meta Pixel כבר מותקן. (#20)
 - [ ] **B5. שיפור SEO** 🆕 - מטא, schema, sitemap. (#20)

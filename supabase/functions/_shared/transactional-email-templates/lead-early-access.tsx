@@ -35,7 +35,7 @@ const LeadEarlyAccessEmail = ({ name, inviteUrl }: LeadEarlyAccessProps) => (
         </Text>
 
         <Section style={{ textAlign: 'center' as const, marginTop: '32px', marginBottom: '32px' }}>
-          <Button style={button} href={inviteUrl || 'https://animuswave.com/early-access-store'}>
+          <Button style={button} href={inviteUrl || 'https://animuswave.com/'}>
             Claim Early Access
           </Button>
         </Section>
@@ -60,7 +60,7 @@ export const template = {
       ? `${data.name}, your ANIMUS Founders' Circle invitation is ready`
       : `Your ANIMUS Founders' Circle invitation is ready`,
   displayName: 'Lead - Early access invitation',
-  previewData: { name: 'Sarah', inviteUrl: 'https://animuswave.com/early-access-store' },
+  previewData: { name: 'Sarah', inviteUrl: 'https://animuswave.com/' },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
