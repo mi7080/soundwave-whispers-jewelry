@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Singleton WASM init — shared across warm invocations
+// Singleton WASM init - shared across warm invocations
 let wasmReady: Promise<void> | null = null;
 async function ensureWasm() {
   if (!wasmReady) {
@@ -37,6 +37,30 @@ serve(async (req) => {
       });
     }
 
+    // This endpoint is verify_jwt=false (called anonymously from checkout before payment)
+    // and writes with the service role. Without a guard, anyone who knows an order UUID
+    // could overwrite the print asset of an order already heading to production. The
+    // legitimate flow only uploads BEFORE payment, so refuse once the order is paid or
+    // further along - that closes the asset-poisoning window without breaking checkout.
+    const { data: existingOrder, error: lookupErr } = await supabase
+      .from("animus_orders")
+      .select("status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (lookupErr) throw new Error(`Order lookup failed: ${lookupErr.message}`);
+    if (!existingOrder) {
+      return new Response(JSON.stringify({ error: "order not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const LOCKED_STATUSES = ["paid", "fulfilled", "shipped", "shineon_error"];
+    if (LOCKED_STATUSES.includes(existingOrder.status)) {
+      console.warn(`[upload-production-assets] Refused asset write for ${orderId}: status '${existingOrder.status}' is locked`);
+      return new Response(JSON.stringify({ error: "order locked for production" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ── 1. Upload SVG ────────────────────────────────────────────────────────
     const svgBytes = new TextEncoder().encode(svgContent);
     const svgPath = `${orderId}/final_engraving_design.svg`;
@@ -63,7 +87,7 @@ serve(async (req) => {
     const hasContent = /<(rect|path|circle|g|text|polygon|polyline|line|image)\b/i.test(svg);
 
     if (!hasRoot || !hasContent) {
-      console.warn(`[upload-production-assets] SVG for ${orderId} is a placeholder — PNG render skipped`);
+      console.warn(`[upload-production-assets] SVG for ${orderId} is a placeholder - PNG render skipped`);
     } else {
       const MAX_PNG_ATTEMPTS = 2;
       let lastPngError: unknown = null;
@@ -95,7 +119,7 @@ serve(async (req) => {
           printImageUrl = pngUrlData?.publicUrl || "";
           console.log(`[upload-production-assets] ✓ PNG pre-generated for ${orderId} (attempt ${attempt}): ${printImageUrl}`);
           lastPngError = null;
-          break; // success — exit retry loop
+          break; // success - exit retry loop
         } catch (pngErr) {
           lastPngError = pngErr;
           console.error(`[upload-production-assets] PNG render attempt ${attempt} failed for ${orderId}:`, pngErr);
@@ -103,9 +127,9 @@ serve(async (req) => {
       }
 
       if (lastPngError) {
-        // All retries exhausted — log an admin alert so the order can be manually recovered
+        // All retries exhausted - log an admin alert so the order can be manually recovered
         // via the render-engraving-png edge function before the iCount webhook fires.
-        console.error(`[upload-production-assets] ✗ All PNG render attempts failed for ${orderId} — writing admin alert`);
+        console.error(`[upload-production-assets] ✗ All PNG render attempts failed for ${orderId} - writing admin alert`);
         try {
           await supabase.from("email_send_log").insert({
             template_name: "png-render-failed",

@@ -57,7 +57,7 @@ export function computeFinanceStats(
 ): FinanceStats {
   const isPaid = (o: FinanceOrder) => PAID_STATUSES.includes(o.status) && !!o.amount;
 
-  // Denominator is computed over ALL paid orders, grouped by their own month —
+  // Denominator is computed over ALL paid orders, grouped by their own month - 
   // never the current month and never the range, which is what made the old
   // calculation over-count ad cost across multi-month timelines.
   const paidAllTime = orders.filter(isPaid);

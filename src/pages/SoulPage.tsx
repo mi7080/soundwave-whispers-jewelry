@@ -132,7 +132,7 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: 
       {!previewMode && (
         <Helmet>
           <meta name="robots" content="noindex, nofollow" />
-          <title>{`${data.petName || "Memorial"} — Eternal Echo | ANIMUS`}</title>
+          <title>{`${data.petName || "Memorial"} | Eternal Echo by ANIMUS`}</title>
         </Helmet>
       )}
       {previewMode && onClose && (
@@ -162,7 +162,7 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: 
       )}
 
       <div className="max-w-md w-full text-center space-y-10 py-16">
-        {/* Memory Photo — Circular with golden ripples */}
+        {/* Memory Photo - Circular with golden ripples */}
         {resolvedPhotoUrl ? (
           <div className="relative w-48 h-48 mx-auto animate-fade-in">
             {/* Outer golden ripple rings */}
@@ -196,7 +196,7 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: 
           </div>
         )}
 
-        {/* Name — Serif typography */}
+        {/* Name - Serif typography */}
         <div className="space-y-3 animate-fade-in">
           <p className="text-[10px] tracking-[0.5em] uppercase text-gold/60 font-sans">
             In Loving Memory
@@ -209,7 +209,7 @@ const SoulPageContent = ({ data, isDemo, previewMode, onClose, assetFolderId }: 
           </p>
         </div>
 
-        {/* Personal Message — Elegant display */}
+        {/* Personal Message - Elegant display */}
         {data.textMessage && (
           <div className="animate-fade-in px-4">
             <div className="relative py-6">
@@ -361,7 +361,7 @@ const SoulPage = ({ previewMode, previewData, onClose }: SoulPageProps) => {
 
       if (!UUID_REGEX.test(normalizedId)) {
         if (!cancelled) {
-          setErrorMsg("Invalid Memory Link — the ID in the URL is not a valid format.");
+          setErrorMsg("Invalid Memory Link - the ID in the URL is not a valid format.");
           setQueryState("error");
           setLoading(false);
         }

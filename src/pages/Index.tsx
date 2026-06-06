@@ -20,12 +20,20 @@ const productJsonLd = {
   description: PRODUCT_CONFIG.description,
   brand: { "@type": "Brand", name: "ANIMUS" },
   material: PRODUCT_CONFIG.material,
+  image: ["https://animuswave.com/og-image.jpg"],
   offers: {
     "@type": "Offer",
     price: PRODUCT_CONFIG.foundersPrice,
     priceCurrency: PRODUCT_CONFIG.currency,
     availability: "https://schema.org/InStock",
+    itemCondition: "https://schema.org/NewCondition",
     url: "https://animuswave.com/early-access-store",
+    priceValidUntil: "2026-12-31",
+    shippingDetails: {
+      "@type": "OfferShippingDetails",
+      shippingRate: { "@type": "MonetaryAmount", value: 0, currency: PRODUCT_CONFIG.currency },
+      shippingDestination: { "@type": "DefinedRegion", addressCountry: "US" },
+    },
   },
 };
 
@@ -33,12 +41,15 @@ const Index = () => {
   return (
     <main>
       <Helmet>
-        <title>Shop the ANIMUS Memorial Pendant — Early Access</title>
-        <meta name="description" content="Order the ANIMUS soundwave dog-tag pendant in 316L steel or 14K gold finish. Free US shipping, custom QR Soul Page included." />
+        <title>Shop the ANIMUS Memorial Pendant | Steel or 14K Gold</title>
+        <meta name="description" content="Order the ANIMUS engraved soundwave pendant in 316L stainless steel or 14K gold finish. Custom QR Soul Page included. Free US shipping, $89." />
         <link rel="canonical" href="https://animuswave.com/early-access-store" />
-        <meta property="og:title" content="Shop the ANIMUS Memorial Pendant — Early Access" />
-        <meta property="og:description" content="Order the ANIMUS soundwave dog-tag pendant. Free US shipping, custom QR Soul Page included." />
+        <meta property="og:type" content="product" />
+        <meta property="og:title" content="Shop the ANIMUS Memorial Pendant | Steel or 14K Gold" />
+        <meta property="og:description" content="Order the ANIMUS engraved soundwave pendant in steel or 14K gold. Custom QR Soul Page included. Free US shipping, $89." />
         <meta property="og:url" content="https://animuswave.com/early-access-store" />
+        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
         <script type="application/ld+json">{JSON.stringify(productJsonLd)}</script>
       </Helmet>
       <Navbar />

@@ -1,4 +1,6 @@
-import { Loader2, Eye, ArrowRight } from "lucide-react";
+import { Loader2, Eye, ArrowRight, Check } from "lucide-react";
+import dogtagSteel from "@/assets/dogtag-steel.jpg";
+import dogtagGold from "@/assets/dogtag-gold.jpg";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPresets from "@/components/AudioPresets";
 import PetPhotoUpload from "@/components/PetPhotoUpload";
@@ -79,6 +81,9 @@ const ProductSection = () => {
 
   const [addTextToBack, setAddTextToBack] = useState(false);
   const [backText, setBackText] = useState("");
+  // Only surface the "required" error after the user leaves the field empty or
+  // tries to check out - not the instant they toggle engraving on.
+  const [backTextTouched, setBackTextTouched] = useState(false);
   const [preOrderId] = useState(() => resumeOrderId || crypto.randomUUID());
   const [resumed, setResumed] = useState(false);
   const [initialAudioUrl, setInitialAudioUrl] = useState<string | null>(null);
@@ -170,6 +175,7 @@ const ProductSection = () => {
 
     const petNameVal = backText.trim() || dedicatedText.trim() || "Memorial";
     const soulPageUrl = generateSoulPageUrl();
+    const finish = PRODUCT_CONFIG.variants[selectedVariantIdx]?.finish ?? "steel";
 
     supabase.from("animus_orders").upsert({
       id: preOrderId,
@@ -180,6 +186,10 @@ const ProductSection = () => {
       svg_content: "<svg></svg>", // placeholder until checkout
       status: "draft",
       add_name_to_back: addTextToBack,
+      // Persist the finish from creation so fulfillment never depends on the checkout
+      // URL surviving. The SKU is derived from finish × engraving at fulfillment, not
+      // stored - a gold order can't fall back to steel.
+      variant_finish: finish,
     } as any, { onConflict: "id" }).then(({ error }) => {
       if (error) {
         console.error("[ANIMUS] Draft save failed:", error);
@@ -189,7 +199,7 @@ const ProductSection = () => {
         setDraftSaved(true);
       }
     });
-  }, [audioUrl, photoUrl, draftSaved, preOrderId, generateSoulPageUrl, dedicatedText, backText, addTextToBack]);
+  }, [audioUrl, photoUrl, draftSaved, preOrderId, generateSoulPageUrl, dedicatedText, backText, addTextToBack, selectedVariantIdx]);
 
   const handleAudioUrl = useCallback((url: string) => {
     setAudioUrl(url);
@@ -224,6 +234,13 @@ const ProductSection = () => {
     if (!audioUrl) { toast.error("Please record or upload a sound first."); return; }
     if (!photoUrl) { toast.error("Please upload a photo or media file."); return; }
     if (!product || !selectedVariant) { toast.error("Product not loaded."); return; }
+    // Back engraving is opt-in, but once enabled the text is required - an engraved
+    // SKU must never ship blank.
+    if (addTextToBack && !backText.trim()) {
+      setBackTextTouched(true);
+      toast.error("Please enter the engraving text for the back, or turn off back engraving.");
+      return;
+    }
 
     setCartLoading(true);
     setCheckoutStage("Saving your memory…");
@@ -241,6 +258,7 @@ const ProductSection = () => {
 
       // 2. Save order to DB first
       setCheckoutStage("Saving your memory…");
+      const finish = PRODUCT_CONFIG.variants[selectedVariantIdx]?.finish ?? "steel";
       const { data: orderData, error: dbError } = await supabase.from("animus_orders").upsert({
         id: preOrderId,
         pet_name: petNameVal,
@@ -251,6 +269,10 @@ const ProductSection = () => {
         svg_content: svgContent,
         waveform_data: waveformData,
         add_name_to_back: addTextToBack,
+        variant_finish: finish,
+        // Flat founders price - record it now so the order always has an amount,
+        // even if checkout submit or the webhook amount-detection is skipped.
+        amount: PRODUCT_CONFIG.variants[selectedVariantIdx]?.foundersPrice ?? PRODUCT_CONFIG.foundersPrice,
         status: "pending",
       } as any, { onConflict: "id" }).select("id, soul_page_url").maybeSingle();
 
@@ -393,7 +415,7 @@ const ProductSection = () => {
                   {priceLabel}
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-9 sm:gap-12 pt-1">
+              <div className="grid grid-cols-2 gap-4 pt-1">
                 {variants.map((v, i) => {
                   const isGold = v.node.title.toLowerCase().includes("gold");
                   const isSelected = selectedVariantIdx === i;
@@ -401,27 +423,43 @@ const ProductSection = () => {
                     <button
                       key={v.node.id}
                       onClick={() => setSelectedVariantIdx(i)}
-                      className="group flex flex-col items-center gap-3"
-                      aria-label={`Select ${v.node.title}`}
+                      className={`group relative flex flex-col overflow-hidden rounded-xl bg-background text-left transition-all duration-200 ${
+                        isSelected
+                          ? "ring-2 ring-gold shadow-[0_18px_40px_-28px_rgba(90,60,30,0.55)]"
+                          : "ring-1 ring-border hover:ring-gold/50"
+                      }`}
+                      aria-label={`Select ${isGold ? "Gold" : "Silver"} finish`}
                       aria-pressed={isSelected}
                     >
                       <span
-                        className={`relative w-16 h-16 sm:w-[68px] sm:h-[68px] rounded-full transition-all duration-200 ${
-                          isSelected
-                            ? "ring-2 ring-gold ring-offset-4 ring-offset-card scale-105"
-                            : "ring-1 ring-border hover:ring-gold/50"
+                        className={`absolute top-2.5 right-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gold text-white transition-all duration-200 ${
+                          isSelected ? "scale-100 opacity-100" : "scale-75 opacity-0"
                         }`}
-                        style={{
-                          background: isGold
-                            ? "linear-gradient(135deg, #f0d68a 0%, #d4a849 50%, #b8862e 100%)"
-                            : "linear-gradient(135deg, #f5f5f5 0%, #c8c8c8 50%, #8a8a8a 100%)",
-                          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)",
-                        }}
+                      >
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      </span>
+                      <img
+                        src={isGold ? dogtagGold : dogtagSteel}
+                        alt={`${isGold ? "14K gold" : "polished steel"} finish pendant`}
+                        loading="lazy"
+                        className={`aspect-square w-full object-cover transition-transform duration-300 ${
+                          isSelected ? "" : "group-hover:scale-[1.03]"
+                        }`}
                       />
-                      <span className={`text-[13px] font-sans transition-colors ${
-                        isSelected ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
-                      }`}>
-                        {isGold ? "Gold" : "Silver"}
+                      <span className="flex items-center justify-between px-4 py-3">
+                        <span className={`font-serif text-[15px] transition-colors ${
+                          isSelected ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                        }`}>
+                          {isGold ? "14K Gold" : "Polished Steel"}
+                        </span>
+                        <span
+                          className="h-5 w-5 rounded-full ring-1 ring-black/10"
+                          style={{
+                            background: isGold
+                              ? "linear-gradient(135deg, #f0d68a 0%, #d4a849 50%, #b8862e 100%)"
+                              : "linear-gradient(135deg, #f5f5f5 0%, #c8c8c8 50%, #8a8a8a 100%)",
+                          }}
+                        />
                       </span>
                     </button>
                   );
@@ -498,27 +536,37 @@ const ProductSection = () => {
                 <span className="text-xs text-muted-foreground font-sans">Optional</span>
               </div>
               <button
-                onClick={() => setAddTextToBack(!addTextToBack)}
+                onClick={() => { setAddTextToBack(!addTextToBack); setBackTextTouched(false); }}
                 aria-label="Toggle back engraving"
                 className={`relative w-12 h-6 rounded-full transition-colors ${addTextToBack ? "bg-gold" : "bg-border"}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card transition-transform ${addTextToBack ? "translate-x-6" : "translate-x-0"}`} />
               </button>
             </div>
-            {addTextToBack && (
+            {addTextToBack && (() => {
+              const showError = backTextTouched && !backText.trim();
+              return (
               <div className="space-y-3 pt-2">
                 <input
                   type="text"
                   placeholder="e.g. Buddy 2015 to 2024, Forever in my heart"
                   value={backText}
                   onChange={(e) => setBackText(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/60 transition-colors"
+                  onBlur={() => setBackTextTouched(true)}
+                  aria-invalid={showError}
+                  required
+                  className={`w-full bg-background border rounded-xl px-4 py-3 text-foreground text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none transition-colors ${
+                    showError ? "border-destructive/60 focus:border-destructive" : "border-border focus:border-gold/60"
+                  }`}
                 />
-                <p className="text-[13px] text-muted-foreground font-sans font-light">
-                  Engraved on the back in an elegant serif.
+                <p className={`text-[13px] font-sans font-light ${showError ? "text-destructive" : "text-muted-foreground"}`}>
+                  {showError
+                    ? "Engraving text is required when back engraving is on."
+                    : "Engraved on the back in an elegant serif."}
                 </p>
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Buy */}

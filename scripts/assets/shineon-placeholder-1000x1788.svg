@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ShineOn print placeholder for "The ANIMUS Soulwave Pendant" dog-tag template.
+  Spec (from ShineOn template card): 1000 x 1788 px, RGB, solid black (#000000), SVG.
+  Content kept inside the design area (away from the bleed edges).
+  This is a TEST placeholder only — the real print asset is the per-order
+  final_engraving_design.svg uploaded by upload-production-assets.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1788" viewBox="0 0 1000 1788">
+  <rect x="220" y="640" width="560" height="220" rx="24" fill="#000000"/>
+  <text x="500" y="560" text-anchor="middle" font-family="Arial, sans-serif"
+        font-size="64" font-weight="700" fill="#000000">ANIMUS</text>
+  <text x="500" y="980" text-anchor="middle" font-family="Arial, sans-serif"
+        font-size="44" fill="#000000">PLACEHOLDER</text>
+</svg>

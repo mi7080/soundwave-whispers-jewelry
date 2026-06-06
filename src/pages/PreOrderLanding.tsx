@@ -118,12 +118,14 @@ const PreOrderLanding = () => {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Helmet>
-        <title>ANIMUS — Memorial Soundwave Pendant</title>
-        <meta name="description" content="Join the ANIMUS waiting list for a luxury memorial soundwave pendant with a scannable QR Soul Page that plays your audio forever." />
+        <title>ANIMUS | Memorial Soundwave Pendant with QR Soul Page</title>
+        <meta name="description" content="A luxury engraved soundwave pendant that turns a voice, heartbeat, or song into a keepsake. Scan the QR Soul Page to hear the audio forever. Free US shipping." />
         <link rel="canonical" href="https://animuswave.com/" />
-        <meta property="og:title" content="ANIMUS — Memorial Soundwave Pendant" />
-        <meta property="og:description" content="Join the waiting list for a luxury memorial soundwave pendant with a scannable QR Soul Page." />
+        <meta property="og:title" content="ANIMUS | Memorial Soundwave Pendant with QR Soul Page" />
+        <meta property="og:description" content="A luxury engraved soundwave pendant with a scannable QR Soul Page that plays your audio forever. Free US shipping, $89." />
         <meta property="og:url" content="https://animuswave.com/" />
+        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
       </Helmet>
       {/* Nav */}
       <nav className="w-full py-6 px-6">
@@ -138,13 +140,13 @@ const PreOrderLanding = () => {
           {discountAvailable ? (
             <div className="inline-block">
               <span className="text-gold text-xs tracking-[0.3em] uppercase font-medium border border-gold/30 px-4 py-2 rounded-full">
-                Founders Edition — Limited to {DISCOUNT_LIMIT}
+                Founders Edition - Limited to {DISCOUNT_LIMIT}
               </span>
             </div>
           ) : (
             <div className="inline-block">
               <span className="text-muted-foreground text-xs tracking-[0.3em] uppercase font-medium border border-border px-4 py-2 rounded-full">
-                Early Access — Now Closed
+                Early Access - Now Closed
               </span>
             </div>
           )}
@@ -205,7 +207,7 @@ const PreOrderLanding = () => {
             More Than a Memory,<br />a Living Connection.
           </h2>
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-xl mx-auto font-light">
-            ANIMUS captures the essence of those you love. We transform a voice note, a laugh, or a special song into a unique Soundwave engraved on a premium pendant. A simple scan reveals their "Soul Page" — a private digital sanctuary with their photo, words, and the sound of their voice.
+            ANIMUS captures the essence of those you love. We transform a voice note, a laugh, or a special song into a unique Soundwave engraved on a premium pendant. A simple scan reveals their "Soul Page" - a private digital sanctuary with their photo, words, and the sound of their voice.
           </p>
         </div>
       </section>
@@ -322,7 +324,7 @@ const PreOrderLanding = () => {
 
       {/* Footer */}
       <footer className="py-8 text-center text-muted-foreground/50 text-xs tracking-widest">
-        © {new Date().getFullYear()} ANIMUS — All Rights Reserved
+        © {new Date().getFullYear()} ANIMUS - All Rights Reserved
       </footer>
     </main>
   );

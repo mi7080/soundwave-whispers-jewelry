@@ -43,7 +43,7 @@ function AppContent() {
         <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/control" element={<AdminControl />} />
         <Route path="/admin-login" element={<AdminAuth />} />
-        {/* Legacy admin routes — consolidated into the single command center */}
+        {/* Legacy admin routes - consolidated into the single command center */}
         <Route path="/admin-dashboard" element={<Navigate replace to="/admin/control" />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/thank-you" element={<ThankYou />} />

@@ -12,7 +12,7 @@ const AudioPresets = () => {
   return (
     <div className="space-y-3">
       <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60 font-sans">
-        Inspiration — sounds our customers capture
+        Inspiration - sounds our customers capture
       </p>
       <div className="grid grid-cols-2 gap-2">
         {PRESETS.map((preset) => (

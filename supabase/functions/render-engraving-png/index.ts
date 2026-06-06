@@ -76,7 +76,7 @@ serve(async (req) => {
     }
 
     await ensureWasm();
-    // Native 1000x1788 — no distortion, matches SVG canvas exactly
+    // Native 1000x1788 - no distortion, matches SVG canvas exactly
     const resvg = new Resvg(order.svg_content, {
       fitTo: { mode: "width", value: 1000 },
       background: "rgba(0,0,0,0)",

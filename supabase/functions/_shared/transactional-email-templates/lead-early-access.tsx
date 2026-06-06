@@ -14,7 +14,7 @@ interface LeadEarlyAccessProps {
 const LeadEarlyAccessEmail = ({ name, inviteUrl }: LeadEarlyAccessProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>You're invited to the ANIMUS Founders' Circle — early access opens now</Preview>
+    <Preview>You're invited to the ANIMUS Founders' Circle - early access opens now</Preview>
     <Body style={main}>
       <Container style={container}>
         <Text style={brand}>{SITE_NAME}</Text>
@@ -26,7 +26,7 @@ const LeadEarlyAccessEmail = ({ name, inviteUrl }: LeadEarlyAccessProps) => (
 
         <Text style={text}>
           As a member of our Founders' Circle, you have first access to the ANIMUS
-          memorial pendant — handcrafted to preserve the soundwave of someone you love.
+          memorial pendant - handcrafted to preserve the soundwave of someone you love.
         </Text>
 
         <Text style={text}>
@@ -46,7 +46,7 @@ const LeadEarlyAccessEmail = ({ name, inviteUrl }: LeadEarlyAccessProps) => (
 
         <Hr style={divider} />
         <Text style={footer}>
-          © {new Date().getFullYear()} {SITE_NAME} — Crafted with love
+          © {new Date().getFullYear()} {SITE_NAME} - Crafted with love
         </Text>
       </Container>
     </Body>
@@ -59,7 +59,7 @@ export const template = {
     data?.name
       ? `${data.name}, your ANIMUS Founders' Circle invitation is ready`
       : `Your ANIMUS Founders' Circle invitation is ready`,
-  displayName: 'Lead — Early access invitation',
+  displayName: 'Lead - Early access invitation',
   previewData: { name: 'Sarah', inviteUrl: 'https://animuswave.com/early-access-store' },
 } satisfies TemplateEntry
 

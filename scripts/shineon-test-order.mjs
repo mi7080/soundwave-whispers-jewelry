@@ -1,4 +1,4 @@
-// ShineOn Orders API dry-run — validates key→store, SKU, and payload format
+// ShineOn Orders API dry-run - validates key→store, SKU, and payload format
 // WITHOUT touching iCount or payments. Creates a real (unpaid, on-hold) order in
 // ShineOn that you can cancel from the dashboard afterward.
 //
@@ -21,20 +21,32 @@ if (!KEY) {
 // Unique-ish test id without Date.now in app code; fine for a manual script.
 const sourceId = `TEST-${Math.floor(Date.now() / 1000)}`;
 
+// Engraving (back text) only applies to the "/Yes" variant SKUs. The "/No" SKUs
+// must NOT carry engraving text, mirroring the production webhook's add_name_to_back gate.
+const ENGRAVED_SKUS = new Set(["SO-15845643", "SO-15845645"]);
+// This template requires a hosted SVG (1000x1788, RGB, solid black). Host the
+// placeholder at scripts/assets/shineon-placeholder-1000x1788.svg somewhere public
+// (e.g. a Supabase public storage bucket) and pass its URL via PLACEHOLDER_PRINT_URL.
+const PRINT_URL =
+  process.env.PLACEHOLDER_PRINT_URL ||
+  "https://upload.wikimedia.org/wikipedia/commons/0/02/SVG_logo.svg";
+const properties = { print_url: PRINT_URL };
+if (ENGRAVED_SKUS.has(SKU)) {
+  properties["Engraving Line 1"] = "TEST DO NOT FULFILL";
+}
+
 const payload = {
   order: {
     source_id: sourceId,
     email: "test@animuswave.com",
+    // Required by ShineOn - they POST tracking here once the order ships.
+    shipment_notification_url: "https://animuswave.com/api/shineon-shipment",
     line_items: [
       {
         store_line_item_id: `${sourceId}-1`,
         sku: SKU,
         quantity: 1,
-        properties: {
-          // A small public PNG so ShineOn's renderer has a valid raster to fetch.
-          print_url: "https://res.cloudinary.com/demo/image/upload/sample.png",
-          "Engraving Line 1": "TEST DO NOT FULFILL",
-        },
+        properties,
       },
     ],
     shipping_address: {
@@ -69,7 +81,7 @@ console.log(text);
 if (res.ok) {
   console.log(`\n✓ ShineOn accepted the order. Check the Partner store → Orders for ${sourceId}, then CANCEL it.`);
 } else if (res.status === 401 || res.status === 403) {
-  console.log(`\n✗ Auth failed — key is wrong or points to a different store.`);
+  console.log(`\n✗ Auth failed - key is wrong or points to a different store.`);
 } else if (res.status === 422 || res.status === 400) {
-  console.log(`\n✗ Payload/SKU rejected — read the message above (likely SKU not in this store, or missing field).`);
+  console.log(`\n✗ Payload/SKU rejected - read the message above (likely SKU not in this store, or missing field).`);
 }

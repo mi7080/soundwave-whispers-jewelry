@@ -21,6 +21,10 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // The iCount payment page (עמוד סליקה) the sale is generated against. Defaults
+    // to page 3 (the existing ANIMUS page seen as cc_page_id in webhooks); override
+    // via env without a code change.
+    const paypageId = Number(Deno.env.get("ICOUNT_PAYPAGE_ID") || "3");
 
     const body = await req.json();
     const {
@@ -55,100 +59,75 @@ serve(async (req) => {
       );
     }
 
-    // Webhook URL carries the shared secret as a query param so iCount echoes it
-    // back on the IPN POST. The webhook accepts the secret from header, query, OR
-    // body — appending it here means fulfillment no longer depends on the iCount
-    // dashboard being configured to send an X-iCount-Secret header. Without a
-    // matching secret the webhook 401s and the order never reaches ShineOn.
+    // IPN carries the shared secret as a query param so iCount echoes it back on the
+    // server-to-server call (the webhook accepts the secret from header OR query).
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
     const webhookUrl = webhookSecret
       ? `${supabaseUrl}/functions/v1/icount-payment-webhook?secret=${encodeURIComponent(webhookSecret)}`
       : `${supabaseUrl}/functions/v1/icount-payment-webhook`;
     if (!webhookSecret) {
-      console.warn("[iCount] ICOUNT_WEBHOOK_SECRET not set — ipn_url has no secret; webhook may reject the IPN");
+      console.warn("[iCount] ICOUNT_WEBHOOK_SECRET not set - ipn_url has no secret; webhook may reject the IPN");
     }
+
     const encodedName = encodeURIComponent(fullName || "");
     const finalSuccess = successUrl || `${siteUrl || ""}/thank-you?order=${orderId}&amount=${amount}&name=${encodedName}`;
     const finalFailure = failureUrl || `${siteUrl || ""}/checkout?order=${orderId}&status=failed`;
 
-    // Split full name into first/last for iCount pre-fill
-    const nameParts = (fullName || "").trim().split(/\s+/);
-    const fname = nameParts[0] || "";
-    const lname = nameParts.slice(1).join(" ") || "";
-
-    // iCount payment-page payload — shipping pre-filled, customer only sees CC entry
-    const paymentPayload: Record<string, any> = {
-      sid: icountToken, // iCount uses sid for v3.php
-      cid: "credit",
-      doctype: "invrec",
+    // paypage/generate_sale - the documented endpoint. Auth is a Bearer API token
+    // in the Authorization header (NOT `sid` in the body).
+    //
+    // We intentionally do NOT prefill customer/shipping details: iCount's prefill is
+    // unreliable (the fields can't be edited on their page) and we already hold the
+    // customer + shipping data on the order from our own checkout. The buyer enters
+    // their details on the iCount page; fulfillment uses the order's stored data.
+    //
+    // The order is linked back via utm_content/utm_term (the IPN does NOT echo
+    // sale_uniqid, but it DOES echo the utm_* fields). The webhook's extractOrderId
+    // scans all fields for that UUID.
+    const salePayload: Record<string, any> = {
+      paypage_id: paypageId,
       currency_code: currency || "USD",
-      lang: "en",
       sum: Number(amount),
-      // Fixed product label visible on iCount page
-      info: "ANIMUS Personalized Pendant",
-      description: `ANIMUS Personalized Pendant — ${order.pet_name || "Custom"}`,
-      // Customer details (pre-filled)
-      client_name: fullName || "",
-      fname,
-      lname,
-      email: email,
-      mobile: phone || "",
-      cc_address: address || "",
-      cc_city: city || "",
-      cc_zip: zip || "",
-      cc_country: country || "",
-      cc_state: state || "",
-      // Hide shipping fields on iCount page (already collected)
-      hide_address: 1,
-      hide_email: 1,
-      hide_name: 1,
-      // Reference / callbacks — order_id carried in `comment` (primary), plus legacy fields
-      comment: orderId,
-      custom: orderId,
-      cs1: orderId,
-      cs2: fullName || "",
-      cs3: amount,
+      description: `ANIMUS Personalized Pendant - ${order.pet_name || "Custom"}`,
       success_url: finalSuccess,
-      fail_url: finalFailure,
+      failure_url: finalFailure,
       ipn_url: webhookUrl,
+      utm_content: orderId,
+      utm_term: orderId,
     };
 
-    console.log("[iCount] Creating payment payload:", JSON.stringify({
+    console.log("[iCount] generate_sale payload:", JSON.stringify({
       orderId,
-      sum: paymentPayload.sum,
-      email: paymentPayload.email,
-      fname: paymentPayload.fname,
-      lname: paymentPayload.lname,
-      info: paymentPayload.info,
-      comment: paymentPayload.comment,
-      custom: paymentPayload.custom,
-      cs1: paymentPayload.cs1,
+      paypage_id: paypageId,
+      sum: salePayload.sum,
       discountCode: discountCode ? String(discountCode).toUpperCase() : null,
       discountPercent: discountPercent || 0,
     }));
 
-    const icountResp = await fetch(`${ICOUNT_API_BASE}/cc_page/sale`, {
+    const icountResp = await fetch(`${ICOUNT_API_BASE}/paypage/generate_sale`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(paymentPayload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${icountToken}`,
+      },
+      body: JSON.stringify(salePayload),
     });
 
     const icountText = await icountResp.text();
     let icountResult: any;
     try { icountResult = JSON.parse(icountText); } catch { icountResult = { raw: icountText }; }
-    console.log("[iCount] API response:", JSON.stringify(icountResult));
+    console.log("[iCount] generate_sale response:", JSON.stringify(icountResult));
 
-    const paymentUrl =
-      icountResult?.url ||
-      icountResult?.payment_url ||
-      icountResult?.redirect_url ||
-      icountResult?.cc_page_url ||
-      icountResult?.data?.url;
+    const paymentUrl = icountResult?.sale_url;
+    const saleUniqid = icountResult?.sale_uniqid || null;
 
     if (!icountResp.ok || icountResult?.status === false || !paymentUrl) {
-      console.error("[iCount] Payment creation failed — falling back to legacy URL");
+      console.error("[iCount] generate_sale failed - falling back to legacy static URL", icountResult?.reason || icountResult?.error_description || "");
 
-      // Fallback: legacy static iCount payment URL with order params
+      // Fallback: legacy static iCount payment URL. NOTE: this page carries no
+      // order reference, so the webhook will have to fall back to email matching - 
+      // which is exactly the case we want to avoid. The fallback exists only so a
+      // checkout never hard-fails; a fallback here should be treated as an alert.
       const FALLBACK_BASE = "https://app.icount.co.il/m/f9f6f/c693586ep3u69dfd9dd?utm_source=iCount&utm_medium=paypage&utm_campaign=3";
       const params = new URLSearchParams({
         info: orderId,
@@ -169,36 +148,21 @@ serve(async (req) => {
           paymentUrl: fallbackUrl,
           orderId,
           fallback: true,
-          icountError: icountResult?.reason || icountResult?.error_description || "Static link used",
+          icountError: icountResult?.reason || icountResult?.error_description || icountResult?.raw || "generate_sale returned no sale_url",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Store the sale id so the webhook can match this exact payment to this order.
     await supabase
       .from("animus_orders")
-      .update({ status: "payment_pending" })
+      .update({ status: "payment_pending", icount_sale_uniqid: saleUniqid } as any)
       .eq("id", orderId);
 
-    // Fire-and-forget: try to auto-detect & link iCount docnum by customer email.
-    // Runs in background so we don't block returning the payment URL.
-    // Webhook will overwrite this if/when it fires with the authoritative docnum.
-    (async () => {
-      try {
-        await fetch(`${supabaseUrl}/functions/v1/icount-find-docnum`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ orderId, email }),
-        });
-      } catch (e) {
-        console.warn("[iCount] Auto-detect docnum kickoff failed:", e);
-      }
-    })();
+    console.log(`[iCount] ✓ Sale created for order ${orderId} - sale_uniqid: ${saleUniqid}`);
 
-    // Mark discount code as used (best-effort; reservation — final mark on webhook can re-affirm)
+    // Mark discount code as used (best-effort reservation; webhook can re-affirm).
     if (discountCode) {
       try {
         await supabase
@@ -213,7 +177,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, paymentUrl, orderId }),
+      JSON.stringify({ success: true, paymentUrl, orderId, saleUniqid }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {

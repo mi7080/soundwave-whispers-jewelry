@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PRODUCT_CONFIG } from "@/config/product";
@@ -21,70 +22,41 @@ interface Particle {
 
 const ThankYou = () => {
   const [searchParams] = useSearchParams();
-  // iCount may forward params under different names depending on paypage config.
-  const orderId =
-    searchParams.get("docnum") ||
-    searchParams.get("order") ||
-    searchParams.get("order_id") ||
-    searchParams.get("info");
-  const amountParam =
-    searchParams.get("total_paid") ||
-    searchParams.get("amount") ||
-    searchParams.get("cs1");
-  const nameParam =
-    searchParams.get("customer_name") ||
-    searchParams.get("name") ||
-    searchParams.get("cs2") ||
-    searchParams.get("client_name");
-  const status = searchParams.get("status");
+  // Only the `order` query param is trusted. Everything else (name, amount,
+  // status) is fetched from the DB by order id.
+  const orderId = searchParams.get("order");
 
   const [particles, setParticles] = useState<Particle[]>([]);
   const [resolvedName, setResolvedName] = useState<string>("");
   const [resolvedAmount, setResolvedAmount] = useState<number | null>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
+  const [orderFound, setOrderFound] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
 
-  const parsedUrlAmount = amountParam ? parseFloat(amountParam) : NaN;
-  const decodedUrlName = nameParam ? decodeURIComponent(nameParam).trim() : "";
+  const effectiveName = resolvedName;
+  const effectiveAmount = resolvedAmount;
 
-  const effectiveName = decodedUrlName || resolvedName;
-  const effectiveAmount =
-    Number.isFinite(parsedUrlAmount) && parsedUrlAmount > 0
-      ? parsedUrlAmount
-      : resolvedAmount;
+  // Valid as long as we found the order in the DB.
+  const isValid = orderFound;
 
-  const explicitFailure = status === "failed" || status === "failure";
-  // Show the thank-you screen as long as we have *something* identifying the order.
-  // Missing name/amount fall back to graceful defaults instead of an error screen.
-  const hasAnyOrderData =
-    (!!orderId && orderId.trim().length > 0) ||
-    effectiveName.length > 0 ||
-    (!!effectiveAmount && effectiveAmount > 0);
-  const isValid = !explicitFailure && hasAnyOrderData;
-
-  // DB fallback for missing name/amount
+  // Initial DB lookup: name, amount, status.
   useEffect(() => {
     if (!orderId || lookupDone) return;
-    if (decodedUrlName && Number.isFinite(parsedUrlAmount) && parsedUrlAmount > 0) {
-      setLookupDone(true);
-      return;
-    }
     supabase
       .from("animus_orders")
-        .select("pet_name, amount, status")
+      .select("customer_name, amount, status")
       .eq("id", orderId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          if (!decodedUrlName && data.pet_name) setResolvedName(data.pet_name);
-          if (!Number.isFinite(parsedUrlAmount) || parsedUrlAmount <= 0) {
-            setResolvedAmount(data.amount || PRODUCT_CONFIG.variants[0].foundersPrice);
-          }
+          setOrderFound(true);
+          if (data.customer_name) setResolvedName(data.customer_name);
+          setResolvedAmount(data.amount || PRODUCT_CONFIG.variants[0].foundersPrice);
           setOrderStatus(data.status || null);
         }
         setLookupDone(true);
       });
-  }, [orderId, decodedUrlName, parsedUrlAmount, lookupDone]);
+  }, [orderId, lookupDone]);
 
   useEffect(() => {
     if (!orderId) return;
@@ -96,15 +68,14 @@ const ThankYou = () => {
     const pollStatus = async () => {
       const { data } = await supabase
         .from("animus_orders")
-        .select("status, amount, pet_name")
+        .select("status, amount, customer_name")
         .eq("id", orderId)
         .maybeSingle();
       if (!data) return;
+      setOrderFound(true);
       handleStatus(data.status);
-      if (!decodedUrlName && data.pet_name) setResolvedName(data.pet_name);
-      if ((!Number.isFinite(parsedUrlAmount) || parsedUrlAmount <= 0) && data.amount) {
-        setResolvedAmount(data.amount);
-      }
+      if (data.customer_name) setResolvedName(data.customer_name);
+      if (data.amount) setResolvedAmount(data.amount);
     };
 
     const channel = supabase
@@ -123,7 +94,7 @@ const ThankYou = () => {
       window.clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [orderId, decodedUrlName, parsedUrlAmount]);
+  }, [orderId]);
 
   const createConfetti = useCallback(() => {
     const newParticles: Particle[] = [];
@@ -174,15 +145,19 @@ const ThankYou = () => {
   const displayAmount = effectiveAmount ? effectiveAmount.toFixed(2) : "";
   const isPaid = orderStatus === "paid" || orderStatus === "fulfilled" || orderStatus === "shineon_error";
 
-  // While DB fallback is resolving, render a blank background to avoid a
+  // While the DB lookup is resolving, render a blank background to avoid a
   // brief "Payment Error" flash on real successful redirects.
-  if (!lookupDone && !explicitFailure) {
+  if (orderId && !lookupDone) {
     return <main className="min-h-screen bg-background" aria-busy="true" />;
   }
 
   if (!isValid) {
     return (
       <main className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+        <Helmet>
+          <title>Order Status | ANIMUS</title>
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
         <div className="text-center max-w-md w-full">
           <img src={logo} alt="ANIMUS" className="h-14 mx-auto mb-10" />
           <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-red-500/50 flex items-center justify-center">
@@ -209,7 +184,7 @@ const ThankYou = () => {
           </div>
         </div>
         <footer className="mt-auto pb-6 pt-8 text-center text-muted-foreground/50 text-xs tracking-widest">
-          © {new Date().getFullYear()} ANIMUS — All Rights Reserved
+          © {new Date().getFullYear()} ANIMUS - All Rights Reserved
         </footer>
       </main>
     );
@@ -217,6 +192,10 @@ const ThankYou = () => {
 
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
+      <Helmet>
+        <title>Thank You | Order Confirmed | ANIMUS</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       {/* Confetti */}
       {particles.map((p) => (
         <div
@@ -295,7 +274,7 @@ const ThankYou = () => {
       </div>
 
       <footer className="mt-auto pb-6 pt-8 text-center text-muted-foreground/50 text-xs tracking-widest">
-        © {new Date().getFullYear()} ANIMUS — All Rights Reserved
+        © {new Date().getFullYear()} ANIMUS - All Rights Reserved
       </footer>
     </main>
   );

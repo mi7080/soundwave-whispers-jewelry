@@ -6,13 +6,20 @@ import {
   backoffMs,
   buildShineonProperties,
   classifyShineOnFailure,
+  engravingTextMissing,
+  extractCustomerEmail,
+  extractDocnum,
   extractOrderId,
   firstString,
   isFailedPayment,
+  isPaidDocument,
   isSuccessfulPayment,
   normalizeString,
   pickShineOnPrintUrl,
   resolveLineItemSku,
+  saleRefCandidates,
+  selectByEmailAndAmount,
+  unwrapWebhookBody,
 } from "./helpers.ts";
 
 const corsHeaders = {
@@ -21,15 +28,6 @@ const corsHeaders = {
 };
 
 const SHINEON_API_URL = "https://api.shineon.com/v1/orders";
-// Fallback ShineOn SKU for orders created before per-variant SKUs were stored
-// (animus_orders.shineon_sku is null). Normal orders carry their resolved variant
-// SKU, set at checkout from finish × back engraving — see resolveShineonSku in
-// src/config/product.ts. This fallback is steel + engraving on "The ANIMUS Soulwave
-// Pendant" (Partner CSV/API store). Kept in sync with DEFAULT_SKU in
-// src/pages/AdminOrders.tsx (the manual CSV-export fulfillment path).
-//   steel/no SO-15845642 · steel/yes SO-15845643 · gold/no SO-15845644 · gold/yes SO-15845645
-const SHINEON_SKU_FALLBACK = "SO-15845643";
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -39,14 +37,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    // send-transactional-email runs with verify_jwt=true, which rejects this project's
+    // non-legacy service-role key (same constraint shineon-shipment-notification documents).
+    // Invoke it with the anon key, which the gateway accepts (as the frontend does); the
+    // function itself uses the service role internally.
+    const emailClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
 
     const webhookSecret = Deno.env.get("ICOUNT_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      console.error("[iCount Webhook] ICOUNT_WEBHOOK_SECRET is not configured — rejecting request");
+      console.error("[iCount Webhook] ICOUNT_WEBHOOK_SECRET is not configured - rejecting request");
       return json({ error: "Webhook secret not configured" }, 500);
     }
 
-    // Read body once — used for both secret detection and payload processing below.
+    // Read body once - used for both secret detection and payload processing below.
     const rawBody = await req.text();
     let body: any = {};
     try {
@@ -58,6 +61,9 @@ serve(async (req) => {
         for (const [k, v] of params.entries()) body[k] = v;
       } catch { /* ignore */ }
     }
+    // iCount's document webhook can arrive as a one-element array `[ { ... } ]`;
+    // normalize to the document object so all field reads below are uniform.
+    body = unwrapWebhookBody(body);
 
     // --- Diagnostic: log every header (mask secret-like values) ---
     const allHeaders = [...req.headers.entries()]
@@ -98,7 +104,7 @@ serve(async (req) => {
     console.log(`[iCount Webhook] Secret source: ${headerSecret ? "header" : querySecret ? "query" : bodySecret ? "body" : "none"}, match: ${receivedTrimmed === expectedTrimmed}`);
 
     if (receivedTrimmed !== expectedTrimmed) {
-      // Secret mismatch — allow admin-authenticated retries from the dashboard.
+      // Secret mismatch - allow admin-authenticated retries from the dashboard.
       const authHeader = req.headers.get("Authorization") || "";
       let isAdminRetry = false;
       if (authHeader.startsWith("Bearer ")) {
@@ -122,29 +128,50 @@ serve(async (req) => {
         }
       }
       if (!isAdminRetry) {
-        console.error(`[iCount Webhook] Unauthorized — secret source: ${headerSecret ? "header" : querySecret ? "query" : bodySecret ? "body" : "none"}`);
+        console.error(`[iCount Webhook] Unauthorized - secret source: ${headerSecret ? "header" : querySecret ? "query" : bodySecret ? "body" : "none"}`);
         return json({ error: "Unauthorized" }, 401);
       }
     }
 
-    // body already parsed above — skip req.json()
+    // body already parsed above - skip req.json()
     console.log("[iCount Webhook] Received payload:", JSON.stringify(body));
 
     const paymentStatus = normalizeString(body.status || body.payment_status || body.transaction_status || body.paymentStatus);
-    const isSuccess = isSuccessfulPayment(body, paymentStatus);
+    // Success = an explicit success status/flag (cc_page IPN) OR the issuance of a
+    // paid document (receipt/invrec), which is how the document webhook signals it.
+    const isSuccess = isSuccessfulPayment(body, paymentStatus) || isPaidDocument(body);
     const isFailure = isFailedPayment(body, paymentStatus);
-    const docnumEarly = firstString(body.docnum, body.doc_number, body.invoice_number, body.document_number);
-    const customerEmailEarly = normalizeString(body.client_email || body.email || body.customer_email);
-    const paymentAmountEarly = body.amount ?? body.total ?? body.total_paid ?? null;
+    const docnumEarly = extractDocnum(body);
+    const customerEmailEarly = extractCustomerEmail(body);
+    const paymentAmountEarly =
+      body.amount ?? body.total ?? body.total_paid ?? body.totalwithvat ?? body.totalsum ?? null;
 
     let orderId = extractOrderId(body);
     let order = orderId ? await fetchOrder(supabase, orderId) : null;
 
     if (!order) {
-      const lookup = await secondaryOrderLookup(supabase, { docnum: docnumEarly, email: customerEmailEarly, amount: paymentAmountEarly });
+      const lookup = await secondaryOrderLookup(supabase, { docnum: docnumEarly, email: customerEmailEarly, amount: paymentAmountEarly, saleRefs: saleRefCandidates(body) });
       order = lookup.order;
       orderId = lookup.orderId;
       if (lookup.reason) console.log(`[iCount Webhook] Secondary lookup result: ${lookup.reason}`);
+
+      // Ambiguous: the email matched several open orders and the amount couldn't
+      // single one out. Do NOT guess - flag for manual review so a human links the
+      // correct order, rather than fulfilling the wrong design/engraving.
+      if (lookup.ambiguous) {
+        const candidateIds = (lookup.candidates || []).map((c: any) => c.id);
+        console.error(`[iCount Webhook] AMBIGUOUS match for docnum ${docnumEarly || "?"} / ${customerEmailEarly}: ${candidateIds.length} candidates ${JSON.stringify(candidateIds)} - needs manual review`);
+        await supabase
+          .from("email_send_log")
+          .insert({
+            template_name: "icount-ambiguous-match",
+            recipient_email: customerEmailEarly || "system@animuswave.com",
+            status: "error",
+            error_message: `iCount ${docnumEarly ? `doc ${docnumEarly}` : "payment"} for ${customerEmailEarly} matched ${candidateIds.length} open orders at the same amount - cannot auto-route. Link the correct order manually.`,
+            metadata: { docnum: docnumEarly, email: customerEmailEarly, amount: paymentAmountEarly, candidates: candidateIds, payload: body },
+          } as any);
+        return json({ success: true, skipped: true, reason: "ambiguous_email_match", docnum: docnumEarly, candidates: candidateIds });
+      }
     }
 
     if (!orderId || !order) {
@@ -184,7 +211,11 @@ serve(async (req) => {
       return json({ success: true, skipped: true, reason: "already_finalized", orderId });
     }
 
-    const customerNameEarly = body.client_name || [body.first_name, body.last_name].filter(Boolean).join(" ").trim() || null;
+    // Name: cc_page IPN uses client_name/first_name/last_name; the document
+    // webhook uses clientName/clientname.
+    const customerNameEarly =
+      body.client_name || body.clientName || body.clientname ||
+      [body.first_name, body.last_name].filter(Boolean).join(" ").trim() || null;
 
     const orderUpdate: Record<string, unknown> = {
       status: "paid",
@@ -221,7 +252,7 @@ serve(async (req) => {
       return json({ success: false, error: "Failed to mark order as paid" }, 500);
     }
 
-    // If no rows updated, another concurrent webhook beat us to finalization — bail to preserve idempotency.
+    // If no rows updated, another concurrent webhook beat us to finalization - bail to preserve idempotency.
     if (!paidRows || paidRows.length === 0) {
       console.log(`[iCount Webhook] Order ${orderId} already finalized by concurrent webhook; skipping ShineOn`);
       return json({ success: true, skipped: true, reason: "already_finalized_concurrent", orderId });
@@ -229,9 +260,36 @@ serve(async (req) => {
 
     console.log(`[iCount Webhook] ✓ Order ${orderId} marked as paid (docnum: ${docnumEarly || "none"})`);
 
+    // Payment confirmation + thank-you + next-purchase coupon. Sent here (not after
+    // ShineOn) so a paid customer always gets confirmation even if fulfillment errors.
+    // Idempotency key dedupes across iCount webhook retries for the same order.
+    if (customerEmailEarly) {
+      try {
+        await emailClient.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "order-confirmation",
+            recipientEmail: customerEmailEarly,
+            idempotencyKey: `order-confirmation-${orderId}`,
+            templateData: {
+              name: customerNameEarly || "",
+              orderId,
+              amount: paymentAmountEarly != null ? String(paymentAmountEarly) : "",
+              petName: order?.pet_name || "",
+              soulPageUrl: order?.soul_page_url || "",
+              couponCode: Deno.env.get("NEXT_PURCHASE_COUPON") || "d12ce1",
+              couponPercent: 15,
+            },
+          },
+        });
+        console.log(`[iCount Webhook] ✓ Order-confirmation email queued for ${customerEmailEarly}`);
+      } catch (emailErr) {
+        console.error("[iCount Webhook] Order-confirmation email failed (non-blocking):", emailErr);
+      }
+    }
+
     const { data: freshOrder, error: dbError } = await supabase
       .from("animus_orders")
-      .select("id, design_image_url, print_image_url, pet_name, add_name_to_back, right_side_engraving, shineon_sku, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
+      .select("id, design_image_url, print_image_url, pet_name, add_name_to_back, right_side_engraving, variant_finish, soul_page_url, customer_email, customer_name, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -240,12 +298,14 @@ serve(async (req) => {
       return json({ success: true, shineon_skipped: true, reason: "order_not_found", orderId });
     }
 
-    // ShineOn's Acrylic template prints from a 1000x1788 SVG. pickShineOnPrintUrl prefers the
-    // design_image_url SVG and only falls back to the legacy print_image_url PNG if it's missing.
+    // ShineOn's Acrylic template prints ONLY from a 1000x1788 SVG. pickShineOnPrintUrl
+    // returns the design_image_url SVG or "none" - it does NOT fall back to the legacy
+    // PNG, which ShineOn rejects with a 406. No SVG → hard-fail as shineon_error here
+    // rather than submitting a payload that is guaranteed to bounce.
     const { url: printAssetUrl, source: printAssetSource } = pickShineOnPrintUrl(freshOrder as any);
 
     if (!printAssetUrl) {
-      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has no print_image_url or design_image_url — marked as shineon_error`);
+      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has no SVG print asset (design_image_url) - marked as shineon_error`);
       await supabase
         .from("animus_orders")
         .update({ status: "shineon_error" } as any)
@@ -256,10 +316,30 @@ serve(async (req) => {
           template_name: "missing-design-url",
           recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
           status: "error",
-          error_message: `Order ${orderId} has neither print_image_url nor design_image_url — cannot submit to ShineOn`,
+          error_message: `Order ${orderId} has no SVG print asset (design_image_url) - ShineOn requires SVG, PNG is rejected. Cannot submit.`,
           metadata: { orderId },
         } as any);
-      return json({ success: true, shineon_error: true, reason: "no_print_asset", orderId });
+      return json({ success: true, shineon_error: true, reason: "no_svg_print_asset", orderId });
+    }
+
+    // Engraving safety net: an order with back engraving enabled but no text would
+    // get the engraved SKU and ship blank. Reject rather than fulfil inconsistently.
+    if (engravingTextMissing(freshOrder as any)) {
+      console.error(`[iCount Webhook] BLOCKED: Order ${orderId} has back engraving enabled but no engraving text - marked as shineon_error`);
+      await supabase
+        .from("animus_orders")
+        .update({ status: "shineon_error" } as any)
+        .eq("id", orderId);
+      await supabase
+        .from("email_send_log")
+        .insert({
+          template_name: "engraving-text-missing",
+          recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
+          status: "error",
+          error_message: `Order ${orderId} has add_name_to_back=true but no engraving text - cannot submit an engraved item blank.`,
+          metadata: { orderId },
+        } as any);
+      return json({ success: true, shineon_error: true, reason: "engraving_text_missing", orderId });
     }
 
     const shineonApiKey = Deno.env.get("SHINEON_API_KEY");
@@ -267,10 +347,15 @@ serve(async (req) => {
       console.error("[iCount Webhook] SHINEON_API_KEY not configured");
       return json({ success: true, shineon_skipped: true, reason: "missing_shineon_key", orderId });
     }
+    // Authenticates ShineOn's shipment callback; appended to shipment_notification_url below.
+    const shineonWebhookSecret = Deno.env.get("SHINEON_WEBHOOK_SECRET");
 
     const docnum = docnumEarly || `icount-${orderId}`;
-    const sourceId = String(docnum);
-    const customerEmailForShipping = body.client_email || body.email || freshOrder.customer_email || "";
+    // source_id is OUR order ref echoed back on the shipment callback - use the
+    // animus_orders.id (UUID) directly so the receiver matches straight on `id`,
+    // no icount-/docnum decoding. `docnum` is kept only for error-log metadata.
+    const sourceId = String(orderId);
+    const customerEmailForShipping = body.client?.email || body.client_email || body.email || freshOrder.customer_email || "";
     const pick = (...vals: any[]) => {
       for (const v of vals) {
         if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
@@ -280,13 +365,15 @@ serve(async (req) => {
     // ShineOn's order API uses a single `name` field, not first/last.
     const recipientName = pick(
       body.client_name,
+      body.clientName,
+      body.clientname,
       freshOrder.customer_name,
       [body.first_name, body.last_name].filter(Boolean).join(" "),
     );
     const ship_city = pick(body.city, (freshOrder as any).shipping_city);
     const ship_country_code = pick(body.country_code, body.country, (freshOrder as any).shipping_country_code);
     let ship_state = pick(body.state, body.province, (freshOrder as any).shipping_state);
-    // Israel-specific: ShineOn requires a province for some countries; Israel has none — fall back to city.
+    // Israel-specific: ShineOn requires a province for some countries; Israel has none - fall back to city.
     if (ship_country_code.toUpperCase() === "IL" && !ship_state) {
       ship_state = ship_city;
     }
@@ -308,9 +395,8 @@ serve(async (req) => {
     // opted in via add_name_to_back. (Unit-tested in helpers.ts.)
     const properties = buildShineonProperties(freshOrder as any, printAssetUrl);
 
-    // Variant SKU resolved at checkout (finish × engraving). Fall back for legacy
-    // orders created before the shineon_sku column existed.
-    const lineItemSku = resolveLineItemSku(freshOrder as any, SHINEON_SKU_FALLBACK);
+    // SKU derived from the order's finish × back engraving (not stored).
+    const lineItemSku = resolveLineItemSku(freshOrder as any);
 
     // ShineOn Orders API: everything is nested under an "order" object.
     // source_id = our unique order ref; store_line_item_id = per-line ref.
@@ -318,6 +404,13 @@ serve(async (req) => {
       order: {
         source_id: sourceId,
         email: customerEmailForShipping,
+        // Required by ShineOn (returns 406 without it). ShineOn POSTs tracking here
+        // once the order ships; the shineon-shipment-notification function captures
+        // it onto the order and emails the customer. The ?secret authenticates that
+        // callback (the receiver rejects mismatches when SHINEON_WEBHOOK_SECRET is set).
+        shipment_notification_url: shineonWebhookSecret
+          ? `${supabaseUrl}/functions/v1/shineon-shipment-notification?secret=${encodeURIComponent(shineonWebhookSecret)}`
+          : `${supabaseUrl}/functions/v1/shineon-shipment-notification`,
         line_items: [
           {
             store_line_item_id: `${sourceId}-1`,
@@ -330,7 +423,7 @@ serve(async (req) => {
       },
     };
 
-    console.log(`[iCount Webhook] Submitting to ShineOn v1 — source_id: ${sourceId}, sku: ${lineItemSku}${(freshOrder as any).shineon_sku ? "" : " (fallback)"}, print_url: ${printAssetUrl} (source: ${printAssetSource}), back_engraving: ${properties["Engraving Line 1"] ? "yes" : "no"}`);
+    console.log(`[iCount Webhook] Submitting to ShineOn v1 - source_id: ${sourceId}, sku: ${lineItemSku} (finish: ${(freshOrder as any).variant_finish || "steel?"}), print_url: ${printAssetUrl} (source: ${printAssetSource}), back_engraving: ${properties["Engraving Line 1"] ? "yes" : "no"}`);
 
     const shineonResponse = await fetch(SHINEON_API_URL, {
       method: "POST",
@@ -343,7 +436,7 @@ serve(async (req) => {
     });
 
     const shineonResult = await shineonResponse.text();
-    console.log(`[iCount Webhook] ShineOn response: ${shineonResponse.status} — ${shineonResult}`);
+    console.log(`[iCount Webhook] ShineOn response: ${shineonResponse.status} - ${shineonResult}`);
 
     if (!shineonResponse.ok) {
       console.error(`[iCount Webhook] ShineOn API error ${shineonResponse.status}: ${shineonResult}`);
@@ -391,30 +484,33 @@ serve(async (req) => {
         .eq("id", orderId)
         .eq("status", "paid");
 
-      console.log(`[iCount Webhook] ShineOn ${kind} failure for ${orderId} (attempt ${nextAttempt}/${SHINEON_MAX_RETRIES})${willRetry ? ` — auto-retry at ${nextRetryAt}` : " — no auto-retry"}`);
+      console.log(`[iCount Webhook] ShineOn ${kind} failure for ${orderId} (attempt ${nextAttempt}/${SHINEON_MAX_RETRIES})${willRetry ? ` - auto-retry at ${nextRetryAt}` : " - no auto-retry"}`);
 
       return json({ success: true, shineon_error: true, status: shineonResponse.status, body: shineonResult, orderId, retry_kind: kind, will_retry: willRetry });
     }
 
+    // Parse the ShineOn create response BEFORE the update so we can persist their
+    // own order id (`order.id`) as the shipment-callback match key. NOTE: the
+    // synchronous create response has NO tracking number - it returns status
+    // "on_hold"; tracking arrives later via the shipment_notification_url callback.
+    let shineonOrder: any = null;
+    try { shineonOrder = JSON.parse(shineonResult)?.order ?? null; } catch { /* non-JSON body */ }
+    const shineonOrderId = shineonOrder?.id != null ? String(shineonOrder.id) : null;
+
     await supabase
       .from("animus_orders")
-      .update({ status: "fulfilled", shineon_next_retry_at: null } as any)
+      .update({ status: "fulfilled", shineon_next_retry_at: null, shineon_order_id: shineonOrderId } as any)
       .eq("id", orderId)
       .eq("status", "paid");
 
-    // Parse the ShineOn order ref for traceability. NOTE: the synchronous create
-    // response has NO tracking number — it returns status "on_hold"; tracking is
-    // delivered later via the shipment_notification_url callback (TASKS.md A4).
-    let shineonOrder: any = null;
-    try { shineonOrder = JSON.parse(shineonResult)?.order ?? null; } catch { /* non-JSON body */ }
-    console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn (shineon: ${shineonOrder?.name || shineonOrder?.id || "?"}, status: ${shineonOrder?.status || "?"})`);
+    console.log(`[iCount Webhook] ✓ Order ${orderId} sent to ShineOn (shineon id: ${shineonOrderId || "?"}, name: ${shineonOrder?.name || "?"}, status: ${shineonOrder?.status || "?"})`);
 
-    const shipEmail = body.client_email || body.email;
-    const shipName = body.client_name || body.first_name || "";
+    const shipEmail = body.client?.email || body.client_email || body.email || freshOrder.customer_email;
+    const shipName = body.client_name || body.clientName || body.clientname || body.first_name || freshOrder.customer_name || "";
     const trackingUrl = shineonOrder?.tracking_url; // absent in create response; populated only once ShineOn ships (A4)
     if (shipEmail) {
       try {
-        await supabase.functions.invoke("send-transactional-email", {
+        await emailClient.functions.invoke("send-transactional-email", {
           body: {
             templateName: "shipping-notification",
             recipientEmail: shipEmail,
@@ -455,7 +551,7 @@ serve(async (req) => {
     } catch (logErr) {
       console.error("[iCount Webhook] Failed to write error log:", logErr);
     }
-    // Return 200 so iCount doesn't retry storms — we already logged the failure.
+    // Return 200 so iCount doesn't retry storms - we already logged the failure.
     return json({ success: true, error: err?.message || "Unknown error" });
   }
 });
@@ -477,14 +573,30 @@ async function fetchOrder(supabase: any, orderId: string) {
   return data || null;
 }
 
-async function secondaryOrderLookup(supabase: any, input: { docnum: string | null; email: string; amount: unknown }) {
+async function secondaryOrderLookup(supabase: any, input: { docnum: string | null; email: string; amount: unknown; saleRefs: string[] }) {
+  // 1. Deterministic: match the per-sale token we stored at checkout. This is the
+  //    primary path once create-payment runs generate_sale - exact, email-independent.
+  if (input.saleRefs && input.saleRefs.length > 0) {
+    const { data } = await supabase
+      .from("animus_orders")
+      .select("id, status, design_image_url, pet_name, soul_page_url, customer_email, customer_name, icount_docnum")
+      .in("icount_sale_uniqid", input.saleRefs)
+      .limit(2);
+    if (data && data.length === 1) {
+      return { orderId: data[0].id, order: data[0], reason: "matched_sale_uniqid", ambiguous: false, candidates: data };
+    }
+    if (data && data.length > 1) {
+      console.warn(`[iCount Webhook] sale_uniqid candidates matched ${data.length} orders - unexpected, not auto-routing`);
+    }
+  }
+
   if (input.docnum) {
     const { data } = await supabase
       .from("animus_orders")
       .select("id, status, design_image_url, pet_name, soul_page_url, customer_email, customer_name, icount_docnum")
       .eq("icount_docnum", String(input.docnum))
       .maybeSingle();
-    if (data) return { orderId: data.id, order: data, reason: "matched_docnum" };
+    if (data) return { orderId: data.id, order: data, reason: "matched_docnum", ambiguous: false, candidates: [data] };
   }
 
   if (input.email) {
@@ -498,15 +610,17 @@ async function secondaryOrderLookup(supabase: any, input: { docnum: string | nul
 
     const { data } = await query;
     const rows = data || [];
-    if (rows.length > 0) {
-      const webhookAmount = Number(input.amount);
-      const matchedByAmount = Number.isFinite(webhookAmount)
-        ? rows.find((row: any) => Number(row.amount) === webhookAmount)
-        : null;
-      const selected = matchedByAmount || rows[0];
-      return { orderId: selected.id, order: selected, reason: matchedByAmount ? "matched_email_amount" : "matched_recent_email" };
+    // No-guess selection: a single candidate matches; multiple candidates that
+    // an amount can't disambiguate are returned as `ambiguous` so the caller can
+    // flag for manual review instead of mis-routing fulfillment to the wrong order.
+    const sel = selectByEmailAndAmount(rows as any[], input.amount);
+    if (sel.order) {
+      return { orderId: (sel.order as any).id, order: sel.order, reason: sel.reason, ambiguous: false, candidates: rows };
+    }
+    if (sel.ambiguous) {
+      return { orderId: null, order: null, reason: sel.reason, ambiguous: true, candidates: rows };
     }
   }
 
-  return { orderId: null, order: null, reason: "no_secondary_match" };
+  return { orderId: null, order: null, reason: "no_secondary_match", ambiguous: false, candidates: [] as any[] };
 }

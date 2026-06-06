@@ -74,7 +74,7 @@ const DogTagPreview = ({
     const tw = tag.width * displayW;
     const th = tag.height * displayH;
 
-    // Material tint — overlay a warm gold wash for the gold variant
+    // Material tint - overlay a warm gold wash for the gold variant
     if (material === "gold") {
       ctx.save();
       ctx.globalCompositeOperation = "multiply";

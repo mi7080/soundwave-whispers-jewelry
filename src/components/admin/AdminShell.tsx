@@ -23,7 +23,7 @@ interface AdminShellProps {
 }
 
 /**
- * Single admin chrome — Warm Memorial light theme, matches the public site.
+ * Single admin chrome - Warm Memorial light theme, matches the public site.
  * Header + data-driven underline tab nav. All surfaces token-driven.
  */
 export const AdminShell = ({ tabs, active, onChange, onSignOut, headerExtra, children }: AdminShellProps) => (

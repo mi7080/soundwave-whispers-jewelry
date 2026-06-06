@@ -8,7 +8,7 @@ import {
 const faqs = [
   {
     q: "What audio quality do I need for the recording?",
-    a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files — .mp3, .wav, .m4a, and more.",
+    a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files - .mp3, .wav, .m4a, and more.",
   },
   {
     q: "What is the Memory Pendant made of?",

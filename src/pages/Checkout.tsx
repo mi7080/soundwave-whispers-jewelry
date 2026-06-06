@@ -4,29 +4,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, ArrowRight, Lock, Check } from "lucide-react";
+import { Loader2, ArrowLeft, Lock } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
-import { PRODUCT_CONFIG, resolveShineonSku } from "@/config/product";
+import { PRODUCT_CONFIG } from "@/config/product";
+import { US_STATES, isUsStateCode, ZIP_RE, normalizeUsPhone } from "@/lib/usAddress";
 
+// We ship to the US only, so the country dropdown lists the US alone. The schema
+// also rejects anything other than US as a defensive guard.
 const COUNTRIES = [
   { code: "US", name: "United States" },
-  { code: "CA", name: "Canada" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "AU", name: "Australia" },
-  { code: "IL", name: "Israel" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "NL", name: "Netherlands" },
-  { code: "SE", name: "Sweden" },
-  { code: "NO", name: "Norway" },
-  { code: "DK", name: "Denmark" },
-  { code: "JP", name: "Japan" },
-  { code: "BR", name: "Brazil" },
-  { code: "MX", name: "Mexico" },
 ];
+
+const SHIP_ONLY_US = "We currently ship to the US only";
 
 const shippingSchema = z.object({
   fullName: z.string().trim().min(2, "Full name required").max(100),
@@ -35,7 +25,7 @@ const shippingSchema = z.object({
   address1: z.string().trim().min(3, "Address required").max(200),
   address2: z.string().trim().max(200).optional().or(z.literal("")),
   city: z.string().trim().min(1, "City required").max(100),
-  state: z.string().trim().max(100).optional().or(z.literal("")),
+  state: z.string().trim().min(1, "State required").max(100),
   zip: z.string().trim().min(2, "ZIP required").max(20),
   country: z.string().length(2, "Country required"),
   billingSame: z.boolean(),
@@ -47,92 +37,43 @@ const shippingSchema = z.object({
   billingZip: z.string().trim().max(20).optional().or(z.literal("")),
   billingCountry: z.string().max(2).optional().or(z.literal("")),
 }).superRefine((data, ctx) => {
+  // Shipping: US-only country, valid USPS state, valid US ZIP and phone.
+  if (data.country !== "US") ctx.addIssue({ code: "custom", path: ["country"], message: SHIP_ONLY_US });
+  if (!isUsStateCode(data.state)) ctx.addIssue({ code: "custom", path: ["state"], message: "Select a state" });
+  if (!ZIP_RE.test(data.zip.trim())) ctx.addIssue({ code: "custom", path: ["zip"], message: "Enter a valid US ZIP (12345 or 12345-6789)" });
+  if (!normalizeUsPhone(data.phone)) ctx.addIssue({ code: "custom", path: ["phone"], message: "Enter a valid US phone number" });
+
   if (!data.billingSame) {
     if (!data.billingName?.trim()) ctx.addIssue({ code: "custom", path: ["billingName"], message: "Required" });
     if (!data.billingAddress1?.trim()) ctx.addIssue({ code: "custom", path: ["billingAddress1"], message: "Required" });
     if (!data.billingCity?.trim()) ctx.addIssue({ code: "custom", path: ["billingCity"], message: "Required" });
-    if (!data.billingZip?.trim()) ctx.addIssue({ code: "custom", path: ["billingZip"], message: "Required" });
-    if (!data.billingCountry || data.billingCountry.length !== 2) ctx.addIssue({ code: "custom", path: ["billingCountry"], message: "Required" });
+    if (!isUsStateCode(data.billingState)) ctx.addIssue({ code: "custom", path: ["billingState"], message: "Select a state" });
+    if (!data.billingZip?.trim() || !ZIP_RE.test(data.billingZip.trim())) ctx.addIssue({ code: "custom", path: ["billingZip"], message: "Enter a valid US ZIP (12345 or 12345-6789)" });
+    if (data.billingCountry !== "US") ctx.addIssue({ code: "custom", path: ["billingCountry"], message: SHIP_ONLY_US });
   }
 });
 
 type ShippingForm = z.infer<typeof shippingSchema>;
 
-const STEPS = ["Contact", "Shipping"];
-
 const Checkout = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const orderId = searchParams.get("order");
-  const variantIdx = parseInt(searchParams.get("variant") || "0", 10);
-  const variant = PRODUCT_CONFIG.variants[variantIdx] || PRODUCT_CONFIG.variants[0];
 
   const [order, setOrder] = useState<any>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [step, setStep] = useState(0);
 
-  // Discount code state
-  const [discountInput, setDiscountInput] = useState("");
-  const [discountCode, setDiscountCode] = useState<string | null>(null);
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [discountError, setDiscountError] = useState<string | null>(null);
-  const [validatingDiscount, setValidatingDiscount] = useState(false);
-  // Hard lock — flipped true once a payment link is created. Prevents ANY
-  // change to the applied discount (no remove, no reapply, no clear).
-  const [paymentLinkCreated, setPaymentLinkCreated] = useState(false);
+  // Variant comes from the order's saved finish, not a URL query - the URL can be
+  // stale or tampered. Fall back to the first variant until the order loads.
+  const variant = PRODUCT_CONFIG.variants.find((v) => v.finish === order?.variant_finish) || PRODUCT_CONFIG.variants[0];
+  const variantIdx = PRODUCT_CONFIG.variants.indexOf(variant);
 
   const subtotal = variant.foundersPrice;
-  const discountAmount = +(subtotal * (discountPercent / 100)).toFixed(2);
-  const total = +Math.max(0, subtotal - discountAmount).toFixed(2);
+  const total = subtotal;
 
   const failed = searchParams.get("status") === "failed";
-
-  const applyDiscount = async () => {
-    if (paymentLinkCreated) {
-      toast.error("Payment link already created. Discount is locked.");
-      return;
-    }
-    if (discountCode) return; // already applied — locked until payment link is created
-    const code = discountInput.trim().toUpperCase();
-    setDiscountError(null);
-    if (!code) return;
-    setValidatingDiscount(true);
-    try {
-      const { data, error } = await supabase.rpc("validate_discount_code", { _code: code });
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row?.valid) {
-        setDiscountCode(null);
-        setDiscountPercent(0);
-        setDiscountError("Invalid discount code");
-      } else if (row.already_used) {
-        setDiscountCode(null);
-        setDiscountPercent(0);
-        setDiscountError("This code has already been used");
-      } else {
-        setDiscountCode(code);
-        setDiscountPercent(row.discount_percent || 0);
-        toast.success(`${row.discount_percent}% discount applied`);
-      }
-    } catch (e: any) {
-      setDiscountError(e?.message || "Could not validate code");
-    } finally {
-      setValidatingDiscount(false);
-    }
-  };
-
-  const removeDiscount = () => {
-    if (paymentLinkCreated) {
-      toast.error("Payment link already created. Discount cannot be removed.");
-      return;
-    }
-    setDiscountCode(null);
-    setDiscountPercent(0);
-    setDiscountInput("");
-    setDiscountError(null);
-  };
 
   const form = useForm<ShippingForm>({
     resolver: zodResolver(shippingSchema),
@@ -152,10 +93,13 @@ const Checkout = () => {
       navigate("/");
       return;
     }
-    supabase
-      .from("animus_orders")
-      .select("id, pet_name, add_name_to_back, design_image_url, pet_photo_url, status, customer_name, customer_email, customer_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_zip, shipping_country_code")
-      .eq("id", orderId)
+    // Contact + shipping PII is no longer anon-readable on animus_orders directly
+    // (it was enumerable via the USING(true) policy). get_checkout_order is a
+    // SECURITY DEFINER RPC that returns exactly this one order by id.
+    // Cast: get_checkout_order is added in migration 20260606000000; regenerate
+    // src/integrations/supabase/types.ts after applying it to drop the cast.
+    (supabase as any)
+      .rpc("get_checkout_order", { p_id: orderId })
       .maybeSingle()
       .then(({ data, error }) => {
         if (error || !data) {
@@ -223,30 +167,18 @@ const Checkout = () => {
     };
   }, [orderId, navigate]);
 
-  // Validate the current step's fields before advancing (only the Contact step
-  // gates; the final Shipping step submits and zod validates everything).
-  const stepFields: (keyof ShippingForm)[][] = [
-    ["fullName", "email", "phone"],
-  ];
-
-  const goNext = async () => {
-    const fields = stepFields[step];
-    const ok = fields ? await form.trigger(fields) : true;
-    if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  };
-
-  const goBack = () => setStep((s) => Math.max(s - 1, 0));
-
   const onSubmit = async (values: ShippingForm) => {
     if (!orderId) return;
-    if (step !== STEPS.length - 1) return; // only the final step pays
     setSubmitting(true);
+    // Persist the phone in E.164 (+1XXXXXXXXXX). The schema already guaranteed a
+    // valid US number, so this falls back to the raw value only defensively.
+    const phone = normalizeUsPhone(values.phone) || values.phone;
     try {
       // 1. Save shipping/billing/customer info to Supabase
       const update: Record<string, any> = {
         customer_name: values.fullName,
         customer_email: values.email,
-        customer_phone: values.phone,
+        customer_phone: phone,
         shipping_address1: values.address1,
         shipping_address2: values.address2 || null,
         shipping_city: values.city,
@@ -256,9 +188,9 @@ const Checkout = () => {
         billing_same_as_shipping: values.billingSame,
         amount: total,
         status: "shipping_captured",
-        // Resolve the ShineOn variant SKU from the selected finish + back engraving
-        // so fulfillment submits the correct variant (steel/gold × engraving yes/no).
-        shineon_sku: resolveShineonSku(variant.finish, !!order?.add_name_to_back),
+        // Persist the chosen finish; the ShineOn SKU is derived from finish × back
+        // engraving at fulfillment, not stored.
+        variant_finish: variant.finish,
       };
       if (!values.billingSame) {
         update.billing_name = values.billingName;
@@ -296,7 +228,7 @@ const Checkout = () => {
           orderId,
           fullName: values.fullName,
           email: values.email,
-          phone: values.phone,
+          phone,
           address: values.address1 + (values.address2 ? ` ${values.address2}` : ""),
           city: values.city,
           state: values.state,
@@ -304,8 +236,6 @@ const Checkout = () => {
           country: values.country,
           amount: total,
           currency: PRODUCT_CONFIG.currency,
-          discountCode: discountCode || undefined,
-          discountPercent: discountPercent || undefined,
           siteUrl,
           successUrl: `${siteUrl}/thank-you?order=${orderId}&amount=${total}&name=${encodeURIComponent(values.fullName)}`,
           failureUrl: `${siteUrl}/checkout?order=${orderId}&variant=${variantIdx}&status=failed`,
@@ -317,10 +247,7 @@ const Checkout = () => {
         throw new Error(payData?.error || payErr?.message || "Could not create payment link");
       }
 
-      // Hard-lock the discount: payment link exists. No further changes allowed.
-      setPaymentLinkCreated(true);
-
-      // 3. Redirect to iCount credit card screen
+      // 3. Redirect to the iCount payment page.
       window.location.href = payData.paymentUrl;
     } catch (err: any) {
       console.error("[Checkout] Submit failed:", err);
@@ -340,11 +267,11 @@ const Checkout = () => {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Helmet>
-        <title>Secure Checkout — ANIMUS Pendant</title>
+        <title>Secure Checkout | ANIMUS Memorial Pendant</title>
         <meta name="description" content="Complete your ANIMUS Memorial Pendant order. Encrypted payment, free US shipping, and a custom QR Soul Page." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://animuswave.com/checkout" />
-        <meta property="og:title" content="Secure Checkout — ANIMUS Pendant" />
+        <meta property="og:title" content="Secure Checkout | ANIMUS Memorial Pendant" />
         <meta property="og:description" content="Complete your ANIMUS Memorial Pendant order securely." />
         <meta property="og:url" content="https://animuswave.com/checkout" />
       </Helmet>
@@ -368,38 +295,12 @@ const Checkout = () => {
         {/* Form */}
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          onKeyDown={(e) => { if (e.key === "Enter" && step !== STEPS.length - 1) e.preventDefault(); }}
           className="space-y-7"
         >
           <div>
             <h1 className="font-serif text-3xl sm:text-4xl font-medium text-foreground mb-1">Almost yours</h1>
-            <p className="text-muted-foreground text-sm font-sans">A few details, then the final step is payment.</p>
+            <p className="text-muted-foreground text-sm font-sans">Enter your details, then continue to secure payment.</p>
           </div>
-
-          {/* Stepper progress */}
-          <ol className="flex items-center gap-2">
-            {STEPS.map((label, i) => {
-              const done = i < step;
-              const active = i === step;
-              return (
-                <li key={label} className="flex items-center gap-2 flex-1 last:flex-none">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-sans transition-colors ${
-                      done ? "bg-gold text-primary-foreground" : active ? "bg-primary text-primary-foreground" : "ring-1 ring-border text-muted-foreground"
-                    }`}>
-                      {done ? <Check className="w-4 h-4" /> : i + 1}
-                    </span>
-                    <span className={`text-[13px] font-sans whitespace-nowrap ${active || done ? "text-foreground" : "text-muted-foreground"}`}>
-                      {label}
-                    </span>
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <span className={`hidden sm:block h-px flex-1 transition-colors ${i < step ? "bg-gold" : "bg-border"}`} />
-                  )}
-                </li>
-              );
-            })}
-          </ol>
 
           {failed && (
             <div className="p-4 rounded-xl ring-1 ring-destructive/30 bg-destructive/10 text-destructive text-sm font-sans">
@@ -413,8 +314,9 @@ const Checkout = () => {
             </div>
           )}
 
-          {/* Step 0: Contact */}
-          <div className={step === 0 ? "block space-y-5" : "hidden"}>
+          {/* Contact */}
+          <div className="space-y-5">
+            <p className="text-[13px] tracking-[0.2em] text-gold font-sans">Contact</p>
             <Field label="Full name" name="fullName" form={form} autoComplete="name" placeholder="Jordan Avery" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Email" name="email" type="email" form={form} autoComplete="email" placeholder="you@email.com" />
@@ -423,13 +325,14 @@ const Checkout = () => {
             <p className="text-[13px] text-muted-foreground font-sans">We email your order confirmation and Soul Page link here.</p>
           </div>
 
-          {/* Step 1: Shipping + Billing */}
-          <div className={step === 1 ? "block space-y-5" : "hidden"}>
+          {/* Shipping + Billing */}
+          <div className="space-y-5 pt-2 border-t border-border">
+            <p className="text-[13px] tracking-[0.2em] text-gold font-sans pt-3">Shipping address</p>
             <Field label="Address" name="address1" form={form} autoComplete="address-line1" placeholder="123 Main Street" />
             <Field label="Apartment, suite (optional)" name="address2" form={form} autoComplete="address-line2" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="City" name="city" form={form} autoComplete="address-level2" />
-              <Field label="State / Region" name="state" form={form} autoComplete="address-level1" />
+              <SelectField label="State" name="state" form={form} autoComplete="address-level1" options={[{ value: "", label: "Select a state" }, ...US_STATES.map(s => ({ value: s.code, label: s.name }))]} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="ZIP / Postal code" name="zip" form={form} autoComplete="postal-code" />
@@ -449,7 +352,7 @@ const Checkout = () => {
                 <Field label="Apartment, suite (optional)" name="billingAddress2" form={form} autoComplete="billing address-line2" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="City" name="billingCity" form={form} autoComplete="billing address-level2" />
-                  <Field label="State / Region" name="billingState" form={form} autoComplete="billing address-level1" />
+                  <SelectField label="State" name="billingState" form={form} autoComplete="billing address-level1" options={[{ value: "", label: "Select a state" }, ...US_STATES.map(s => ({ value: s.code, label: s.name }))]} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="ZIP / Postal code" name="billingZip" form={form} autoComplete="billing postal-code" />
@@ -459,46 +362,24 @@ const Checkout = () => {
             )}
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center gap-3 pt-1">
-            {step > 0 && (
-              <button
-                type="button"
-                onClick={goBack}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-sans text-foreground/80 ring-1 ring-border hover:text-foreground hover:ring-gold/50 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-            )}
-            {step < STEPS.length - 1 ? (
-              <button
-                type="button"
-                onClick={goNext}
-                className="group flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 text-sm font-sans font-medium transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)]"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 text-sm font-sans font-medium transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)] disabled:opacity-60 disabled:translate-y-0"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                {submitting ? "Preparing payment…" : "Continue to payment"}
-              </button>
-            )}
+          {/* Submit */}
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 text-sm font-sans font-medium transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgba(80,55,30,0.7)] disabled:opacity-60 disabled:translate-y-0"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              {submitting ? "Preparing payment…" : "Continue to payment"}
+            </button>
           </div>
 
-          {step === STEPS.length - 1 && (
-            <p className="text-center text-muted-foreground text-[12px] leading-relaxed font-sans">
-              The next screen is our secure payment page. By continuing, you agree to our{" "}
-              <Link to="/terms" className="text-gold hover:underline underline-offset-2">Terms of Service</Link>,{" "}
-              <Link to="/privacy" className="text-gold hover:underline underline-offset-2">Privacy Policy</Link>, and{" "}
-              <Link to="/refund" className="text-gold hover:underline underline-offset-2">Refund Policy</Link>.
-            </p>
-          )}
+          <p className="text-center text-muted-foreground text-[12px] leading-relaxed font-sans">
+            The next screen is our secure payment page. By continuing, you agree to our{" "}
+            <Link to="/terms" className="text-gold hover:underline underline-offset-2">Terms of Service</Link>,{" "}
+            <Link to="/privacy" className="text-gold hover:underline underline-offset-2">Privacy Policy</Link>, and{" "}
+            <Link to="/refund" className="text-gold hover:underline underline-offset-2">Refund Policy</Link>.
+          </p>
         </form>
 
         {/* Summary */}
@@ -529,52 +410,6 @@ const Checkout = () => {
               <div className="border-t border-border pt-2.5 mt-2">
                 <Row k="Subtotal" v={`$${subtotal.toFixed(2)}`} />
                 <Row k="Shipping" v={<span className="text-gold">Free</span>} />
-                {discountCode && (
-                  <Row k={`Discount (${discountCode})`} v={<span className="text-gold">−${discountAmount.toFixed(2)}</span>} />
-                )}
-              </div>
-
-              {/* Discount code entry */}
-              <div className="border-t border-border pt-3 mt-1">
-                {!discountCode ? (
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] text-muted-foreground font-sans">Discount code</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={discountInput}
-                        onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
-                        placeholder="Enter code"
-                        disabled={paymentLinkCreated}
-                        className="flex-1 bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:ring-gold focus:outline-none transition-shadow uppercase tracking-wider disabled:opacity-50"
-                      />
-                      <button
-                        type="button"
-                        onClick={applyDiscount}
-                        disabled={validatingDiscount || !discountInput.trim() || paymentLinkCreated}
-                        className="px-4 py-2 text-[13px] text-gold ring-1 ring-gold/40 rounded-lg hover:bg-gold/10 transition-colors disabled:opacity-50"
-                      >
-                        {validatingDiscount ? "…" : "Apply"}
-                      </button>
-                    </div>
-                    {discountError && <p className="text-[12px] text-destructive">{discountError}</p>}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] text-muted-foreground font-sans">Discount code</label>
-                    <div className="flex gap-2 items-center">
-                      <span className="flex-1 bg-background ring-1 ring-gold/30 rounded-lg px-3 py-2 text-sm text-gold uppercase tracking-wider">{discountCode}</span>
-                      <span className="px-3 py-2 text-[13px] text-gold ring-1 ring-gold/30 rounded-lg flex items-center gap-1 bg-gold/5">
-                        <Lock className="w-3 h-3" /> {discountPercent}% off
-                      </span>
-                    </div>
-                    {!paymentLinkCreated && (
-                      <button type="button" onClick={removeDiscount} className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-                        Remove code
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
 
               <div className="border-t border-border pt-3 mt-1 flex justify-between items-baseline">

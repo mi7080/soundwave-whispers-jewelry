@@ -392,7 +392,7 @@ const PolicyPage = () => {
     );
   }
 
-  const pageTitle = `${page.title} — ANIMUS`;
+  const pageTitle = `${page.title} | ANIMUS`;
   const pageDesc = firstParagraph(page).slice(0, 155);
   const canonical = `https://animuswave.com/${slug}`;
 
@@ -405,6 +405,8 @@ const PolicyPage = () => {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:url" content={canonical} />
+        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
       </Helmet>
       <div className="container mx-auto px-6 py-16">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-gold transition-colors mb-12">

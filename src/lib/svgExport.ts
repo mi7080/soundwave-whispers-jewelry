@@ -19,7 +19,7 @@ interface SvgExportOptions {
  */
 
 // ── Font loading (cached) ────────────────────────────────────────────
-// Self-hosted via Google Fonts CDN — converted to paths at export time,
+// Self-hosted via Google Fonts CDN - converted to paths at export time,
 // so no font dependency in the final SVG.
 const FONT_URLS = {
   inter: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50ojIa1ZL7.ttf",
@@ -83,9 +83,9 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
   const cx = width / 2;
 
   // ShineOn Acrylic dog-tag template safe design area (notch at top, bleed margins
-  // all around). Artwork is composed to fill this central zone — waveform stacked
+  // all around). Artwork is composed to fill this central zone - waveform stacked
   // above the QR, both vertically centered around the tag's mid-line (~y 900).
-  // Keep everything inside SAFE_X 140–860 and SAFE_Y 330–1470.
+  // Keep everything inside SAFE_X 140-860 and SAFE_Y 330-1470.
 
   // --- Waveform as vertical bars (chronological L→R) ---
   const waveY = 640;
@@ -127,7 +127,7 @@ export async function generateProductionSvg(options: SvgExportOptions): Promise<
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <!-- FRONT SIDE: Pure-vector waveform + QR (1000x1788) — minimalist, no text -->
+  <!-- FRONT SIDE: Pure-vector waveform + QR (1000x1788) - minimalist, no text -->
   <g id="waveform">${waveRects}</g>
   <g id="qr-code">${qrRects}</g>
 </svg>`;

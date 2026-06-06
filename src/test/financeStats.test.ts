@@ -31,7 +31,7 @@ const range = (from: string, to: string): DateRange => ({
 const APR_PROFIT = 200 - 15 - 6.1 - 100; // 78.90
 const MAY_PROFIT = 200 - 15 - 6.1 - 50; // 128.90
 
-describe("computeFinanceStats — per-month ad share", () => {
+describe("computeFinanceStats - per-month ad share", () => {
   it("excludes non-paid orders", () => {
     const s = computeFinanceStats(ORDERS, COSTS, range("2026-01-01", "2026-12-31"));
     expect(s.orderCount).toBe(6);

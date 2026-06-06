@@ -35,7 +35,7 @@ const TrackingUpdateEmail = ({ name, petName, trackingNumber, trackingUrl, carri
 
         <Section style={trackingCard}>
           <Text style={trackingLabel}>TRACKING NUMBER</Text>
-          <Text style={trackingNumberStyle}>{trackingNumber || '—'}</Text>
+          <Text style={trackingNumberStyle}>{trackingNumber || '-'}</Text>
           {carrier && <Text style={carrierStyle}>{carrier}</Text>}
         </Section>
 
@@ -44,17 +44,20 @@ const TrackingUpdateEmail = ({ name, petName, trackingNumber, trackingUrl, carri
             <Button style={button} href={trackingUrl}>
               Track Your Shipment
             </Button>
+            <Text style={trackingHint}>
+              Opens live tracking for your shipment.
+            </Text>
           </Section>
         )}
 
         <Text style={text}>
-          When it arrives, scan the QR code on the back of the pendant to revisit
+          When it arrives, scan the QR code on the front of the pendant to revisit
           the soundwave and memory you preserved.
         </Text>
 
         <Hr style={divider} />
         <Text style={footer}>
-          © {new Date().getFullYear()} {SITE_NAME} — Crafted with love
+          © {new Date().getFullYear()} {SITE_NAME}. Crafted with love.
         </Text>
       </Container>
     </Body>
@@ -67,13 +70,13 @@ export const template = {
     data?.petName
       ? `Your ANIMUS pendant for ${data.petName} has shipped`
       : `Your ANIMUS pendant has shipped`,
-  displayName: 'Customer — Shipping tracking update',
+  displayName: 'Customer: Shipping tracking update',
   previewData: {
     name: 'Sarah',
     petName: 'Luna',
-    trackingNumber: '1Z999AA10123456784',
-    trackingUrl: 'https://www.ups.com/track?tracknum=1Z999AA10123456784',
-    carrier: 'UPS',
+    trackingNumber: '9400110200881958183792',
+    trackingUrl: 'https://parcelsapp.com/en/tracking/9400110200881958183792',
+    carrier: 'USPS',
   },
 } satisfies TemplateEntry
 
@@ -88,4 +91,5 @@ const trackingLabel = { fontSize: '10px', letterSpacing: '3px', color: '#B78E48'
 const trackingNumberStyle = { fontSize: '18px', color: '#0d0d0d', fontWeight: 'bold' as const, margin: '0', fontFamily: 'monospace', letterSpacing: '1px' }
 const carrierStyle = { fontSize: '12px', color: '#888888', margin: '6px 0 0', textTransform: 'uppercase' as const, letterSpacing: '2px' }
 const button = { backgroundColor: '#B78E48', color: '#ffffff', padding: '14px 32px', borderRadius: '4px', fontSize: '12px', letterSpacing: '2px', fontWeight: 'bold' as const, textDecoration: 'none' }
+const trackingHint = { fontSize: '11px', color: '#aaaaaa', margin: '10px 0 0' }
 const footer = { fontSize: '11px', color: '#aaaaaa', textAlign: 'center' as const, margin: '0' }

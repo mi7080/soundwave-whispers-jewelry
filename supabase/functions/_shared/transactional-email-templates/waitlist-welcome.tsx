@@ -40,7 +40,7 @@ const WaitlistWelcomeEmail = () => (
         </Text>
         <Heading style={h2}>Why it matters</Heading>
         <Text style={text}>
-          At ANIMUS, we believe memories shouldn't just be stored—they should be <em>heard</em>.
+          At ANIMUS, we believe memories shouldn't just be stored - they should be <em>heard</em>.
         </Text>
         <Text style={text}>
           Keep an eye on your inbox. Your legacy is about to become wearable.

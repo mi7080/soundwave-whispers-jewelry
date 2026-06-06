@@ -50,7 +50,6 @@ export type Database = {
           shipping_country_code: string | null
           shipping_state: string | null
           shipping_zip: string | null
-          shineon_sku: string | null
           soul_page_url: string
           soul_video_url: string | null
           status: string
@@ -59,6 +58,7 @@ export type Database = {
           tracking_number: string | null
           tracking_updated_at: string | null
           updated_at: string
+          variant_finish: string | null
           waveform_data: Json | null
           workflow_status: string
         }
@@ -97,7 +97,6 @@ export type Database = {
           shipping_country_code?: string | null
           shipping_state?: string | null
           shipping_zip?: string | null
-          shineon_sku?: string | null
           soul_page_url: string
           soul_video_url?: string | null
           status?: string
@@ -106,6 +105,7 @@ export type Database = {
           tracking_number?: string | null
           tracking_updated_at?: string | null
           updated_at?: string
+          variant_finish?: string | null
           waveform_data?: Json | null
           workflow_status?: string
         }
@@ -144,7 +144,6 @@ export type Database = {
           shipping_country_code?: string | null
           shipping_state?: string | null
           shipping_zip?: string | null
-          shineon_sku?: string | null
           soul_page_url?: string
           soul_video_url?: string | null
           status?: string
@@ -153,6 +152,7 @@ export type Database = {
           tracking_number?: string | null
           tracking_updated_at?: string | null
           updated_at?: string
+          variant_finish?: string | null
           waveform_data?: Json | null
           workflow_status?: string
         }

@@ -24,7 +24,7 @@ const CraftsmanshipSection = () => {
               Every pendant is precision-engraved on high-grade 316L Stainless Steel
               (or 18K Yellow Gold finish) using state-of-the-art laser technology at
               our US-based facility. The result is a dog-tag style pendant built
-              to last a lifetime — a timeless tribute to any loved one or memory.
+              to last a lifetime - a timeless tribute to any loved one or memory.
             </p>
             <div className="flex flex-wrap gap-8 pt-4">
               {features.map((item) => (

@@ -1,5 +1,53 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const RESEND_API_URL = 'https://api.resend.com/emails'
+
+// Send one email directly via the Resend API. Throws an Error annotated with
+// `status` (and `retryAfterSeconds` for 429s) so the dispatcher's existing
+// rate-limit (429) and forbidden (403) handling keeps working unchanged.
+async function sendViaResend(
+  apiKey: string,
+  payload: Record<string, any>,
+  unsubscribeUrl: string | null
+): Promise<void> {
+  const customHeaders: Record<string, string> = {}
+  if (unsubscribeUrl) {
+    customHeaders['List-Unsubscribe'] = `<${unsubscribeUrl}>`
+    customHeaders['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+  }
+
+  const res = await fetch(RESEND_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      // Resend honours Idempotency-Key to dedupe retried sends of the same message.
+      ...(payload.idempotency_key ? { 'Idempotency-Key': String(payload.idempotency_key) } : {}),
+    },
+    body: JSON.stringify({
+      from: payload.from,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      ...(Object.keys(customHeaders).length ? { headers: customHeaders } : {}),
+    }),
+  })
+
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => '')
+    const err = new Error(`Resend ${res.status}: ${bodyText.slice(0, 500)}`) as Error & {
+      status?: number
+      retryAfterSeconds?: number | null
+    }
+    err.status = res.status
+    if (res.status === 429) {
+      const ra = res.headers.get('retry-after')
+      err.retryAfterSeconds = ra ? Number(ra) : 60
+    }
+    throw err
+  }
+}
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
@@ -18,7 +66,7 @@ function isRateLimited(error: unknown): boolean {
 }
 
 // Check if an error is a forbidden (403) response, which means emails are
-// disabled for this project. Retrying won't help — move straight to DLQ.
+// disabled for this project. Retrying won't help - move straight to DLQ.
 function isForbidden(error: unknown): boolean {
   if (error && typeof error === 'object' && 'status' in error) {
     return (error as { status: number }).status === 403
@@ -79,7 +127,7 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  const apiKey = Deno.env.get('RESEND_API_KEY')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -249,26 +297,12 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
-          {
-            run_id: payload.run_id,
-            to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-            message_id: payload.message_id,
-          },
-          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
-          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
-          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
-        )
+        // RFC 8058 one-click unsubscribe: the token resolves at our
+        // handle-email-unsubscribe function (verify_jwt=false).
+        const unsubscribeUrl = payload.unsubscribe_token
+          ? `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${payload.unsubscribe_token}`
+          : null
+        await sendViaResend(apiKey, payload, unsubscribeUrl)
 
         // Log success
         await supabase.from('email_send_log').insert({
@@ -317,14 +351,14 @@ Deno.serve(async (req) => {
             })
             .eq('id', 1)
 
-          // Stop processing — remaining messages stay in queue (VT expires, retried next cycle)
+          // Stop processing - remaining messages stay in queue (VT expires, retried next cycle)
           return new Response(
             JSON.stringify({ processed: totalProcessed, stopped: 'rate_limited' }),
             { headers: { 'Content-Type': 'application/json' } }
           )
         }
 
-        // 403 means emails are disabled for this project — retrying won't help.
+        // 403 means emails are disabled for this project - retrying won't help.
         // Move straight to DLQ and stop processing the rest of the batch.
         if (isForbidden(error)) {
           await moveToDlq(supabase, queue, msg, 'Emails disabled for this project')

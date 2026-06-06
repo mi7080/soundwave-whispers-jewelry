@@ -4,7 +4,7 @@
 // window has elapsed, then re-runs them through the normal payment webhook so
 // transient outages (5xx/429/408/network) self-heal without manual recovery.
 // Permanent failures (other 4xx, missing print asset) set shineon_next_retry_at
-// to NULL in the webhook and are therefore never picked up here — they surface
+// to NULL in the webhook and are therefore never picked up here - they surface
 // in the admin "Needs Attention" view for a human.
 //
 // ── Scheduling ──────────────────────────────────────────────────────

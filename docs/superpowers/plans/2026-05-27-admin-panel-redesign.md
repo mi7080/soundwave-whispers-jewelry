@@ -10,7 +10,7 @@
 
 ---
 
-## Design System (the visual contract — matches selling page)
+## Design System (the visual contract - matches selling page)
 
 Source tokens: `src/index.css` `:root` (Warm Memorial). Never hardcode hex in admin again.
 
@@ -44,23 +44,23 @@ Source tokens: `src/index.css` `:root` (Warm Memorial). Never hardcode hex in ad
 ## File Structure
 
 **New:**
-- `src/components/admin/AdminShell.tsx` — page chrome: header, brand, sign-out, date picker, tab nav. Light themed.
-- `src/components/admin/ui.tsx` — primitives: `AdminCard`, `AdminKpi`, `AdminSectionHeader`, `statusTone()` helper, `AdminEmpty`.
-- `supabase/migrations/<ts>_shineon_retry_columns.sql` — retry tracking columns.
-- `supabase/functions/shineon-retry-sweep/index.ts` — cron sweep for transient failures.
+- `src/components/admin/AdminShell.tsx` - page chrome: header, brand, sign-out, date picker, tab nav. Light themed.
+- `src/components/admin/ui.tsx` - primitives: `AdminCard`, `AdminKpi`, `AdminSectionHeader`, `statusTone()` helper, `AdminEmpty`.
+- `supabase/migrations/<ts>_shineon_retry_columns.sql` - retry tracking columns.
+- `supabase/functions/shineon-retry-sweep/index.ts` - cron sweep for transient failures.
 
 **Modified:**
-- `src/pages/AdminControl.tsx` — convert all inline-hex → tokens/primitives; remove Recovery tab; add Production tab (absorbs AdminDashboard); CRM tab gains bulk campaign + mark-contacted.
-- `src/pages/AdminOrders.tsx` — retune status tones for cream; rename "errors" tab → "Needs Attention" (catches `shineon_error` OR `paid`+no PNG); add render-PNG / render+submit actions there + in modal.
-- `supabase/functions/icount-payment-webhook/index.ts` — classify transient vs permanent; write retry columns; schedule next retry.
-- `src/App.tsx` — redirect `/admin-dashboard` → `/admin/control`; drop dead `AdminDashboard` import; keep `/admin/orders` (deep link) but it renders inside shell context.
+- `src/pages/AdminControl.tsx` - convert all inline-hex → tokens/primitives; remove Recovery tab; add Production tab (absorbs AdminDashboard); CRM tab gains bulk campaign + mark-contacted.
+- `src/pages/AdminOrders.tsx` - retune status tones for cream; rename "errors" tab → "Needs Attention" (catches `shineon_error` OR `paid`+no PNG); add render-PNG / render+submit actions there + in modal.
+- `supabase/functions/icount-payment-webhook/index.ts` - classify transient vs permanent; write retry columns; schedule next retry.
+- `src/App.tsx` - redirect `/admin-dashboard` → `/admin/control`; drop dead `AdminDashboard` import; keep `/admin/orders` (deep link) but it renders inside shell context.
 
 **Deleted (after feature port verified):**
 - `src/pages/AdminCRM.tsx`, `src/pages/AdminDashboard.tsx`.
 
 ---
 
-## PHASE A — Visual redesign (the core ask)
+## PHASE A - Visual redesign (the core ask)
 
 Independently shippable: admin looks like the brand, no behavior change.
 
@@ -139,7 +139,7 @@ export function statusTone(status: string): StatusTone {
 Extract the header/nav from `AdminControl.tsx:105-159`. Convert: page wrapper `min-h-screen bg-background`; header `border-b border-border bg-background/90 backdrop-blur-md sticky top-0 z-30`; brand `font-serif text-3xl text-foreground` + gold `Sparkles`; eyebrow gold micro-label; sign-out → shadcn `Button variant="ghost"` with `aria-label`. Tab nav: token-based `CmdTab` (active = `text-gold border-gold`, inactive = `text-muted-foreground hover:text-foreground`, `border-b-2`). Accept `tabs` config + `active`/`onChange` props so tab list is data-driven (no hardcoded 5 buttons).
 
 - [ ] Step 1: Implement `AdminShell` with props `{ tabs: {key,label,icon,badge?}[]; active; onChange; children }`. Use 21st.dev (`mcp__magic` `21st_magic_component_inspiration`) for a clean dashboard header reference, then adapt to tokens.
-- [ ] Step 2: `npm run build` — passes.
+- [ ] Step 2: `npm run build` - passes.
 - [ ] Step 3: Commit `feat(admin): light AdminShell with data-driven tab nav`.
 
 ### Task A3: Convert AdminControl tabs to tokens/primitives
@@ -157,7 +157,7 @@ Per-tab transformation (replace every `style={{ ... hex ... }}` with classes):
 - [ ] Step 2: Convert CrmTab. Build.
 - [ ] Step 3: Convert SettingsTab. Build.
 - [ ] Step 4: Wire `AdminControl` to render `AdminShell` (remove old inline header). Build.
-- [ ] Step 5: Manual verify — run app, log in, eyeball each tab on cream (contrast, spacing). Commit `refactor(admin): convert AdminControl to light tokens + primitives`.
+- [ ] Step 5: Manual verify - run app, log in, eyeball each tab on cream (contrast, spacing). Commit `refactor(admin): convert AdminControl to light tokens + primitives`.
 
 ### Task A4: Retune AdminOrders status tones for cream
 
@@ -170,7 +170,7 @@ Per-tab transformation (replace every `style={{ ... hex ... }}` with classes):
 
 ---
 
-## PHASE B — Consolidation + Recovery merge
+## PHASE B - Consolidation + Recovery merge
 
 Depends on Phase A shell existing.
 
@@ -197,13 +197,13 @@ Port from `AdminDashboard.tsx`: daily batch CSV export + `exported_at` tracking 
 - [ ] Step 1: Implement `ProductionTab`, add to shell tab list (icon `FileSpreadsheet`). Build.
 - [ ] Step 2: Manual verify CSV export downloads + marks exported. Commit `feat(admin): add Production tab (batch export, SVG tools)`.
 
-### Task B3: CRM tab — add bulk campaign + mark-contacted
+### Task B3: CRM tab - add bulk campaign + mark-contacted
 
 **Files:** Modify `src/pages/AdminControl.tsx` (`CrmTab`)
 
 Port `send-campaign-email` bulk send (email1/email2 + test send) from `AdminDashboard.tsx:51-73,242-312`; port lead "Mark contacted" status update from `AdminCRM.tsx`.
 
-- [ ] Step 1: Add campaign send UI (with test-email guard + confirm dialog before full send — shadcn `AlertDialog`). Build.
+- [ ] Step 1: Add campaign send UI (with test-email guard + confirm dialog before full send - shadcn `AlertDialog`). Build.
 - [ ] Step 2: Add "Mark contacted" action to leads rows. Build.
 - [ ] Step 3: Manual verify test-send only (do NOT trigger full campaign). Commit `feat(admin): CRM bulk campaign + mark-contacted`.
 
@@ -212,12 +212,12 @@ Port `send-campaign-email` bulk send (email1/email2 + test send) from `AdminDash
 **Files:** Modify `src/App.tsx`; Delete `src/pages/AdminCRM.tsx`, `src/pages/AdminDashboard.tsx`
 
 - [ ] Step 1: In `App.tsx` remove imports of `AdminCRM`, `AdminDashboard`; change `/admin-dashboard` route to `<Navigate replace to="/admin/control" />`. Build.
-- [ ] Step 2: `git rm src/pages/AdminCRM.tsx src/pages/AdminDashboard.tsx`. Build — confirm no broken imports (grep for the names first).
+- [ ] Step 2: `git rm src/pages/AdminCRM.tsx src/pages/AdminDashboard.tsx`. Build - confirm no broken imports (grep for the names first).
 - [ ] Step 3: Commit `chore(admin): remove legacy AdminCRM/AdminDashboard, redirect route`.
 
 ---
 
-## PHASE C — Auto-retry (failures self-heal)
+## PHASE C - Auto-retry (failures self-heal)
 
 Independent backend subsystem. Reduces how often Needs-Attention is needed.
 
@@ -268,9 +268,9 @@ Deno.test("5xx + network are transient, 4xx permanent", () => {
 });
 ```
 
-- [ ] Step 2: Run `deno test supabase/functions/icount-payment-webhook/` — expect FAIL (not defined).
+- [ ] Step 2: Run `deno test supabase/functions/icount-payment-webhook/` - expect FAIL (not defined).
 - [ ] Step 3: Implement `backoffMs` + `classifyShineOnFailure` in `helpers.ts`; wire into the error branch of `index.ts`.
-- [ ] Step 4: `deno test ...` — PASS.
+- [ ] Step 4: `deno test ...` - PASS.
 - [ ] Step 5: Commit `feat(webhook): classify transient ShineOn failures + schedule retry`.
 
 ### Task C3: Cron retry sweep
@@ -287,8 +287,8 @@ Query `animus_orders WHERE status='shineon_error' AND shineon_retry_count < 3 AN
 
 ## Self-Review
 
-- **Spec coverage:** match selling theme → A1–A4, design-system table. Easy to use/understand → primitives + AdminShell + a11y rules. Remove Recovery tab → B1. "System won't have issues with ShineOn" → C1–C3 auto-retry + Needs-Attention safety net. Consolidation → B2–B4 (preserves batch export, campaign email, SVG tools — the unique AdminDashboard features). ✅
+- **Spec coverage:** match selling theme → A1–A4, design-system table. Easy to use/understand → primitives + AdminShell + a11y rules. Remove Recovery tab → B1. "System won't have issues with ShineOn" → C1–C3 auto-retry + Needs-Attention safety net. Consolidation → B2–B4 (preserves batch export, campaign email, SVG tools - the unique AdminDashboard features). ✅
 - **Placeholder scan:** primitives + migration + tests are full code; per-file restyle tasks specify exact source line ranges + class mappings. ✅
 - **Type consistency:** `statusTone()`, `AdminKpi` tone union, `tabs[].badge` used consistently A1→A2→B1. ✅
-- **Risk note:** Phase A is pure restyle (low risk). Phase B deletes files — grep for usages before `git rm`. Phase C touches the live payment→fulfillment path — keep permanent-error behavior identical; only add retry scheduling on transient.
+- **Risk note:** Phase A is pure restyle (low risk). Phase B deletes files - grep for usages before `git rm`. Phase C touches the live payment→fulfillment path - keep permanent-error behavior identical; only add retry scheduling on transient.
 ```

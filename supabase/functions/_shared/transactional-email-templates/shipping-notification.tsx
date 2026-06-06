@@ -27,7 +27,7 @@ const ShippingNotificationEmail = ({ name, orderId, petName, trackingUrl }: Ship
         </Heading>
 
         <Text style={text}>
-          Great news — your ANIMUS Memorial Pendant has been crafted and is now on its way to you.
+          Great news - your ANIMUS Memorial Pendant has been crafted and is now on its way to you.
         </Text>
 
         <Section style={orderCard}>
@@ -59,12 +59,12 @@ const ShippingNotificationEmail = ({ name, orderId, petName, trackingUrl }: Ship
         )}
 
         <Text style={text}>
-          Delivery typically takes 5–10 business days. We hope this pendant brings you comfort and a lasting connection to your loved one.
+          Delivery typically takes 5-10 business days. We hope this pendant brings you comfort and a lasting connection to your loved one.
         </Text>
 
         <Hr style={divider} />
         <Text style={footer}>
-          © {new Date().getFullYear()} {SITE_NAME} — Crafted with love
+          © {new Date().getFullYear()} {SITE_NAME} - Crafted with love
         </Text>
       </Container>
     </Body>

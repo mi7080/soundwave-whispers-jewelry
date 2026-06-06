@@ -1,4 +1,4 @@
-// VideoUpload — video-to-audio extractor for the Soul Page customizer.
+// VideoUpload - video-to-audio extractor for the Soul Page customizer.
 // STATUS: Complete but not yet wired into ProductSection.
 // To integrate: import and render inside the "Upload Audio" step of ProductSection.tsx,
 // passing preOrderId as orderId, handleAudioUrl as onAudioUrl, and setWaveformData as onWaveform.
@@ -83,7 +83,7 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
     setProgress(0);
     setProcessStage(0);
     try {
-      // Stage 1 — Upload full video to soul_videos (0 → 20%)
+      // Stage 1 - Upload full video to soul_videos (0 → 20%)
       setProcessStage(1);
       setProgress(0.05);
       const ext = (videoFile.name.split(".").pop() || "mp4").toLowerCase();
@@ -99,21 +99,21 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
       onVideoUrl(vidUrl.publicUrl);
       setProgress(0.2);
 
-      // Stage 2 — Extract audio segment (20 → 70%)
+      // Stage 2 - Extract audio segment (20 → 70%)
       setProcessStage(2);
       const audioBlob = await extractAudioSegment(videoFile, start, end, (p) =>
         setProgress(0.2 + p * 0.5)
       );
       setProgress(0.7);
 
-      // Stage 3 — Build waveform (70 → 85%)
+      // Stage 3 - Build waveform (70 → 85%)
       setProcessStage(3);
       setProgress(0.75);
       const wf = await blobToWaveform(audioBlob, 64);
       onWaveform(wf);
       setProgress(0.85);
 
-      // Stage 4 — Upload audio to soul_assets (85 → 100%)
+      // Stage 4 - Upload audio to soul_assets (85 → 100%)
       setProcessStage(4);
       const audioPath = `${orderId}/audio-${Date.now()}.mp3`;
       const { error: audErr } = await supabase.storage
@@ -125,7 +125,7 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
       setProgress(1);
 
       setDone(true);
-      toast.success("Memory preserved — audio extracted successfully.");
+      toast.success("Memory preserved - audio extracted successfully.");
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to process video");
@@ -149,7 +149,7 @@ const VideoUpload = ({ orderId, onAudioUrl, onVideoUrl, onWaveform }: VideoUploa
         <VideoIcon className="w-6 h-6 mx-auto mb-2 text-gold/60" />
         <p className="text-xs text-foreground/80 font-sans">Choose a video (max 100 MB)</p>
         <p className="text-[10px] text-muted-foreground/60 font-light mt-1">
-          MP4, MOV, WebM — we'll extract a 10-second audio clip
+          MP4, MOV, WebM - we'll extract a 10-second audio clip
         </p>
       </label>
     );

@@ -1,6 +1,6 @@
 /**
  * Central product configuration for ANIMUS Memorial Pendant
- * Flat $89 across all variants — Founders Pricing.
+ * Flat $89 across all variants - Founders Pricing.
  */
 
 import dogtagSteel from "@/assets/dogtag-steel.jpg";
@@ -28,12 +28,12 @@ export const PRODUCT_CONFIG = {
   currency: "USD",
 
   material: "316L Surgical Stainless Steel",
-  pendantSize: '1.1" × 2" (28.5 × 51 mm) — Classic Dog-Tag Shape',
+  pendantSize: '1.1" × 2" (28.5 × 51 mm) - Classic Dog-Tag Shape',
   chainLength: '24" Military-Style Ball Chain (61 cm)',
   clasp: "Lobster Clasp Attachment",
   engraving: "Laser-Etched Soundwave (Front) · Custom Text (Back)",
   packaging: "Complimentary Luxury Gift Box",
-  shipping: "Free US Shipping — 7–14 Business Days",
+  shipping: "Free US Shipping - 7-14 Business Days",
 
   variants: [
     {
@@ -43,7 +43,7 @@ export const PRODUCT_CONFIG = {
       fullPrice: 89,
       foundersPrice: 89,
       image: dogtagSteel,
-      imageAlt: "ANIMUS Memorial Pendant — Polished Stainless Steel Dog Tag",
+      imageAlt: "ANIMUS Memorial Pendant - Polished Stainless Steel Dog Tag",
     },
     {
       id: "variant-gold",
@@ -52,13 +52,13 @@ export const PRODUCT_CONFIG = {
       fullPrice: 89,
       foundersPrice: 89,
       image: dogtagGold,
-      imageAlt: "ANIMUS Memorial Pendant — 14K Gold Dog Tag",
+      imageAlt: "ANIMUS Memorial Pendant - 14K Gold Dog Tag",
     },
   ],
 
   galleryImages: [
-    { src: dogtagGold, alt: "ANIMUS Memorial Pendant — 18K Yellow Gold Dog Tag Front" },
-    { src: dogtagSteel, alt: "ANIMUS Memorial Pendant — Polished Stainless Steel Dog Tag Front" },
+    { src: dogtagGold, alt: "ANIMUS Memorial Pendant - 18K Yellow Gold Dog Tag Front" },
+    { src: dogtagSteel, alt: "ANIMUS Memorial Pendant - Polished Stainless Steel Dog Tag Front" },
   ],
 } as const;
 

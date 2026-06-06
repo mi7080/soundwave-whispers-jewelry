@@ -12,11 +12,11 @@ import Footer from "@/components/Footer";
 const faqs = [
   {
     q: "How does the QR code work?",
-    a: "Every ANIMUS necklace comes with a premium printed card featuring a unique QR code. When scanned with any smartphone camera, it instantly plays back the original audio recording you submitted. No app needed — just point, scan, and listen to that precious sound again.",
+    a: "Every ANIMUS necklace comes with a premium printed card featuring a unique QR code. When scanned with any smartphone camera, it instantly plays back the original audio recording you submitted. No app needed - just point, scan, and listen to that precious sound again.",
   },
   {
     q: "Will the sound link ever expire?",
-    a: "No, never. Your audio is securely hosted on our cloud servers forever at no additional cost. The QR code and playback link will work for as long as you need it — years, decades, a lifetime.",
+    a: "No, never. Your audio is securely hosted on our cloud servers forever at no additional cost. The QR code and playback link will work for as long as you need it - years, decades, a lifetime.",
   },
   {
     q: "Can I shower with the necklace?",
@@ -24,11 +24,11 @@ const faqs = [
   },
   {
     q: "Do you ship outside the US?",
-    a: "Currently, we exclusively serve the US market to ensure the fastest delivery times (2-5 business days) and best customer experience. We're working on expanding internationally — sign up for our newsletter to be the first to know.",
+    a: "Currently, we exclusively serve the US market to ensure the fastest delivery times (2-5 business days) and best customer experience. We're working on expanding internationally - sign up for our newsletter to be the first to know.",
   },
   {
     q: "What audio quality do I need for the recording?",
-    a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files — .mp3, .wav, .m4a, and more.",
+    a: "Any clear recording from your smartphone works perfectly. We recommend a 5-15 second clip in a quiet environment. Our technology can extract a beautiful waveform from most audio files - .mp3, .wav, .m4a, and more.",
   },
   {
     q: "What materials are the necklaces made of?",
@@ -57,12 +57,14 @@ const FAQ = () => {
   return (
     <main className="min-h-screen bg-background pt-20">
       <Helmet>
-        <title>ANIMUS FAQ — Soundwave Pendant Questions</title>
+        <title>ANIMUS FAQ | Soundwave Pendant Questions Answered</title>
         <meta name="description" content="Answers about ANIMUS soundwave pendants: how the QR code works, materials, water resistance, audio quality, and shipping." />
         <link rel="canonical" href="https://animuswave.com/faq" />
-        <meta property="og:title" content="ANIMUS FAQ — Soundwave Pendant Questions" />
+        <meta property="og:title" content="ANIMUS FAQ | Soundwave Pendant Questions Answered" />
         <meta property="og:description" content="Answers about ANIMUS pendants: QR playback, materials, water resistance, and shipping." />
         <meta property="og:url" content="https://animuswave.com/faq" />
+        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
         <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
       </Helmet>
       <div className="container mx-auto px-6 py-16">

@@ -2,9 +2,9 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Admin UI primitives — Warm Memorial light theme.
+ * Admin UI primitives - Warm Memorial light theme.
  * Every admin surface uses these so the panel stays DRY and on-brand
- * with the public selling page. No hardcoded hex — tokens only.
+ * with the public selling page. No hardcoded hex - tokens only.
  */
 
 export const adminCardShadow = "shadow-[0_18px_40px_-24px_rgba(80,55,30,0.35)]";

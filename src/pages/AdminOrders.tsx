@@ -3,9 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Loader2, Search, Download, ArrowLeft, LogOut, Package, Users,
-  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2, Sparkles,
-  AlertOctagon, Zap, Trash2, ArchiveRestore, Archive,
+  Loader2, Search, ArrowLeft, LogOut, Package,
+  Eye, Truck, Image as ImageIcon, ExternalLink, RefreshCw, X, MapPin, FileSpreadsheet, RotateCw, CheckCircle2,
+  AlertOctagon, Zap, Trash2, ArchiveRestore, Archive, Music, FolderOpen,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -13,11 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDateRangeOptional, inRange } from "@/components/admin/DateRangeContext";
 import { buildSoulPageUrl } from "@/lib/soulPage";
+import { resolveShineonSku } from "@/config/product";
 
-const ADMIN_EMAIL = "mi7080@gmail.com";
-// Fallback SKU for legacy orders with no resolved shineon_sku (steel + engraving).
-// Kept in sync with SHINEON_SKU_FALLBACK in the icount-payment-webhook function.
-const DEFAULT_SKU = "SO-15845643";
+const ADMIN_EMAILS = ["mi7080@gmail.com", "adir.yed@gmail.com"];
 
 type OrderStatus =
   | "pending"
@@ -63,16 +61,7 @@ interface Order {
   soul_page_url: string;
   audio_url: string;
   pet_photo_url: string | null;
-  exported_at: string | null;
-  archived_at: string | null;
-}
-
-interface Lead {
-  id: string;
-  email: string;
-  status: string;
-  created_at: string;
-  status_updated_at: string | null;
+  cloudinary_folder_url: string | null;
   archived_at: string | null;
 }
 
@@ -96,14 +85,13 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const dr = useDateRangeOptional();
   const range = dr?.range;
   // When embedded inside AdminShell, the parent has already gated access and
-  // renders the chrome — skip this page's own auth check + header.
+  // renders the chrome - skip this page's own auth check + header.
   const [authChecking, setAuthChecking] = useState(!embedded);
   const [authorized, setAuthorized] = useState(embedded);
-  const [tab, setTab] = useState<"orders" | "errors" | "leads">("orders");
+  const [tab, setTab] = useState<"orders" | "errors">("orders");
   const [retrying, setRetrying] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Order | null>(null);
@@ -123,7 +111,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         _user_id: session.user.id, _role: "admin",
       });
       if (!mounted) return;
-      if (hasRole && session.user.email === ADMIN_EMAIL) {
+      if (hasRole && ADMIN_EMAILS.includes(session.user.email ?? "")) {
         setAuthorized(true);
       } else {
         toast.error("Access denied");
@@ -142,14 +130,9 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [ordersRes, leadsRes] = await Promise.all([
-      supabase.from("animus_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("waitlist_leads").select("*").order("created_at", { ascending: false }),
-    ]);
+    const ordersRes = await supabase.from("animus_orders").select("*").order("created_at", { ascending: false });
     if (ordersRes.data) setOrders(ordersRes.data as unknown as Order[]);
-    if (leadsRes.data) setLeads(leadsRes.data as unknown as Lead[]);
     if (ordersRes.error) toast.error("Failed to load orders");
-    if (leadsRes.error) toast.error("Failed to load leads");
     setLoading(false);
   };
 
@@ -166,14 +149,6 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q))
     );
   }, [orders, search, range, statusFilter, showArchived]);
-
-  const filteredLeads = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = leads.filter(l => !l.archived_at);
-    if (range) list = list.filter(l => inRange(l.created_at, range));
-    if (!q) return list;
-    return list.filter(l => l.email.toLowerCase().includes(q));
-  }, [leads, search, range]);
 
   const updateOrderStatus = async (order: Order, status: OrderStatus) => {
     const prev = orders;
@@ -208,20 +183,58 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   };
 
   const saveTrackingAndNotify = async (orderId: string, tracking: string) => {
+    const trimmed = tracking.trim();
+
+    // Clearing tracking: just update the row, no notification.
+    if (!trimmed) {
+      const cleared = { tracking_number: null, tracking_updated_at: null };
+      const { error } = await supabase.from("animus_orders").update(cleared).eq("id", orderId);
+      if (error) { toast.error("Failed to clear tracking"); return; }
+      setOrders(p => p.map(o => o.id === orderId ? { ...o, ...cleared } as Order : o));
+      setSelected(s => s && s.id === orderId ? { ...s, ...cleared } as Order : s);
+      toast.success("Tracking cleared");
+      return;
+    }
+
+    // Persist + notify via shineon-shipment-notification. That function marks the
+    // order shipped, stores the tracking number/url, and sends the tracking-update
+    // email DIRECTLY via Resend. It's the only delivery path reachable from the
+    // browser: the email queue has no dispatch cron and process-email-queue is
+    // service-role only. Passing source_id = our order id matches the row by id;
+    // the function is idempotent (re-saving the same number won't re-email).
+    toast.info("Notifying customer…");
+    const { data, error } = await supabase.functions.invoke("shineon-shipment-notification", {
+      body: { source_id: orderId, tracking_number: trimmed },
+    });
+    if (error) { toast.error(`Notify failed: ${error.message}`); return; }
+    if (data?.skipped && data?.reason === "no_matching_order") {
+      toast.error("Tracking not saved - the shipment handler could not match this order");
+      return;
+    }
+
+    // Mirror the shipped state the function wrote to the row.
     const now = new Date().toISOString();
-    const updates = {
-      tracking_number: tracking || null,
-      tracking_updated_at: tracking ? now : null,
-      ...(tracking ? { status: "shipped" as const } : {}),
+    const patch = {
+      status: "shipped" as const,
+      tracking_number: trimmed,
+      tracking_url: `https://parcelsapp.com/en/tracking/${encodeURIComponent(trimmed)}`,
+      tracking_updated_at: now,
     };
-    const { error } = await supabase
-      .from("animus_orders")
-      .update(updates)
-      .eq("id", orderId);
-    if (error) { toast.error("Failed to save"); return; }
-    setOrders(p => p.map(o => o.id === orderId ? { ...o, ...updates } as Order : o));
-    setSelected(s => s && s.id === orderId ? { ...s, ...updates } as Order : s);
-    toast.success(tracking ? "Tracking saved — customer notification queued" : "Tracking cleared");
+    setOrders(p => p.map(o => o.id === orderId ? { ...o, ...patch } as Order : o));
+    setSelected(s => s && s.id === orderId ? { ...s, ...patch } as Order : s);
+
+    const email = data?.email;
+    if (email?.sent) {
+      toast.success("Tracking saved and customer notified");
+    } else if (data?.reason === "already_shipped") {
+      toast.warning("Tracking saved - customer was already notified");
+    } else if (email?.skipped === "no_customer_email") {
+      toast.warning("Tracking saved, but no customer email on file - not notified");
+    } else if (email?.failed || email?.threw) {
+      toast.error(`Tracking saved, but the email failed: ${email.detail || email.resendStatus || "unknown"}`);
+    } else {
+      toast.success("Tracking saved");
+    }
   };
 
   const renderPng = async (orderId: string) => {
@@ -238,54 +251,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     toast.success("PNG generated and stored");
   };
 
-  const syncWithIcount = async (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order?.icount_docnum) {
-      toast.error("No iCount docnum on this order — cannot sync. Order may not have completed payment.");
-      return;
-    }
-    toast.info(`Syncing order ${order.icount_docnum} from iCount…`);
-    const { data, error } = await supabase.functions.invoke("sync-icount-order", {
-      body: { orderId },
-    });
-    if (error || !data?.success) {
-      toast.error(`Sync failed: ${data?.error || error?.message || "unknown"}`);
-      return;
-    }
-    const updates = data.updates || {};
-    setOrders(p => p.map(o => o.id === orderId ? { ...o, ...updates } as Order : o));
-    setSelected(s => s && s.id === orderId ? { ...s, ...updates } as Order : s);
-    const fields = (data.synced_fields || []).length;
-    toast.success(fields > 0 ? `Synced ${fields} field(s) from iCount` : "Synced — no new data from iCount");
-  };
-
   const [bulkSyncing, setBulkSyncing] = useState(false);
-
-  const autoDetectDocnum = async (orderId: string): Promise<{ found: boolean; docnum?: string }> => {
-    const { data, error } = await supabase.functions.invoke("icount-find-docnum", { body: { orderId } });
-    if (error || !data) return { found: false };
-    if (data.success && data.found && data.docnum) {
-      setOrders(p => p.map(o => o.id === orderId
-        ? { ...o, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
-        : o));
-      setSelected(s => s && s.id === orderId
-        ? { ...s, icount_docnum: data.docnum, icount_docnum_auto_detected: true } as Order
-        : s);
-      return { found: true, docnum: data.docnum };
-    }
-    return { found: false };
-  };
-
-  const autoDetectSingle = async (orderId: string) => {
-    toast.info("Searching iCount by customer email…");
-    const r = await autoDetectDocnum(orderId);
-    if (r.found) {
-      toast.success(`Auto-detected docnum ${r.docnum} — syncing now…`);
-      await syncWithIcount(orderId);
-    } else {
-      toast.warning("No matching iCount document found. Set the docnum manually.");
-    }
-  };
 
   const syncAllIncomplete = async () => {
     // Include orders that are either missing shipping OR missing the print PNG
@@ -300,47 +266,16 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     }
 
     setBulkSyncing(true);
-    toast.info(`Processing ${allIncomplete.length} order(s): find → pull → render → ready…`);
+    toast.info(`Processing ${allIncomplete.length} order(s): render → ready…`);
 
-    let detected = 0;
-    let pulled = 0;
     let rendered = 0;
     let readied = 0;
     let failed = 0;
-    let stillNoDocnum = 0;
 
     for (const original of allIncomplete) {
       try {
-        // Step 1 — FIND: auto-detect docnum if missing
-        let docnum = original.icount_docnum;
-        if (!docnum && original.customer_email) {
-          const r = await autoDetectDocnum(original.id);
-          if (r.found && r.docnum) {
-            docnum = r.docnum;
-            detected++;
-          }
-        }
-        if (!docnum) {
-          stillNoDocnum++;
-          continue;
-        }
-
-        // Step 2 — PULL: sync shipping/customer fields from iCount
-        let latest: Partial<Order> = { icount_docnum: docnum };
-        const { data: syncData, error: syncErr } = await supabase.functions.invoke(
-          "sync-icount-order",
-          { body: { orderId: original.id } }
-        );
-        if (syncErr || !syncData?.success) {
-          console.error(`[bulk] Pull failed for ${original.id}:`, syncData?.error || syncErr?.message);
-          failed++;
-          continue;
-        }
-        latest = { ...latest, ...(syncData.updates || {}) };
-        pulled++;
-        setOrders(p => p.map(x => x.id === original.id ? { ...x, ...latest } as Order : x));
-
-        // Step 3 — RENDER: ensure 1000x1788 print PNG exists
+        // Step 1 - RENDER: ensure 1000x1788 print PNG exists
+        const latest: Partial<Order> = {};
         const merged = { ...original, ...latest } as Order;
         if (!merged.print_image_url) {
           const { data: renderData, error: renderErr } = await supabase.functions.invoke(
@@ -357,7 +292,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
           setOrders(p => p.map(x => x.id === original.id ? { ...x, print_image_url: renderData.print_image_url } as Order : x));
         }
 
-        // Step 4 — READY: mark as paid (Art Ready) if shipping is complete and not already further along
+        // Step 2 - READY: mark as paid (Art Ready) if shipping is complete and not already further along
         const finalRow = { ...merged, ...latest } as Order;
         const shippingOk = !!finalRow.shipping_address1 && !!finalRow.shipping_city && !!finalRow.shipping_country_code;
         const canMarkReady =
@@ -389,28 +324,27 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     setBulkSyncing(false);
 
     const parts: string[] = [];
-    if (detected > 0) parts.push(`${detected} auto-detected`);
-    if (pulled > 0) parts.push(`${pulled} pulled`);
     if (rendered > 0) parts.push(`${rendered} rendered`);
     if (readied > 0) parts.push(`${readied} marked Ready`);
-    if (stillNoDocnum > 0) parts.push(`${stillNoDocnum} skipped (no docnum)`);
     const summary = parts.length > 0 ? parts.join(" • ") : "no changes";
 
-    if (failed === 0) toast.success(`Bulk sync complete — ${summary}`, { duration: 6000 });
-    else toast.warning(`Bulk sync done — ${summary} • ${failed} failed (see console)`, { duration: 8000 });
+    if (failed === 0) toast.success(`Bulk finalize complete - ${summary}`, { duration: 6000 });
+    else toast.warning(`Bulk finalize done - ${summary} • ${failed} failed (see console)`, { duration: 8000 });
   };
 
-  const setIcountDocnum = async (orderId: string, docnum: string) => {
+  const setIcountDocnum = async (orderId: string, docnum: string): Promise<boolean> => {
     const trimmed = docnum.trim();
-    if (!trimmed) { toast.error("Enter a docnum"); return; }
+    if (!trimmed) { toast.error("Enter a docnum"); return false; }
+    if (!/^\d+$/.test(trimmed)) { toast.error("Docnum must be numbers only"); return false; }
     const { error } = await supabase
       .from("animus_orders")
       .update({ icount_docnum: trimmed, icount_docnum_auto_detected: false })
       .eq("id", orderId);
-    if (error) { toast.error("Failed to save docnum"); return; }
+    if (error) { toast.error("Failed to save docnum"); return false; }
     setOrders(p => p.map(o => o.id === orderId ? { ...o, icount_docnum: trimmed, icount_docnum_auto_detected: false } : o));
     setSelected(s => s && s.id === orderId ? { ...s, icount_docnum: trimmed, icount_docnum_auto_detected: false } : s);
-    toast.success("Docnum saved — you can now sync from iCount");
+    toast.success("Docnum saved");
+    return true;
   };
 
   const retryShineOn = async (orderId: string) => {
@@ -454,7 +388,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         setOrders(p => p.map(o => o.id === orderId
           ? { ...o, status: "fulfilled" }
           : o));
-        toast.success("ShineOn retry succeeded — order fulfilled");
+        toast.success("ShineOn retry succeeded - order fulfilled");
       } else {
         toast.warning(`Retry result: ${data?.reason || "no submission"}`);
       }
@@ -474,7 +408,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     try {
       let printUrl = order.print_image_url;
       if (!printUrl) {
-        toast.info("Step 1/2 — rendering engraving PNG…");
+        toast.info("Step 1/2 - rendering engraving PNG…");
         const { data, error } = await supabase.functions.invoke("render-engraving-png", { body: { orderId } });
         if (error || !data?.success || !data.print_image_url) {
           throw new Error(error?.message || data?.error || "PNG render failed");
@@ -483,7 +417,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         setOrders(p => p.map(o => o.id === orderId ? { ...o, print_image_url: printUrl } : o));
       }
 
-      toast.info("Step 2/2 — submitting to ShineOn…");
+      toast.info("Step 2/2 - submitting to ShineOn…");
       const { error: resetErr } = await supabase
         .from("animus_orders")
         .update({ status: "payment_pending" })
@@ -517,7 +451,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       }
       if (data?.shineon_submitted) {
         setOrders(p => p.map(o => o.id === orderId ? { ...o, status: "fulfilled", print_image_url: printUrl } : o));
-        toast.success("Render + Submit complete — order fulfilled");
+        toast.success("Render + Submit complete - order fulfilled");
       } else {
         toast.warning(`ShineOn result: ${data?.reason || "no submission"}`);
       }
@@ -546,7 +480,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     const batch = orders.filter(o => isArtReady(o) && !o.archived_at && (!range || inRange(o.created_at, range)));
     if (batch.length === 0) { toast.error("No Art Ready orders in selected range"); return; }
 
-    // Reliability check — block orders missing email or shipping address
+    // Reliability check - block orders missing email or shipping address
     const missingCritical = batch.filter(o => !o.customer_email || !o.shipping_address1);
     if (missingCritical.length > 0) {
       missingCritical.forEach(o => {
@@ -557,7 +491,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
 
     const incompleteCount = batch.filter(isIncompleteShipping).length;
     if (incompleteCount > 0) {
-      toast.warning(`${incompleteCount} order(s) have incomplete shipping — empty cells will be exported`, { duration: 5000 });
+      toast.warning(`${incompleteCount} order(s) have incomplete shipping - empty cells will be exported`, { duration: 5000 });
     }
 
     const missingPng = batch.filter(o => !o.print_image_url);
@@ -575,7 +509,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       }
       if (renderFailed.length > 0) {
         const names = renderFailed.slice(0, 3).map(o => o.customer_name || o.pet_name || o.id.slice(0, 6)).join(", ");
-        toast.error(`${renderFailed.length} order(s) failed to render — design incomplete: ${names}`, { duration: 8000 });
+        toast.error(`${renderFailed.length} order(s) failed to render - design incomplete: ${names}`, { duration: 8000 });
         return;
       }
     }
@@ -598,7 +532,9 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       const sourceId = o.icount_docnum || o.id.slice(0, 8);
       const [firstName, lastName] = splitName(o.customer_name);
       const fullName = o.customer_name || `${firstName} ${lastName}`.trim();
-      const printUrl = o.print_image_url || o.design_image_url || "";
+      // SVG only: ShineOn rejects the rasterized PNG (print_image_url) with a 406, so
+      // the CSV export must use the same design_image_url SVG the webhook submits.
+      const printUrl = o.design_image_url || "";
       const engraving1 = o.pet_name || "";
 
       // Shipping
@@ -610,7 +546,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       const sCC = o.shipping_country_code || "";
       const phone = o.customer_phone || "";
 
-      // Billing — fall back to shipping when same_as_shipping
+      // Billing - fall back to shipping when same_as_shipping
       const useShipForBill = o.billing_same_as_shipping !== false;
       const bName = useShipForBill ? fullName : (o.billing_name || fullName);
       const [bFirst, bLast] = splitName(bName);
@@ -622,7 +558,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
       const bCC = useShipForBill ? sCC : (o.billing_country_code || "");
 
       return [
-        sourceId, `${sourceId}-1`, o.shineon_sku || DEFAULT_SKU, 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
+        sourceId, `${sourceId}-1`, resolveShineonSku(o.variant_finish, !!o.add_name_to_back), 1, "ANIMUS Personalized Soundwave Pendant", o.amount ?? "",
         engraving1, printUrl, engraving1, "", "",
         bFirst, bLast, bName, bAddr1, bAddr2, phone,
         bCity, bZip, "", bCC, bState, bState,
@@ -646,14 +582,13 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
     URL.revokeObjectURL(url);
 
     const ids = batch.map(o => o.id);
-    const now = new Date().toISOString();
     const { error } = await supabase
       .from("animus_orders")
-      .update({ status: "fulfilled", exported_at: now })
+      .update({ status: "fulfilled" })
       .in("id", ids);
     if (error) { toast.error("CSV downloaded but DB update failed"); return; }
-    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: "fulfilled", exported_at: now } : o));
-    toast.success(`Exported ${batch.length} orders — ShineOn production file ready`);
+    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: "fulfilled" } : o));
+    toast.success(`Exported ${batch.length} orders - ShineOn production file ready`);
   };
 
   if (authChecking) {
@@ -669,14 +604,12 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const liveOrders = orders.filter(o => !o.archived_at);
   const archivedCount = orders.length - liveOrders.length;
   const ordersInRange = liveOrders.filter(o => !range || inRange(o.created_at, range));
-  const leadsInRange = leads.filter(l => !l.archived_at && (!range || inRange(l.created_at, range)));
   const paidPending = liveOrders.filter(o => isArtReady(o) && (!range || inRange(o.created_at, range))).length;
   const incompleteInRange = liveOrders.filter(o =>
     (isIncompleteShipping(o) || !o.print_image_url) &&
     (!range || inRange(o.created_at, range))
   );
   const incompleteCount = incompleteInRange.length;
-  const incompleteWithDocnum = incompleteInRange.filter(o => !!o.icount_docnum).length;
   // "Needs Attention" = failed ShineOn submissions OR paid orders with no print PNG.
   // This absorbs the old standalone Recovery tab.
   const needsAttentionOrders = liveOrders.filter(o =>
@@ -695,7 +628,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
   return (
     <div className={embedded ? "" : "min-h-screen bg-background text-foreground"}>
       <div className="container mx-auto px-6 py-10 max-w-7xl">
-        {/* Header — full chrome only when standalone */}
+        {/* Header - full chrome only when standalone */}
         {embedded ? (
           <div className="flex items-center justify-end mb-6">
             <button
@@ -734,11 +667,10 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <StatCard label="Total Orders" value={ordersInRange.length} />
           <StatCard label="Paid (Pending)" value={paidPending} accent="gold" />
           <StatCard label="Fulfilled" value={ordersInRange.filter(o => o.status === "fulfilled" || o.status === "shipped").length} accent="emerald" />
-          <StatCard label="Waitlist Leads" value={leadsInRange.length} />
         </div>
 
         {/* Tabs */}
@@ -755,9 +687,6 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
             ) : (
               <span className="opacity-60">(0)</span>
             )}
-          </TabButton>
-          <TabButton active={tab === "leads"} onClick={() => setTab("leads")} icon={<Users className="w-3.5 h-3.5" />}>
-            Leads <span className="opacity-60">({leadsInRange.length})</span>
           </TabButton>
         </div>
 
@@ -794,7 +723,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={tab === "orders" ? "Search by name, email, docnum, tracking…" : "Search leads by email…"}
+              placeholder="Search by name, email, docnum, tracking…"
               className="w-full pl-10 pr-4 py-2.5 bg-card border border-border/40 rounded-sm text-sm focus:border-gold outline-none"
             />
           </div>
@@ -804,14 +733,10 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
                 onClick={syncAllIncomplete}
                 disabled={bulkSyncing || incompleteCount === 0}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-amber-300 text-amber-700 text-[11px] tracking-[0.25em] uppercase hover:bg-amber-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title={
-                  incompleteWithDocnum > 0
-                    ? `Re-fetch shipping & customer data from iCount for ${incompleteWithDocnum} flagged order(s)`
-                    : "All flagged orders are missing iCount docnum — open each one and paste the docnum"
-                }
+                title={`Render missing print PNGs and mark Ready for ${incompleteCount} flagged order(s)`}
               >
                 {bulkSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw className="w-4 h-4" />}
-                Sync All Incomplete ({incompleteCount}{incompleteCount > 0 && incompleteWithDocnum < incompleteCount ? ` • ${incompleteWithDocnum} ready` : ""})
+                Render &amp; Ready Incomplete ({incompleteCount})
               </button>
               <button
                 onClick={exportShineOnBatch}
@@ -819,7 +744,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gold text-background text-[11px] tracking-[0.25em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                Export ShineOn Batch — Art Ready ({paidPending})
+                Export ShineOn Batch - Art Ready ({paidPending})
               </button>
             </>
           )}
@@ -829,8 +754,8 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gold" /></div>
         ) : tab === "orders" ? (
-          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} onSyncIcount={syncWithIcount} onAutoDetect={autoDetectSingle} archived={showArchived} onArchive={(o) => setArchived(o, true)} onRestore={(o) => setArchived(o, false)} />
-        ) : tab === "errors" ? (
+          <OrdersTable orders={filteredOrders} onSelect={setSelected} onStatusChange={updateOrderStatus} isIncomplete={isIncompleteShipping} archived={showArchived} onArchive={(o) => setArchived(o, true)} onRestore={(o) => setArchived(o, false)} />
+        ) : (
           <NeedsAttentionTable
             orders={filteredNeedsAttention}
             onSelect={setSelected}
@@ -838,8 +763,6 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
             onRenderAndSubmit={renderAndSubmit}
             busyId={retrying}
           />
-        ) : (
-          <LeadsTable leads={filteredLeads} />
         )}
       </div>
 
@@ -849,9 +772,8 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
           onClose={() => setSelected(null)}
           onSaveTracking={saveTrackingAndNotify}
           onRenderPng={renderPng}
-          onSyncIcount={syncWithIcount}
           onSetDocnum={setIcountDocnum}
-          onAutoDetect={autoDetectSingle}
+          onRenderAndSubmit={renderAndSubmit}
         />
       )}
     </div>
@@ -945,11 +867,9 @@ const StatusPill = ({ status, onChange }: { status: string; onChange: (s: OrderS
   );
 };
 
-const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIcount, onAutoDetect, archived, onArchive, onRestore }: {
+const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, archived, onArchive, onRestore }: {
   orders: Order[]; onSelect: (o: Order) => void; onStatusChange: (o: Order, s: OrderStatus) => void;
   isIncomplete: (o: Order) => boolean;
-  onSyncIcount: (orderId: string) => Promise<void>;
-  onAutoDetect: (orderId: string) => Promise<void>;
   archived?: boolean;
   onArchive: (o: Order) => void;
   onRestore: (o: Order) => void;
@@ -992,7 +912,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                           />
                         )}
                       </span>
-                    ) : "—"}
+                    ) : " - "}
                   </td>
                   <td className="px-4 py-3 text-foreground">
                     <div className="flex items-center gap-2">
@@ -1010,8 +930,8 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
-                  <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || " - "}</td>
+                  <td className="px-4 py-3 text-right text-foreground font-medium">{o.amount ? `$${o.amount}` : " - "}</td>
                   <td className="px-4 py-3">
                     {o.print_image_url ? (
                       <a href={o.print_image_url} target="_blank" rel="noopener noreferrer" title="View full engraving PNG">
@@ -1022,7 +942,7 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                         />
                       </a>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground/40">—</span>
+                      <span className="text-[10px] text-muted-foreground/40"> - </span>
                     )}
                   </td>
                   <td className="px-4 py-3"><StatusPill status={o.status} onChange={(s) => onStatusChange(o, s)} /></td>
@@ -1038,24 +958,6 @@ const OrdersTable = ({ orders, onSelect, onStatusChange, isIncomplete, onSyncIco
                         </button>
                       ) : (
                         <>
-                          {incomplete && !o.icount_docnum && o.customer_email && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onAutoDetect(o.id); }}
-                              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-emerald-700 hover:text-emerald-800"
-                              title="Search iCount by customer email and auto-link the most recent invoice/receipt"
-                            >
-                              <Sparkles className="w-3 h-3" /> Auto-detect
-                            </button>
-                          )}
-                          {incomplete && o.icount_docnum && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onSyncIcount(o.id); }}
-                              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-amber-700 hover:text-amber-800"
-                              title="Re-fetch shipping & customer details from iCount"
-                            >
-                              <RotateCw className="w-3 h-3" /> Sync iCount
-                            </button>
-                          )}
                           <button onClick={() => onSelect(o)} className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-gold hover:text-gold-light">
                             <Eye className="w-3 h-3" /> View
                           </button>
@@ -1104,13 +1006,13 @@ const NeedsAttentionTable = ({ orders, onSelect, onRetry, onRenderAndSubmit, bus
   busyId: string | null;
 }) => {
   if (orders.length === 0) {
-    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">All clear — no orders need attention</div>;
+    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">All clear - no orders need attention</div>;
   }
   return (
     <div className="border-2 border-destructive/40 rounded-xl overflow-hidden bg-destructive/[0.04]">
       <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/30">
         <p className="text-[11px] tracking-[0.2em] uppercase text-destructive font-medium">
-          {orders.length} order{orders.length === 1 ? "" : "s"} need attention — ShineOn errors or missing print PNG. Use Render + Submit to recover.
+          {orders.length} order{orders.length === 1 ? "" : "s"} need attention - ShineOn errors or missing print PNG. Use Render + Submit to recover.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -1135,7 +1037,7 @@ const NeedsAttentionTable = ({ orders, onSelect, onRetry, onRenderAndSubmit, bus
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || "—"}</td>
+                  <td className="px-4 py-3 text-xs font-mono">{o.icount_docnum || " - "}</td>
                   <td className="px-4 py-3 text-foreground">
                     <div className="flex items-center gap-2">
                       <span>{o.customer_name || o.pet_name}</span>
@@ -1149,8 +1051,8 @@ const NeedsAttentionTable = ({ orders, onSelect, onRetry, onRenderAndSubmit, bus
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || "—"}</td>
-                  <td className="px-4 py-3 text-right text-foreground font-medium tabular-nums">{o.amount ? `$${o.amount}` : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{o.customer_email || " - "}</td>
+                  <td className="px-4 py-3 text-right text-foreground font-medium tabular-nums">{o.amount ? `$${o.amount}` : " - "}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
@@ -1185,67 +1087,21 @@ const NeedsAttentionTable = ({ orders, onSelect, onRetry, onRenderAndSubmit, bus
   );
 };
 
-const LeadsTable = ({ leads }: { leads: Lead[] }) => {
-  if (leads.length === 0) {
-    return <div className="text-center py-20 border border-border/30 rounded-sm text-muted-foreground">No leads found</div>;
-  }
-  const exportLeadsCsv = () => {
-    const headers = ["email", "status", "created_at"];
-    const rows = leads.map(l => [l.email, l.status, l.created_at]);
-    const csv = [headers, ...rows].map(r => r.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `ANIMUS_leads_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-  };
-  return (
-    <div>
-      <div className="flex justify-end mb-3">
-        <button onClick={exportLeadsCsv} className="flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold transition-colors">
-          <Download className="w-3 h-3" /> Export Leads CSV
-        </button>
-      </div>
-      <div className="border border-border/30 rounded-sm overflow-hidden bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-background/50 border-b border-border/30">
-            <tr className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
-              <th className="text-left px-4 py-3">Email</th>
-              <th className="text-left px-4 py-3">Status</th>
-              <th className="text-left px-4 py-3">Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leads.map(l => (
-              <tr key={l.id} className="border-b border-border/20 hover:bg-background/30 transition-colors">
-                <td className="px-4 py-3 text-foreground">{l.email}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground capitalize">{l.status}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncIcount, onSetDocnum, onAutoDetect }: {
+const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSetDocnum, onRenderAndSubmit }: {
   order: Order;
   onClose: () => void;
   onSaveTracking: (id: string, tracking: string) => Promise<void>;
   onRenderPng: (id: string) => Promise<void>;
-  onSyncIcount: (id: string) => Promise<void>;
-  onSetDocnum: (id: string, docnum: string) => Promise<void>;
-  onAutoDetect: (id: string) => Promise<void>;
+  onSetDocnum: (id: string, docnum: string) => Promise<boolean>;
+  onRenderAndSubmit: (id: string) => Promise<void>;
 }) => {
   const [tracking, setTracking] = useState(order.tracking_number || "");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [docnumInput, setDocnumInput] = useState("");
   const [savingDocnum, setSavingDocnum] = useState(false);
-  const [autoDetecting, setAutoDetecting] = useState(false);
+  const [confirmFulfill, setConfirmFulfill] = useState(false);
+  const [submittingShineon, setSubmittingShineon] = useState(false);
   const previewUrl = order.print_image_url || order.design_image_url;
 
   const handleSave = async () => {
@@ -1257,16 +1113,6 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
     setRendering(true);
     await onRenderPng(order.id);
     setRendering(false);
-  };
-  const handleSync = async () => {
-    setSyncing(true);
-    await onSyncIcount(order.id);
-    setSyncing(false);
-  };
-  const handleAutoDetect = async () => {
-    setAutoDetecting(true);
-    await onAutoDetect(order.id);
-    setAutoDetecting(false);
   };
 
   return (
@@ -1294,7 +1140,7 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
               {previewUrl ? (
                 <img src={previewUrl} alt="Engraving" className="max-h-72 object-contain" />
               ) : (
-                <p className="text-xs text-muted-foreground">No preview available — generate PNG below</p>
+                <p className="text-xs text-muted-foreground">No preview available - generate PNG below</p>
               )}
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
@@ -1315,6 +1161,24 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
                   Soul Page <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               )}
+              {order.audio_url && (
+                <a href={order.audio_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold px-3 py-2 transition-colors">
+                  <Music className="w-3 h-3" /> Audio <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+              {order.pet_photo_url && (
+                <a href={order.pet_photo_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase border border-border/50 text-muted-foreground hover:border-gold hover:text-gold px-3 py-2 transition-colors">
+                  <ImageIcon className="w-3 h-3" /> Memory Photo <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+              {order.cloudinary_folder_url && (
+                <a href={order.cloudinary_folder_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase border border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-3 py-2 transition-colors">
+                  <FolderOpen className="w-3 h-3" /> Cloudinary Folder <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
             </div>
           </section>
 
@@ -1322,20 +1186,9 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] tracking-[0.25em] uppercase text-gold flex items-center gap-2"><MapPin className="w-3 h-3" /> Shipping Address</h3>
-              {order.icount_docnum && (
-                <button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/5 transition-colors disabled:opacity-50"
-                  title={`Re-fetch from iCount docnum ${order.icount_docnum}`}
-                >
-                  {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
-                  Sync iCount
-                </button>
-              )}
             </div>
             <div className="border border-border/30 rounded-sm p-4 bg-background/30 text-sm space-y-1">
-              <p className="text-foreground">{order.customer_name || "—"}</p>
+              <p className="text-foreground">{order.customer_name || " - "}</p>
               <p className="text-muted-foreground">{order.shipping_address1 || <span className="italic">No address on file</span>}</p>
               <p className="text-muted-foreground">
                 {[order.shipping_city, order.shipping_zip].filter(Boolean).join(", ") || ""}
@@ -1347,30 +1200,27 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
             {!order.icount_docnum && (
               <div className="mt-3 border border-amber-500/30 rounded-sm p-3 bg-amber-500/5 space-y-3">
                 <div>
-                  <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Find iCount Docnum</p>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-amber-400 mb-2">Set iCount Docnum</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Auto-detect searches iCount by customer email for the most recent invoice/receipt. If nothing matches, paste the docnum manually.
+                    The webhook normally fills this automatically. If it is missing, paste the iCount docnum manually.
                   </p>
-                  {order.customer_email && (
-                    <button
-                      onClick={handleAutoDetect}
-                      disabled={autoDetecting}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-[10px] tracking-[0.2em] uppercase border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
-                    >
-                      {autoDetecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      Auto-detect from iCount
-                    </button>
-                  )}
                 </div>
                 <div className="flex gap-2 pt-3 border-t border-amber-500/20">
                   <input
                     value={docnumInput}
-                    onChange={(e) => setDocnumInput(e.target.value)}
+                    onChange={(e) => setDocnumInput(e.target.value.replace(/\D/g, ""))}
+                    inputMode="numeric"
                     placeholder="Or paste docnum manually e.g. 12345"
                     className="flex-1 px-3 py-2 bg-background border border-border/40 rounded-sm text-sm focus:border-amber-400 outline-none font-mono"
                   />
                   <button
-                    onClick={async () => { setSavingDocnum(true); await onSetDocnum(order.id, docnumInput); setSavingDocnum(false); setDocnumInput(""); }}
+                    onClick={async () => {
+                      setSavingDocnum(true);
+                      const ok = await onSetDocnum(order.id, docnumInput);
+                      setSavingDocnum(false);
+                      setDocnumInput("");
+                      if (ok) setConfirmFulfill(true);
+                    }}
                     disabled={savingDocnum || !docnumInput.trim()}
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] tracking-[0.2em] uppercase border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
                   >
@@ -1380,6 +1230,34 @@ const OrderDetailModal = ({ order, onClose, onSaveTracking, onRenderPng, onSyncI
                 </div>
               </div>
             )}
+
+            <AlertDialog open={confirmFulfill} onOpenChange={setConfirmFulfill}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Fulfill on ShineOn now?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Docnum saved. Submit this order to ShineOn for production? This renders the print
+                    PNG if it's missing, then sends the order to ShineOn.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={submittingShineon}>Not now</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={submittingShineon}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      setSubmittingShineon(true);
+                      await onRenderAndSubmit(order.id);
+                      setSubmittingShineon(false);
+                      setConfirmFulfill(false);
+                    }}
+                  >
+                    {submittingShineon ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : null}
+                    Submit to ShineOn
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </section>
 
           {/* Tracking */}
