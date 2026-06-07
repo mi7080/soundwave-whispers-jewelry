@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { buildSoulPageUrl } from "@/lib/soulPage";
 import { PRODUCT_CONFIG } from "@/config/product";
+import { trackViewContent } from "@/lib/pixel";
 
 // Local product shape (no external commerce platform)
 interface LocalProduct {
@@ -95,6 +96,8 @@ const ProductSection = () => {
   useEffect(() => {
     setProduct(HARDCODED_PRODUCT);
     setLoading(false);
+    // Meta Pixel: top-of-funnel signal when the product/customize section mounts.
+    trackViewContent();
   }, []);
 
   // Resume from existing draft order (when returning from checkout via "Edit Design")

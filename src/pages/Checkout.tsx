@@ -9,6 +9,7 @@ import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { PRODUCT_CONFIG } from "@/config/product";
 import { US_STATES, isUsStateCode, ZIP_RE, normalizeUsPhone } from "@/lib/usAddress";
+import { trackInitiateCheckout, trackAddPaymentInfo } from "@/lib/pixel";
 
 // We ship to the US only, so the country dropdown lists the US alone. The schema
 // also rejects anything other than US as a defensive guard.
@@ -129,6 +130,11 @@ const Checkout = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, navigate]);
 
+  // Meta Pixel: "checkout initiated" once the order is loaded on this page.
+  useEffect(() => {
+    if (order && orderId) trackInitiateCheckout(orderId, total);
+  }, [order, orderId, total]);
+
   useEffect(() => {
     if (!orderId) return;
 
@@ -246,6 +252,9 @@ const Checkout = () => {
         console.error("[Checkout] Payment URL creation failed:", payErr, payData);
         throw new Error(payData?.error || payErr?.message || "Could not create payment link");
       }
+
+      // Meta Pixel: payment info captured, about to redirect to iCount.
+      trackAddPaymentInfo(orderId, total);
 
       // 3. Redirect to the iCount payment page.
       window.location.href = payData.paymentUrl;

@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +22,14 @@ import ThankYou from "./pages/ThankYou.tsx";
 import SoulPageErrorBoundary from "@/components/SoulPageErrorBoundary";
 import ScrollToTop from "@/components/ScrollToTop";
 
+function PostHogPageView() {
+  const location = useLocation();
+  useEffect(() => {
+    posthog.capture("$pageview");
+  }, [location]);
+  return null;
+}
+
 const queryClient = new QueryClient();
 const PREVIEW_SOUL_TEST_ID = "ee8ee56f-d7d6-4f06-8cca-14ecab243a4e";
 
@@ -35,6 +46,7 @@ function LegacySoulPageRedirect() {
 function AppContent() {
   return (
     <BrowserRouter>
+      <PostHogPageView />
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
@@ -59,15 +71,17 @@ function AppContent() {
 }
 
 const App = () => (
-  <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppContent />
-      </TooltipProvider>
-    </QueryClientProvider>
-  </HelmetProvider>
+  <PostHogProvider client={posthog}>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
+  </PostHogProvider>
 );
 
 export default App;

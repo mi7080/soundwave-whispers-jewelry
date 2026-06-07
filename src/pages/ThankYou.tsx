@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PRODUCT_CONFIG } from "@/config/product";
+import { trackPurchase } from "@/lib/pixel";
 import logo from "@/assets/logo.png";
 
 const CONFETTI_COLORS = ["#B78E48", "#D4AF37", "#FFD700", "#C9A84C", "#E8C07A", "#FFFFFF"];
@@ -57,6 +58,14 @@ const ThankYou = () => {
         setLookupDone(true);
       });
   }, [orderId, lookupDone]);
+
+  // Meta Pixel: Purchase fires once, when the order is confirmed on this page.
+  // eventID = order id so a later server-side CAPI Purchase deduplicates against it.
+  useEffect(() => {
+    if (orderId && orderFound && resolvedAmount != null) {
+      trackPurchase(orderId, resolvedAmount);
+    }
+  }, [orderId, orderFound, resolvedAmount]);
 
   useEffect(() => {
     if (!orderId) return;
