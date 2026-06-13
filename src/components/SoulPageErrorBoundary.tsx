@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import posthog from "posthog-js";
 
 interface SoulPageErrorBoundaryProps {
   children: ReactNode;
@@ -28,6 +29,10 @@ class SoulPageErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[SoulPageErrorBoundary] Soul Page crashed:", error, errorInfo);
+    posthog.captureException(error, {
+      boundary: "SoulPageErrorBoundary",
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   render() {

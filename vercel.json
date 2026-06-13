@@ -1,4 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/static/:path*",
+      "has": [{ "type": "host", "value": "d.animuswaves.com" }],
+      "destination": "https://us-assets.i.posthog.com/static/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "d.animuswaves.com" }],
+      "destination": "https://us.i.posthog.com/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
