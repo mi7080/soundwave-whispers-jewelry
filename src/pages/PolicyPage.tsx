@@ -45,7 +45,7 @@ const policies: Record<string, Policy> = {
       {
         heading: "",
         body: [
-          "These terms cover your use of animuswave.com and any order you place with ANIMUS. By buying from us or using the site, you agree to them. ANIMUS is operated from Israel and ships to customers in the United States.",
+          "These terms cover your use of animuswaves.com and any order you place with ANIMUS. By buying from us or using the site, you agree to them. ANIMUS is operated from Israel and ships to customers in the United States.",
         ],
       },
       {
@@ -105,7 +105,7 @@ const policies: Record<string, Policy> = {
       {
         heading: "",
         body: [
-          "ANIMUS makes custom soundwave jewelry. We are based in Israel and ship to customers across the United States. This policy explains what we collect when you visit animuswave.com or place an order, why we collect it, and the choices you have.",
+          "ANIMUS makes custom soundwave jewelry. We are based in Israel and ship to customers across the United States. This policy explains what we collect when you visit animuswaves.com or place an order, why we collect it, and the choices you have.",
           "We kept this in plain language on purpose. If anything here is unclear, email support@animusjewelry.com and we will walk you through it.",
         ],
       },
@@ -217,7 +217,7 @@ const policies: Record<string, Policy> = {
       {
         heading: "",
         body: [
-          "This page explains the cookies and similar tools we use on animuswave.com, what they do, and how to turn them off. For the bigger picture on how we handle your data, see our [Privacy Policy](/privacy).",
+          "This page explains the cookies and similar tools we use on animuswaves.com, what they do, and how to turn them off. For the bigger picture on how we handle your data, see our [Privacy Policy](/privacy).",
         ],
       },
       {
@@ -274,7 +274,7 @@ const policies: Record<string, Policy> = {
       {
         heading: "",
         body: [
-          "We want everyone to be able to use animuswave.com, including people who rely on assistive technology. Accessibility is something we work on continuously, not a box we tick once.",
+          "We want everyone to be able to use animuswaves.com, including people who rely on assistive technology. Accessibility is something we work on continuously, not a box we tick once.",
         ],
       },
       {
@@ -394,7 +394,7 @@ const PolicyPage = () => {
 
   const pageTitle = `${page.title} | ANIMUS`;
   const pageDesc = firstParagraph(page).slice(0, 155);
-  const canonical = `https://animuswave.com/${slug}`;
+  const canonical = `https://animuswaves.com/${slug}`;
 
   return (
     <main className="min-h-screen bg-background pt-20">
@@ -405,8 +405,8 @@ const PolicyPage = () => {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:url" content={canonical} />
-        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
-        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
+        <meta property="og:image" content="https://animuswaves.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswaves.com/og-image.jpg" />
       </Helmet>
       <div className="container mx-auto px-6 py-16">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-gold transition-colors mb-12">

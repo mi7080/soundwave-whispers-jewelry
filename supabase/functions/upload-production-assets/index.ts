@@ -133,7 +133,7 @@ serve(async (req) => {
         try {
           await supabase.from("email_send_log").insert({
             template_name: "png-render-failed",
-            recipient_email: "system@animuswave.com",
+            recipient_email: "system@animuswaves.com",
             status: "error",
             error_message: `PNG pre-render failed for order ${orderId} after ${MAX_PNG_ATTEMPTS} attempts: ${String(lastPngError)}`.slice(0, 4000),
             metadata: { orderId, action: "re-run render-engraving-png to recover" },

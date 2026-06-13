@@ -91,7 +91,7 @@ const OrderConfirmationEmail = ({ name, orderId, amount, petName, soulPageUrl, c
         )}
 
         <Section style={{ textAlign: 'center' as const, marginTop: '30px' }}>
-          <Button style={button} href="https://animuswave.com">
+          <Button style={button} href="https://animuswaves.com">
             Visit ANIMUS
           </Button>
         </Section>
@@ -110,7 +110,7 @@ export const template = {
   subject: (data: Record<string, any>) =>
     data?.name ? `${data.name}, your ANIMUS order is confirmed!` : 'Your ANIMUS order is confirmed!',
   displayName: 'Order confirmation',
-  previewData: { name: 'Sarah', orderId: 'abc12345-def6-7890-abcd-ef1234567890', amount: '89.99', petName: 'Luna', soulPageUrl: 'https://animuswave.com/soul/abc12345-def6-7890-abcd-ef1234567890', couponCode: 'd12ce1', couponPercent: 15 },
+  previewData: { name: 'Sarah', orderId: 'abc12345-def6-7890-abcd-ef1234567890', amount: '89.99', petName: 'Luna', soulPageUrl: 'https://animuswaves.com/soul/abc12345-def6-7890-abcd-ef1234567890', couponCode: 'd12ce1', couponPercent: 15 },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }

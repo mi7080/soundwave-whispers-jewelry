@@ -17,7 +17,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const LOGO_URL = 'https://gcqmkltyifgtuizencka.supabase.co/storage/v1/object/public/soul_assets/email-assets%2Flogo.png'
-const SITE_URL = 'https://animuswave.com'
+const SITE_URL = 'https://animuswaves.com'
 
 const WaitlistWelcomeEmail = () => (
   <Html lang="en" dir="ltr">

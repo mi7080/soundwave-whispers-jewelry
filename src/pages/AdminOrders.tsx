@@ -566,7 +566,7 @@ const AdminOrders = ({ embedded = false }: { embedded?: boolean }) => {
         firstName, lastName, fullName, sAddr1, sAddr2, phone,
         sCity, sZip, "", sCC, sState, sState,
         "", "", "",
-        "Standard", "ANIMUS", "https://animuswave.com", sourceId, "", "",
+        "Standard", "ANIMUS", "https://animuswaves.com", sourceId, "", "",
         o.customer_email || "", "", "USD", "", "", "", "", "",
         "", phone, "en", "", "ANIMUS",
       ];

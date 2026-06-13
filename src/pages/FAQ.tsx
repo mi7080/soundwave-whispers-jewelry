@@ -59,12 +59,12 @@ const FAQ = () => {
       <Helmet>
         <title>ANIMUS FAQ | Soundwave Pendant Questions Answered</title>
         <meta name="description" content="Answers about ANIMUS soundwave pendants: how the QR code works, materials, water resistance, audio quality, and shipping." />
-        <link rel="canonical" href="https://animuswave.com/faq" />
+        <link rel="canonical" href="https://animuswaves.com/faq" />
         <meta property="og:title" content="ANIMUS FAQ | Soundwave Pendant Questions Answered" />
         <meta property="og:description" content="Answers about ANIMUS pendants: QR playback, materials, water resistance, and shipping." />
-        <meta property="og:url" content="https://animuswave.com/faq" />
-        <meta property="og:image" content="https://animuswave.com/og-image.jpg" />
-        <meta name="twitter:image" content="https://animuswave.com/og-image.jpg" />
+        <meta property="og:url" content="https://animuswaves.com/faq" />
+        <meta property="og:image" content="https://animuswaves.com/og-image.jpg" />
+        <meta name="twitter:image" content="https://animuswaves.com/og-image.jpg" />
         <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
       </Helmet>
       <div className="container mx-auto px-6 py-16">

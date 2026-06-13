@@ -87,7 +87,7 @@ if (addr.country_code.toUpperCase() === "IL" && !addr.province) addr.province = 
 const payload = {
   order: {
     source_id: sourceId,
-    email: order.customer_email || "test@animuswave.com",
+    email: order.customer_email || "test@animuswaves.com",
     shipment_notification_url: `${SUPABASE_URL}/functions/v1/shineon-shipment-notification`,
     line_items: [
       { store_line_item_id: `${sourceId}-1`, sku, quantity: 1, properties },

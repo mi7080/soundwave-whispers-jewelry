@@ -15,7 +15,7 @@ const corsHeaders = {
 const RESEND_API_URL = 'https://api.resend.com/emails'
 
 // RESEND_FROM lets us swap the sender (e.g. the onboarding@resend.dev test domain
-// vs a verified animuswave.com address) without redeploying.
+// vs a verified animuswaves.com address) without redeploying.
 const FROM_ADDRESS = Deno.env.get('RESEND_FROM') || 'ANIMUS <onboarding@resend.dev>'
 
 const CAMPAIGN_NAME = 'founders-launch'
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const baseUrl = String(body.baseUrl || 'https://animuswave.com')
+    const baseUrl = String(body.baseUrl || 'https://animuswaves.com')
     const testEmail = body.testEmail ? String(body.testEmail) : null
 
     const { subject, html } = buildLaunchEmail(baseUrl)

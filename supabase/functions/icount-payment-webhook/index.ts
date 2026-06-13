@@ -165,7 +165,7 @@ serve(async (req) => {
           .from("email_send_log")
           .insert({
             template_name: "icount-ambiguous-match",
-            recipient_email: customerEmailEarly || "system@animuswave.com",
+            recipient_email: customerEmailEarly || "system@animuswaves.com",
             status: "error",
             error_message: `iCount ${docnumEarly ? `doc ${docnumEarly}` : "payment"} for ${customerEmailEarly} matched ${candidateIds.length} open orders at the same amount - cannot auto-route. Link the correct order manually.`,
             metadata: { docnum: docnumEarly, email: customerEmailEarly, amount: paymentAmountEarly, candidates: candidateIds, payload: body },
@@ -314,7 +314,7 @@ serve(async (req) => {
         .from("email_send_log")
         .insert({
           template_name: "missing-design-url",
-          recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
+          recipient_email: freshOrder.customer_email || "unknown@animuswaves.com",
           status: "error",
           error_message: `Order ${orderId} has no SVG print asset (design_image_url) - ShineOn requires SVG, PNG is rejected. Cannot submit.`,
           metadata: { orderId },
@@ -334,7 +334,7 @@ serve(async (req) => {
         .from("email_send_log")
         .insert({
           template_name: "engraving-text-missing",
-          recipient_email: freshOrder.customer_email || "unknown@animuswave.com",
+          recipient_email: freshOrder.customer_email || "unknown@animuswaves.com",
           status: "error",
           error_message: `Order ${orderId} has add_name_to_back=true but no engraving text - cannot submit an engraved item blank.`,
           metadata: { orderId },
@@ -444,7 +444,7 @@ serve(async (req) => {
         .from("email_send_log")
         .insert({
           template_name: "shineon-error",
-          recipient_email: customerEmailForShipping || "unknown@animuswave.com",
+          recipient_email: customerEmailForShipping || "unknown@animuswaves.com",
           status: "error",
           error_message: `ShineOn ${shineonResponse.status}: ${shineonResult}`.slice(0, 4000),
           metadata: {
@@ -542,7 +542,7 @@ serve(async (req) => {
           .from("email_send_log")
           .insert({
             template_name: "icount-webhook-error",
-            recipient_email: "system@animuswave.com",
+            recipient_email: "system@animuswaves.com",
             status: "error",
             error_message: String(err?.message || err || "Unknown error").slice(0, 4000),
             metadata: { stack: String(err?.stack || "").slice(0, 4000) },

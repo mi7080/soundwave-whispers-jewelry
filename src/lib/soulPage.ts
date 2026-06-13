@@ -1,4 +1,4 @@
-export const SOUL_PAGE_BASE_URL = "https://animuswave.com";
+export const SOUL_PAGE_BASE_URL = "https://animuswaves.com";
 
 export interface SoulPageData {
   petName: string;

@@ -38,9 +38,9 @@ if (ENGRAVED_SKUS.has(SKU)) {
 const payload = {
   order: {
     source_id: sourceId,
-    email: "test@animuswave.com",
+    email: "test@animuswaves.com",
     // Required by ShineOn - they POST tracking here once the order ships.
-    shipment_notification_url: "https://animuswave.com/api/shineon-shipment",
+    shipment_notification_url: "https://animuswaves.com/api/shineon-shipment",
     line_items: [
       {
         store_line_item_id: `${sourceId}-1`,

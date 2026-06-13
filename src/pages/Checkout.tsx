@@ -279,10 +279,10 @@ const Checkout = () => {
         <title>Secure Checkout | ANIMUS Memorial Pendant</title>
         <meta name="description" content="Complete your ANIMUS Memorial Pendant order. Encrypted payment, free US shipping, and a custom QR Soul Page." />
         <meta name="robots" content="noindex" />
-        <link rel="canonical" href="https://animuswave.com/checkout" />
+        <link rel="canonical" href="https://animuswaves.com/checkout" />
         <meta property="og:title" content="Secure Checkout | ANIMUS Memorial Pendant" />
         <meta property="og:description" content="Complete your ANIMUS Memorial Pendant order securely." />
-        <meta property="og:url" content="https://animuswave.com/checkout" />
+        <meta property="og:url" content="https://animuswaves.com/checkout" />
       </Helmet>
 
       <nav className="w-full py-5 px-6 border-b border-border">

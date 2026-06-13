@@ -1,6 +1,6 @@
 # ANIMUS
 
-Single-product e-commerce store (US market) for **The Universal Memorial Pendant** - a laser-engraved soundwave dog-tag pendant with a scannable QR "Soul Page". Brand domain: animuswave.com.
+Single-product e-commerce store (US market) for **The Universal Memorial Pendant** - a laser-engraved soundwave dog-tag pendant with a scannable QR "Soul Page". Brand domain: animuswaves.com.
 
 ## Stack
 

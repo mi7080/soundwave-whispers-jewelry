@@ -287,7 +287,7 @@ const CrmTab = () => {
   const sendLeadInvitation = async (lead: LeadSummary) => {
     setSendingId(lead.id);
     const { data, error } = await supabase.functions.invoke("send-campaign-email", {
-      body: { baseUrl: "https://animuswave.com", testEmail: lead.email },
+      body: { baseUrl: "https://animuswaves.com", testEmail: lead.email },
     });
     setSendingId(null);
     if (error || data?.error) {
@@ -303,7 +303,7 @@ const CrmTab = () => {
     setSendingCampaign(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-campaign-email", {
-        body: { baseUrl: "https://animuswave.com", testEmail },
+        body: { baseUrl: "https://animuswaves.com", testEmail },
       });
       if (error) throw error;
       toast.success(`Founders Launch - sent ${data?.sent ?? 0} / ${data?.total ?? 0}${data?.failed ? ` (${data.failed} failed)` : ""}`);

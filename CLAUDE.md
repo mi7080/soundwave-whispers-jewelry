@@ -9,7 +9,7 @@
 
 ## What this is
 
-ANIMUS - single-product e-commerce store for the US market. Product = "The Universal Memorial Pendant", flat $89 USD across all variants ([src/config/product.ts](src/config/product.ts)). Laser-engraved dog-tag pendant (soundwave front, custom text back, scannable QR "Soul Page"). Brand domain: animuswave.com.
+ANIMUS - single-product e-commerce store for the US market. Product = "The Universal Memorial Pendant", flat $89 USD across all variants ([src/config/product.ts](src/config/product.ts)). Laser-engraved dog-tag pendant (soundwave front, custom text back, scannable QR "Soul Page"). Brand domain: animuswaves.com.
 
 Stack: Vite + React 18 + TypeScript + shadcn/ui (Radix) + Tailwind. Routing: react-router-dom v6. Data: @tanstack/react-query + zustand. Forms: react-hook-form + zod. Backend: Supabase (Postgres + Edge Functions, Deno). Payments: iCount. Fulfillment: ShineOn. Email: Resend.
 
@@ -43,7 +43,7 @@ Unit tests: Vitest, jsdom, `include: src/**/*.{test,spec}.{ts,tsx}`, setup `src/
 - TS is loose: `strictNullChecks: false`, `noImplicitAny: false`, `noUnusedLocals/Parameters: false`, `allowJs` ([tsconfig.json](tsconfig.json)). `@typescript-eslint/no-unused-vars` is off.
 - Theme: dark, serif headings (Playfair Display), sans body (Inter).
 - **Brand copy is universal memorial, NOT pet-specific.** Never use "Dog Tag", "Pet Name", "Pet Photo", "Pet" in UI copy - use "Memory Pendant", "Name", "Memory Photo". DB columns `pet_name`/`pet_photo_url` keep old names for back-compat; UI shows universal terms.
-- Soul Page / QR links: `https://animuswave.com/soul/[UUID]`.
+- Soul Page / QR links: `https://animuswaves.com/soul/[UUID]`.
 - Storage buckets: `soul_assets`, `production_assets`.
 
 ## Pitfalls
